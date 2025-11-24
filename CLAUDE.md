@@ -440,6 +440,7 @@ The app is keyboard-first with these patterns:
 
 **Focus Management:**
 - Cmd+. → Jump to input field (from anywhere in main interface)
+- Shift+A → Focus left sidebar (expands if collapsed) - configurable
 - Escape in input → Focus output window
 - Escape in output → Focus back to input
 - Escape in file preview → Return to file tree
@@ -900,12 +901,38 @@ The project follows a phased development approach (see PRD.md):
 
 ### Adding Keyboard Shortcuts
 
-1. Find the main keyboard handler in App.tsx (around line 650)
-2. Add your shortcut in the appropriate section:
-   - Component-specific: Inside component's onKeyDown
-   - Global: In main useEffect keyboard handler
-   - Modify pressed: Check for `e.metaKey || e.ctrlKey`
-3. Remember to `e.preventDefault()` to avoid browser defaults
+Maestro has a configurable keyboard shortcut system defined in `src/renderer/constants/shortcuts.ts`.
+
+**To add a new shortcut:**
+
+1. Add the shortcut definition to `DEFAULT_SHORTCUTS` in `src/renderer/constants/shortcuts.ts`:
+```typescript
+myShortcut: { id: 'myShortcut', label: 'My Action', keys: ['Meta', 'k'] },
+```
+
+2. Add the handler in App.tsx keyboard event listener (around line 750):
+```typescript
+else if (isShortcut(e, 'myShortcut')) {
+  e.preventDefault();
+  // Your handler code here
+}
+```
+
+**Supported modifiers:**
+- `Meta` - Command (macOS) / Windows key
+- `Ctrl` - Control key
+- `Alt` - Option (macOS) / Alt key
+- `Shift` - Shift key
+
+**Arrow keys:**
+- Use `ArrowLeft`, `ArrowRight`, `ArrowUp`, `ArrowDown` as key names
+- Example: `{ keys: ['Alt', 'Meta', 'ArrowLeft'] }` for Opt+Cmd+←
+
+**Shortcut Customization UI:**
+- Users can customize shortcuts in Settings → Shortcuts tab
+- Click a shortcut button to record new keys
+- Press Escape to cancel recording (won't close the modal)
+- ShortcutEditor component handles recording and validation
 
 ### Working with File Tree
 
