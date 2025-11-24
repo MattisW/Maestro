@@ -9,6 +9,10 @@ export interface SlashCommandContext {
   sessions: any[];
   setSessions: (sessions: any[] | ((prev: any[]) => any[])) => void;
   currentMode: 'ai' | 'terminal';
+  // Optional properties for file tree navigation
+  setRightPanelOpen?: (open: boolean) => void;
+  setActiveRightTab?: (tab: string) => void;
+  fileTreeRef?: React.RefObject<HTMLDivElement>;
 }
 
 export const slashCommands: SlashCommand[] = [
@@ -26,6 +30,50 @@ export const slashCommands: SlashCommand[] = [
           [targetLogKey]: []
         };
       }));
+    }
+  },
+  {
+    command: '/jump',
+    description: 'Jump to CWD in file tree',
+    execute: (context: SlashCommandContext) => {
+      const { activeSessionId, sessions, setSessions, setRightPanelOpen, setActiveRightTab } = context;
+
+      // Find active session
+      const activeSession = sessions.find(s => s.id === activeSessionId);
+      if (!activeSession) return;
+
+      // Get the current working directory (use shellCwd for terminal mode, cwd otherwise)
+      const targetDir = activeSession.shellCwd || activeSession.cwd;
+
+      // Open right panel and switch to files tab
+      if (setRightPanelOpen) setRightPanelOpen(true);
+      if (setActiveRightTab) setActiveRightTab('files');
+
+      // Expand all parent folders in the path
+      setSessions(prev => prev.map(s => {
+        if (s.id !== activeSessionId) return s;
+
+        // Build list of parent paths to expand
+        const pathParts = targetDir.replace(s.cwd, '').split('/').filter(Boolean);
+        const expandPaths: string[] = [s.cwd];
+
+        let currentPath = s.cwd;
+        for (const part of pathParts) {
+          currentPath = currentPath + '/' + part;
+          expandPaths.push(currentPath);
+        }
+
+        // Add all parent paths to expanded list
+        const newExpanded = new Set([...s.fileExplorerExpanded, ...expandPaths]);
+
+        return {
+          ...s,
+          fileExplorerExpanded: Array.from(newExpanded)
+        };
+      }));
+
+      // Scroll to the target directory in the file tree
+      // This will be handled by the file tree component when it detects the expansion
     }
   }
 ];

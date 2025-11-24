@@ -1291,7 +1291,9 @@ export default function MaestroConsole() {
           activeSessionId,
           sessions,
           setSessions,
-          currentMode: activeSession.inputMode
+          currentMode: activeSession.inputMode,
+          setRightPanelOpen,
+          setActiveRightTab
         });
 
         setInputValue('');
