@@ -8,6 +8,7 @@ interface ProcessConfig {
   command: string;
   args: string[];
   prompt?: string;
+  shell?: string;
 }
 
 interface AgentConfig {
@@ -21,6 +22,13 @@ interface DirectoryEntry {
   name: string;
   isDirectory: boolean;
   path: string;
+}
+
+interface ShellInfo {
+  id: string;
+  name: string;
+  available: boolean;
+  path?: string;
 }
 
 // Expose protected methods that allow the renderer process to use
@@ -113,6 +121,11 @@ contextBridge.exposeInMainWorld('maestro', {
     detect: () => ipcRenderer.invoke('fonts:detect'),
   },
 
+  // Shells API (terminal shells, not to be confused with shell:openExternal)
+  shells: {
+    detect: () => ipcRenderer.invoke('shells:detect'),
+  },
+
   // Shell API
   shell: {
     openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
@@ -187,6 +200,9 @@ export interface MaestroAPI {
   };
   fonts: {
     detect: () => Promise<string[]>;
+  };
+  shells: {
+    detect: () => Promise<ShellInfo[]>;
   };
   shell: {
     openExternal: (url: string) => Promise<void>;

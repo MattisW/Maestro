@@ -21,6 +21,10 @@ export interface UseSettingsReturn {
   defaultAgent: string;
   setDefaultAgent: (value: string) => void;
 
+  // Shell settings
+  defaultShell: string;
+  setDefaultShell: (value: string) => void;
+
   // Font settings
   fontFamily: string;
   fontSize: number;
@@ -66,6 +70,9 @@ export function useSettings(): UseSettingsReturn {
 
   // Agent Config
   const [defaultAgent, setDefaultAgentState] = useState('claude-code');
+
+  // Shell Config
+  const [defaultShell, setDefaultShellState] = useState('zsh');
 
   // Font Config
   const [fontFamily, setFontFamilyState] = useState('Roboto Mono, Menlo, "Courier New", monospace');
@@ -117,6 +124,11 @@ export function useSettings(): UseSettingsReturn {
   const setDefaultAgent = (value: string) => {
     setDefaultAgentState(value);
     window.maestro.settings.set('defaultAgent', value);
+  };
+
+  const setDefaultShell = (value: string) => {
+    setDefaultShellState(value);
+    window.maestro.settings.set('defaultShell', value);
   };
 
   const setFontFamily = (value: string) => {
@@ -184,6 +196,7 @@ export function useSettings(): UseSettingsReturn {
       const savedTunnelProvider = await window.maestro.settings.get('tunnelProvider');
       const savedTunnelApiKey = await window.maestro.settings.get('tunnelApiKey');
       const savedDefaultAgent = await window.maestro.settings.get('defaultAgent');
+      const savedDefaultShell = await window.maestro.settings.get('defaultShell');
       const savedFontSize = await window.maestro.settings.get('fontSize');
       const savedFontFamily = await window.maestro.settings.get('fontFamily');
       const savedCustomFonts = await window.maestro.settings.get('customFonts');
@@ -202,6 +215,7 @@ export function useSettings(): UseSettingsReturn {
       if (savedTunnelProvider !== undefined) setTunnelProviderState(savedTunnelProvider);
       if (savedTunnelApiKey !== undefined) setTunnelApiKeyState(savedTunnelApiKey);
       if (savedDefaultAgent !== undefined) setDefaultAgentState(savedDefaultAgent);
+      if (savedDefaultShell !== undefined) setDefaultShellState(savedDefaultShell);
       if (savedFontSize !== undefined) setFontSizeState(savedFontSize);
       if (savedFontFamily !== undefined) setFontFamilyState(savedFontFamily);
       if (savedCustomFonts !== undefined) setCustomFontsState(savedCustomFonts);
@@ -238,6 +252,8 @@ export function useSettings(): UseSettingsReturn {
     setTunnelApiKey,
     defaultAgent,
     setDefaultAgent,
+    defaultShell,
+    setDefaultShell,
     fontFamily,
     fontSize,
     customFonts,

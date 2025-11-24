@@ -6,6 +6,7 @@ import { WebServer } from './web-server';
 import { AgentDetector } from './agent-detector';
 import { execFileNoThrow } from './utils/execFile';
 import { logger } from './utils/logger';
+import { detectShells } from './utils/shellDetector';
 import Store from 'electron-store';
 
 // Type definitions
@@ -22,6 +23,7 @@ interface MaestroSettings {
   fontFamily: string;
   customFonts: string[];
   logLevel: 'debug' | 'info' | 'warn' | 'error';
+  defaultShell: string;
 }
 
 const store = new Store<MaestroSettings>({
@@ -39,6 +41,7 @@ const store = new Store<MaestroSettings>({
     fontFamily: 'Roboto Mono, Menlo, "Courier New", monospace',
     customFonts: [],
     logLevel: 'info',
+    defaultShell: 'zsh',
   },
 });
 
@@ -227,6 +230,7 @@ function setupIpcHandlers() {
     command: string;
     args: string[];
     prompt?: string;
+    shell?: string;
   }) => {
     if (!processManager) throw new Error('Process manager not initialized');
     if (!agentDetector) throw new Error('Agent detector not initialized');
@@ -253,20 +257,25 @@ function setupIpcHandlers() {
       }
     }
 
+    // If no shell is specified and this is a terminal session, use the default shell from settings
+    const shellToUse = config.shell || (config.toolType === 'terminal' ? store.get('defaultShell', 'zsh') : undefined);
+
     logger.info(`Spawning process: ${config.command}`, 'ProcessManager', {
       sessionId: config.sessionId,
       toolType: config.toolType,
       cwd: config.cwd,
       command: config.command,
       args: finalArgs,
-      requiresPty: agent?.requiresPty || false
+      requiresPty: agent?.requiresPty || false,
+      shell: shellToUse
     });
 
     const result = processManager.spawn({
       ...config,
       args: finalArgs,
       requiresPty: agent?.requiresPty,
-      prompt: config.prompt
+      prompt: config.prompt,
+      shell: shellToUse
     });
 
     logger.info(`Process spawned successfully`, 'ProcessManager', {
@@ -457,6 +466,28 @@ function setupIpcHandlers() {
       console.error('Font detection error:', error);
       // Return common monospace fonts as fallback
       return ['Monaco', 'Menlo', 'Courier New', 'Consolas', 'Roboto Mono', 'Fira Code', 'JetBrains Mono'];
+    }
+  });
+
+  // Shell detection
+  ipcMain.handle('shells:detect', async () => {
+    try {
+      logger.info('Detecting available shells', 'ShellDetector');
+      const shells = await detectShells();
+      logger.info(`Detected ${shells.filter(s => s.available).length} available shells`, 'ShellDetector', {
+        shells: shells.filter(s => s.available).map(s => s.id)
+      });
+      return shells;
+    } catch (error) {
+      logger.error('Shell detection error', 'ShellDetector', error);
+      // Return default shell list with all marked as unavailable
+      return [
+        { id: 'zsh', name: 'Zsh', available: false },
+        { id: 'bash', name: 'Bash', available: false },
+        { id: 'sh', name: 'Bourne Shell (sh)', available: false },
+        { id: 'fish', name: 'Fish', available: false },
+        { id: 'tcsh', name: 'Tcsh', available: false },
+      ];
     }
   });
 

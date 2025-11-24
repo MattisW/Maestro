@@ -10,6 +10,7 @@ interface ProcessConfig {
   args: string[];
   requiresPty?: boolean; // Whether this agent needs a pseudo-terminal
   prompt?: string; // For batch mode agents like Claude (passed as CLI argument)
+  shell?: string; // Shell to use for terminal sessions (e.g., 'zsh', 'bash', 'fish')
 }
 
 interface ManagedProcess {
@@ -31,7 +32,7 @@ export class ProcessManager extends EventEmitter {
    * Spawn a new process for a session
    */
   spawn(config: ProcessConfig): { pid: number; success: boolean } {
-    const { sessionId, toolType, cwd, command, args, requiresPty, prompt } = config;
+    const { sessionId, toolType, cwd, command, args, requiresPty, prompt, shell } = config;
 
     // For batch mode with prompt, append prompt to args with -- separator
     // The -- ensures prompt is treated as positional arg, not a flag (even if it starts with --)
@@ -61,7 +62,12 @@ export class ProcessManager extends EventEmitter {
 
         if (isTerminal) {
           // Full shell emulation for terminal mode
-          ptyCommand = process.platform === 'win32' ? 'powershell.exe' : 'bash';
+          // Use the provided shell, or default based on platform
+          if (shell) {
+            ptyCommand = shell;
+          } else {
+            ptyCommand = process.platform === 'win32' ? 'powershell.exe' : 'bash';
+          }
           ptyArgs = [];
         } else {
           // Spawn the AI agent directly with PTY support

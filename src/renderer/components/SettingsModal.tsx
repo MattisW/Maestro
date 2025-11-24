@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Key, Moon, Sun, Keyboard, Check } from 'lucide-react';
-import type { AgentConfig, Theme, Shortcut } from '../types';
+import { X, Key, Moon, Sun, Keyboard, Check, Terminal } from 'lucide-react';
+import type { AgentConfig, Theme, Shortcut, ShellInfo } from '../types';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -33,6 +33,8 @@ interface SettingsModalProps {
   setLogLevel: (level: string) => void;
   maxOutputLines: number;
   setMaxOutputLines: (lines: number) => void;
+  defaultShell: string;
+  setDefaultShell: (shell: string) => void;
   initialTab?: 'general' | 'llm' | 'shortcuts' | 'theme' | 'network';
 }
 
@@ -51,6 +53,9 @@ export function SettingsModal(props: SettingsModalProps) {
   const [shortcutsFilter, setShortcutsFilter] = useState('');
   const [testingLLM, setTestingLLM] = useState(false);
   const [testResult, setTestResult] = useState<{ status: 'success' | 'error' | null; message: string }>({ status: null, message: '' });
+  const [shells, setShells] = useState<ShellInfo[]>([]);
+  const [shellsLoading, setShellsLoading] = useState(false);
+  const [shellsLoaded, setShellsLoaded] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -127,6 +132,27 @@ export function SettingsModal(props: SettingsModalProps) {
   const handleFontInteraction = () => {
     if (!fontsLoaded && !fontLoading) {
       loadFonts();
+    }
+  };
+
+  const loadShells = async () => {
+    if (shellsLoaded) return; // Don't reload if already loaded
+
+    setShellsLoading(true);
+    try {
+      const detected = await window.maestro.shells.detect();
+      setShells(detected);
+      setShellsLoaded(true);
+    } catch (error) {
+      console.error('Failed to load shells:', error);
+    } finally {
+      setShellsLoading(false);
+    }
+  };
+
+  const handleShellInteraction = () => {
+    if (!shellsLoaded && !shellsLoading) {
+      loadShells();
     }
   };
 
@@ -844,6 +870,81 @@ export function SettingsModal(props: SettingsModalProps) {
                 </div>
                 <p className="text-xs opacity-50 mt-2">
                   Long outputs will be collapsed into a scrollable window. Set to "All" to always show full output.
+                </p>
+              </div>
+
+              {/* Default Shell */}
+              <div>
+                <label className="block text-xs font-bold opacity-70 uppercase mb-2 flex items-center gap-2">
+                  <Terminal className="w-3 h-3" />
+                  Default Terminal Shell
+                </label>
+                {shellsLoading ? (
+                  <div className="text-sm opacity-50 p-2">Loading shells...</div>
+                ) : (
+                  <div className="space-y-2">
+                    {shellsLoaded && shells.length > 0 ? (
+                      shells.map((shell) => (
+                        <button
+                          key={shell.id}
+                          disabled={!shell.available}
+                          onClick={() => {
+                            if (shell.available) {
+                              props.setDefaultShell(shell.id);
+                            }
+                          }}
+                          onMouseEnter={handleShellInteraction}
+                          onFocus={handleShellInteraction}
+                          className={`w-full text-left p-3 rounded border transition-all ${
+                            props.defaultShell === shell.id ? 'ring-2' : ''
+                          } ${!shell.available ? 'opacity-40 cursor-not-allowed' : 'hover:bg-opacity-10'}`}
+                          style={{
+                            borderColor: theme.colors.border,
+                            backgroundColor: props.defaultShell === shell.id ? theme.colors.accentDim : theme.colors.bgMain,
+                            ringColor: theme.colors.accent,
+                            color: theme.colors.textMain,
+                          }}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-medium">{shell.name}</div>
+                              {shell.path && (
+                                <div className="text-xs opacity-50 font-mono mt-1">{shell.path}</div>
+                              )}
+                            </div>
+                            {shell.available ? (
+                              props.defaultShell === shell.id ? (
+                                <Check className="w-4 h-4" style={{ color: theme.colors.accent }} />
+                              ) : (
+                                <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: theme.colors.success + '20', color: theme.colors.success }}>
+                                  Available
+                                </span>
+                              )
+                            ) : (
+                              <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: theme.colors.error + '20', color: theme.colors.error }}>
+                                Not Found
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      ))
+                    ) : (
+                      <button
+                        onClick={handleShellInteraction}
+                        className="w-full text-left p-3 rounded border"
+                        style={{
+                          borderColor: theme.colors.border,
+                          backgroundColor: theme.colors.bgMain,
+                          color: theme.colors.textMain,
+                        }}
+                      >
+                        Click to detect available shells...
+                      </button>
+                    )}
+                  </div>
+                )}
+                <p className="text-xs opacity-50 mt-2">
+                  Choose which shell to use for terminal sessions. Only available shells are shown.
                 </p>
               </div>
             </div>

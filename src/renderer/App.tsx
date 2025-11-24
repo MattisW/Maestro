@@ -161,6 +161,7 @@ export default function MaestroConsole() {
 
   // Agent Config
   const [defaultAgent, setDefaultAgent] = useState('claude-code');
+  const [defaultShell, setDefaultShell] = useState('zsh');
 
   // Font Config
   const [fontFamily, setFontFamilyState] = useState('Roboto Mono, Menlo, "Courier New", monospace');
@@ -207,6 +208,11 @@ export default function MaestroConsole() {
     window.maestro.settings.set('defaultAgent', value);
   };
 
+  const setDefaultShellPersist = (value: string) => {
+    setDefaultShell(value);
+    window.maestro.settings.set('defaultShell', value);
+  };
+
   const setFontFamily = (value: string) => {
     setFontFamilyState(value);
     window.maestro.settings.set('fontFamily', value);
@@ -242,6 +248,7 @@ export default function MaestroConsole() {
       const savedTunnelProvider = await window.maestro.settings.get('tunnelProvider');
       const savedTunnelApiKey = await window.maestro.settings.get('tunnelApiKey');
       const savedDefaultAgent = await window.maestro.settings.get('defaultAgent');
+      const savedDefaultShell = await window.maestro.settings.get('defaultShell');
       const savedFontSize = await window.maestro.settings.get('fontSize');
       const savedFontFamily = await window.maestro.settings.get('fontFamily');
       const savedCustomFonts = await window.maestro.settings.get('customFonts');
@@ -260,6 +267,7 @@ export default function MaestroConsole() {
       if (savedTunnelProvider !== undefined) setTunnelProvider(savedTunnelProvider);
       if (savedTunnelApiKey !== undefined) setTunnelApiKey(savedTunnelApiKey);
       if (savedDefaultAgent !== undefined) setDefaultAgent(savedDefaultAgent);
+      if (savedDefaultShell !== undefined) setDefaultShell(savedDefaultShell);
       if (savedFontSize !== undefined) setFontSizeState(savedFontSize);
       if (savedFontFamily !== undefined) setFontFamilyState(savedFontFamily);
       if (savedCustomFonts !== undefined) setCustomFonts(savedCustomFonts);
@@ -2126,6 +2134,8 @@ export default function MaestroConsole() {
         setShortcuts={setShortcuts}
         defaultAgent={defaultAgent}
         setDefaultAgent={setDefaultAgentPersist}
+        defaultShell={defaultShell}
+        setDefaultShell={setDefaultShellPersist}
         fontFamily={fontFamily}
         setFontFamily={setFontFamily}
         fontSize={fontSize}

@@ -122,6 +122,7 @@ export interface ProcessConfig {
   command: string;
   args: string[];
   prompt?: string; // For batch mode agents like Claude (passed as CLI argument)
+  shell?: string; // Shell to use for terminal sessions (e.g., 'zsh', 'bash', 'fish')
 }
 
 // Directory entry from fs:readDir
@@ -129,4 +130,12 @@ export interface DirectoryEntry {
   name: string;
   isDirectory: boolean;
   path: string;
+}
+
+// Shell information from shells:detect
+export interface ShellInfo {
+  id: string;
+  name: string;
+  available: boolean;
+  path?: string;
 }

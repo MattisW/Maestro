@@ -820,6 +820,7 @@ if (savedMySetting !== undefined) setMySettingState(savedMySetting);
 - `llmProvider`, `modelSlug`, `apiKey` - LLM configuration
 - `tunnelProvider`, `tunnelApiKey` - Tunnel configuration
 - `defaultAgent` - Default AI agent selection
+- `defaultShell` - Default terminal shell (zsh, bash, sh, fish, tcsh)
 - `fontFamily`, `fontSize`, `customFonts` - UI font settings
 - `enterToSend` - Input behavior (Enter vs Command-Enter to send)
 - `activeThemeId` - Selected theme
@@ -967,6 +968,11 @@ Currently no test suite implemented. When adding tests, use the `test` script in
 
 ## Recent Features Added
 
+- **Custom Shell Selection** - Users can now select their preferred terminal shell (zsh, bash, sh, fish, tcsh) in General Settings (PED-CUSTOM-SHELL)
+  - Automatic detection of available shells on the system
+  - Only available shells are shown as selectable options
+  - Settings persisted across application restarts
+  - Shell selection applies to all new terminal sessions
 - **Terminal Interrupt Functionality** - Gracefully interrupt long-running terminal commands (PED-LONG-RUNNING-CLI)
   - Visual busy indicator: send button transforms into animated red stop button when terminal is executing
   - Sends SIGINT (Ctrl+C) to gracefully interrupt processes like ping, top, or other blocking commands
