@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { X } from 'lucide-react';
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 import type { Theme, Session, Group } from '../types';
+import { useLayerStack } from '../contexts/LayerStackContext';
+import { MODAL_PRIORITIES } from '../constants/modalPriorities';
 
 interface CreateGroupModalProps {
   theme: Theme;
@@ -25,6 +27,41 @@ export function CreateGroupModal(props: CreateGroupModalProps) {
   const [groupName, setGroupName] = useState('');
   const [groupEmoji, setGroupEmoji] = useState('📂');
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+
+  const { registerLayer, unregisterLayer, updateLayerHandler } = useLayerStack();
+  const layerIdRef = useRef<string>();
+
+  // Register layer on mount
+  useEffect(() => {
+    const id = registerLayer({
+      id: '',
+      type: 'modal',
+      priority: MODAL_PRIORITIES.CREATE_GROUP,
+      blocksLowerLayers: true,
+      capturesFocus: true,
+      focusTrap: 'strict',
+      ariaLabel: 'Create New Group',
+      onEscape: () => {
+        onClose();
+      }
+    });
+    layerIdRef.current = id;
+
+    return () => {
+      if (layerIdRef.current) {
+        unregisterLayer(layerIdRef.current);
+      }
+    };
+  }, [registerLayer, unregisterLayer]);
+
+  // Update handler when dependencies change
+  useEffect(() => {
+    if (layerIdRef.current) {
+      updateLayerHandler(layerIdRef.current, () => {
+        onClose();
+      });
+    }
+  }, [onClose, updateLayerHandler]);
 
   const handleCreate = () => {
     if (groupName.trim()) {
@@ -54,11 +91,11 @@ export function CreateGroupModal(props: CreateGroupModalProps) {
   return (
     <div
       className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] animate-in fade-in duration-200"
-      onKeyDown={(e) => {
-        if (e.key !== 'Escape') {
-          e.stopPropagation();
-        }
-      }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Create New Group"
+      tabIndex={-1}
+      ref={(el) => el?.focus()}
     >
       <div className="w-[400px] border rounded-lg shadow-2xl overflow-hidden" style={{ backgroundColor: theme.colors.bgSidebar, borderColor: theme.colors.border }}>
         <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: theme.colors.border }}>
@@ -97,9 +134,6 @@ export function CreateGroupModal(props: CreateGroupModalProps) {
                   if (e.key === 'Enter') {
                     e.preventDefault();
                     handleCreate();
-                  } else if (e.key === 'Escape') {
-                    e.preventDefault();
-                    onClose();
                   }
                 }}
                 placeholder="Enter group name..."
@@ -110,12 +144,14 @@ export function CreateGroupModal(props: CreateGroupModalProps) {
             </div>
           </div>
 
-          {/* Emoji Picker Overlay */}
+          {/* Emoji Picker Overlay - Internal to modal, not a separate layer */}
           {emojiPickerOpen && (
             <div
               className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60]"
               onClick={() => setEmojiPickerOpen(false)}
               onKeyDown={(e) => {
+                // Keep internal emoji picker escape handler
+                // This closes the emoji picker, not the modal
                 if (e.key === 'Escape') {
                   e.preventDefault();
                   e.stopPropagation();
