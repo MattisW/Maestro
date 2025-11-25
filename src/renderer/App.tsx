@@ -852,7 +852,7 @@ export default function MaestroConsole() {
       // Sidebar navigation with arrow keys (works when sidebar has focus)
       if (activeFocus === 'sidebar' && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft')) {
         e.preventDefault();
-        if (visibleSessions.length === 0) return;
+        if (sortedSessions.length === 0) return;
 
         // Get the currently selected session
         const currentSession = sortedSessions[selectedSidebarIndex];
@@ -884,39 +884,98 @@ export default function MaestroConsole() {
           }
         }
 
-        // ArrowUp/ArrowDown: Navigate through visible sessions
+        // ArrowUp/ArrowDown: Navigate through sessions, expanding collapsed groups as needed
         if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-          // Find current position in visible sessions
-          const currentVisibleIndex = visibleSessions.findIndex(s => s.id === currentSession?.id);
+          const currentIndex = selectedSidebarIndex;
+          const totalSessions = sortedSessions.length;
 
-          // Calculate next index in visible sessions
-          let nextVisibleIndex: number;
-          if (currentVisibleIndex === -1) {
-            // Current session not visible (shouldn't happen normally), go to first
-            nextVisibleIndex = 0;
-          } else if (e.key === 'ArrowDown') {
-            nextVisibleIndex = (currentVisibleIndex + 1) % visibleSessions.length;
+          // Helper to check if a session is in a collapsed group
+          const isInCollapsedGroup = (session: Session) => {
+            if (!session.groupId) return false;
+            const group = groups.find(g => g.id === session.groupId);
+            return group?.collapsed ?? false;
+          };
+
+          // Helper to get all sessions in a group
+          const getGroupSessions = (groupId: string) => {
+            return sortedSessions.filter(s => s.groupId === groupId);
+          };
+
+          // Find the next session, skipping visible sessions in collapsed groups
+          // but stopping when we hit a NEW collapsed group (to expand it)
+          let nextIndex = currentIndex;
+          let foundCollapsedGroup: string | null = null;
+
+          if (e.key === 'ArrowDown') {
+            // Moving down
+            for (let i = 1; i <= totalSessions; i++) {
+              const candidateIndex = (currentIndex + i) % totalSessions;
+              const candidate = sortedSessions[candidateIndex];
+
+              if (!candidate.groupId) {
+                // Ungrouped session - can navigate to it
+                nextIndex = candidateIndex;
+                break;
+              }
+
+              const candidateGroup = groups.find(g => g.id === candidate.groupId);
+              if (!candidateGroup?.collapsed) {
+                // Session in expanded group - can navigate to it
+                nextIndex = candidateIndex;
+                break;
+              }
+
+              // Session is in a collapsed group
+              // Check if this is a different group than we're currently in
+              if (candidate.groupId !== currentSession?.groupId) {
+                // We've hit a collapsed group - expand it and go to FIRST item
+                foundCollapsedGroup = candidate.groupId;
+                const groupSessions = getGroupSessions(candidate.groupId);
+                nextIndex = sortedSessions.findIndex(s => s.id === groupSessions[0]?.id);
+                break;
+              }
+              // Same collapsed group, keep looking (shouldn't happen if current is visible)
+            }
           } else {
-            nextVisibleIndex = (currentVisibleIndex - 1 + visibleSessions.length) % visibleSessions.length;
-          }
+            // Moving up
+            for (let i = 1; i <= totalSessions; i++) {
+              const candidateIndex = (currentIndex - i + totalSessions) % totalSessions;
+              const candidate = sortedSessions[candidateIndex];
 
-          const nextSession = visibleSessions[nextVisibleIndex];
-          if (!nextSession) return;
+              if (!candidate.groupId) {
+                // Ungrouped session - can navigate to it
+                nextIndex = candidateIndex;
+                break;
+              }
 
-          // Check if we're entering a collapsed group (shouldn't happen with visibleSessions, but safety check)
-          if (nextSession.groupId) {
-            const sessionGroup = groups.find(g => g.id === nextSession.groupId);
-            if (sessionGroup?.collapsed) {
-              // Expand the group
-              setGroups(prev => prev.map(g =>
-                g.id === sessionGroup.id ? { ...g, collapsed: false } : g
-              ));
+              const candidateGroup = groups.find(g => g.id === candidate.groupId);
+              if (!candidateGroup?.collapsed) {
+                // Session in expanded group - can navigate to it
+                nextIndex = candidateIndex;
+                break;
+              }
+
+              // Session is in a collapsed group
+              // Check if this is a different group than we're currently in
+              if (candidate.groupId !== currentSession?.groupId) {
+                // We've hit a collapsed group - expand it and go to LAST item
+                foundCollapsedGroup = candidate.groupId;
+                const groupSessions = getGroupSessions(candidate.groupId);
+                nextIndex = sortedSessions.findIndex(s => s.id === groupSessions[groupSessions.length - 1]?.id);
+                break;
+              }
+              // Same collapsed group, keep looking
             }
           }
 
-          // Find the index in sortedSessions for the selectedSidebarIndex
-          const newIndex = sortedSessions.findIndex(s => s.id === nextSession.id);
-          setSelectedSidebarIndex(newIndex);
+          // If we found a collapsed group, expand it
+          if (foundCollapsedGroup) {
+            setGroups(prev => prev.map(g =>
+              g.id === foundCollapsedGroup ? { ...g, collapsed: false } : g
+            ));
+          }
+
+          setSelectedSidebarIndex(nextIndex);
         }
         return;
       }
