@@ -203,6 +203,164 @@ export interface SlashCommand {
 **Current commands:**
 - `/clear` - Clears output history for current mode (AI or terminal)
 
+### Layer Stack System
+
+Maestro uses a centralized layer stack system for managing modals, overlays, and search layers with predictable Escape key handling and priority-based ordering.
+
+**Problem Solved:**
+- Previously had 9+ scattered Escape handlers competing for events
+- Brittle modal detection with massive boolean checks
+- Manual priority management via if-else chains (50+ lines)
+- Inconsistent focus management
+
+**Architecture:**
+- `useLayerStack` hook (`src/renderer/hooks/useLayerStack.ts`) - Core layer management
+- `LayerStackContext` (`src/renderer/contexts/LayerStackContext.tsx`) - Global Escape handler via capture-phase listener
+- `MODAL_PRIORITIES` (`src/renderer/constants/modalPriorities.ts`) - Explicit z-index/priority values
+- `Layer` types (`src/renderer/types/layer.ts`) - Discriminated union (ModalLayer, OverlayLayer)
+
+**Key Features:**
+- Single global Escape handler delegates to topmost layer
+- Priority-based ordering (higher number = higher priority)
+- Automatic layer registration/unregistration on mount/unmount
+- Performance-optimized (handler updates don't trigger re-sorts)
+- Type-safe discriminated unions
+- Built-in dev tools for debugging layer stack
+
+**Modal Priority Hierarchy:**
+```typescript
+CONFIRM: 1000           // Highest - confirmation dialogs
+RENAME_INSTANCE: 900
+RENAME_GROUP: 850
+CREATE_GROUP: 800
+NEW_INSTANCE: 750
+QUICK_ACTION: 700       // Command palette (Cmd+K)
+SHORTCUTS_HELP: 650
+ABOUT: 600
+PROCESS_MONITOR: 550
+LOG_VIEWER: 500
+SETTINGS: 450
+GIT_DIFF: 200
+LIGHTBOX: 150
+FILE_PREVIEW: 100
+SLASH_AUTOCOMPLETE: 50
+FILE_TREE_FILTER: 30    // Lowest - inline search
+```
+
+**Adding a New Modal:**
+
+1. **Choose priority** - Select appropriate value from `MODAL_PRIORITIES` or add new constant
+2. **Import layer stack hook**:
+```typescript
+import { useLayerStack } from '../contexts/LayerStackContext';
+import { MODAL_PRIORITIES } from '../constants/modalPriorities';
+```
+
+3. **Register layer on mount**:
+```typescript
+const { registerLayer, unregisterLayer, updateLayerHandler } = useLayerStack();
+const layerIdRef = useRef<string>();
+
+useEffect(() => {
+  if (modalOpen) {
+    const id = registerLayer({
+      type: 'modal',  // or 'overlay'
+      priority: MODAL_PRIORITIES.YOUR_MODAL,
+      blocksLowerLayers: true,
+      capturesFocus: true,
+      focusTrap: 'strict',  // or 'lenient', 'none'
+      ariaLabel: 'Your Modal Name',
+      onEscape: () => {
+        setModalOpen(false);
+      }
+    });
+    layerIdRef.current = id;
+    return () => unregisterLayer(id);
+  }
+}, [modalOpen, registerLayer, unregisterLayer]);
+```
+
+4. **Update handler when dependencies change** (performance optimization):
+```typescript
+useEffect(() => {
+  if (modalOpen && layerIdRef.current) {
+    updateLayerHandler(layerIdRef.current, () => {
+      setModalOpen(false);
+      // ... other cleanup
+    });
+  }
+}, [modalOpen, updateLayerHandler, /* other dependencies */]);
+```
+
+5. **Add ARIA attributes**:
+```typescript
+<div
+  role="dialog"
+  aria-modal="true"
+  aria-label="Your Modal Name"
+  tabIndex={-1}
+  ref={(el) => el?.focus()}  // Auto-focus on mount
+>
+```
+
+6. **Remove local Escape handlers** - Let layer stack handle it
+
+**Layer Types:**
+```typescript
+// Modal - full-screen overlay that blocks interaction
+type ModalLayer = {
+  type: 'modal';
+  priority: number;
+  blocksLowerLayers: boolean;
+  capturesFocus: boolean;
+  focusTrap: 'strict' | 'lenient' | 'none';
+  ariaLabel?: string;
+  onEscape: () => void;
+  onBeforeClose?: () => Promise<boolean>;  // Optional confirmation
+  isDirty?: boolean;
+  parentModalId?: string;
+};
+
+// Overlay - semi-transparent overlay (file preview, search)
+type OverlayLayer = {
+  type: 'overlay';
+  priority: number;
+  blocksLowerLayers: boolean;
+  capturesFocus: boolean;
+  focusTrap: 'strict' | 'lenient' | 'none';
+  ariaLabel?: string;
+  onEscape: () => void;
+  allowClickOutside: boolean;
+};
+```
+
+**Internal Search Layers:**
+Components like FilePreview, TerminalOutput, and LogViewer handle internal search state in their `onEscape` handler:
+```typescript
+onEscape: () => {
+  if (searchOpen) {
+    setSearchOpen(false);  // First Escape closes search
+  } else {
+    closePreview();  // Second Escape closes preview
+  }
+}
+```
+
+**Benefits:**
+- No more manual modal priority if-else chains
+- Predictable, testable behavior
+- Easy to add new modals (just set priority)
+- Single source of truth for layer ordering
+- Removed 100+ lines of brittle modal management code
+
+**Debugging:**
+In development mode, use `LayerStackDevTools` component (bottom-right overlay) or browser console:
+```javascript
+window.__MAESTRO_DEBUG__.layers.list()        // Show all layers
+window.__MAESTRO_DEBUG__.layers.top()         // Show top layer
+window.__MAESTRO_DEBUG__.layers.simulate.escape()  // Simulate Escape key
+```
+
 ### Dual-Mode Input Router
 
 Sessions toggle between two input modes:
