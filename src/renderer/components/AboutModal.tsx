@@ -180,7 +180,7 @@ export function AboutModal({ theme, sessions, onClose }: AboutModalProps) {
             <div className="p-4 rounded border" style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.bgActivity }}>
               <div className="flex items-center gap-2 mb-3">
                 <BarChart3 className="w-4 h-4" style={{ color: theme.colors.accent }} />
-                <span className="text-sm font-bold" style={{ color: theme.colors.textMain }}>Session Statistics</span>
+                <span className="text-sm font-bold" style={{ color: theme.colors.textMain }}>Global Statistics</span>
               </div>
               <div className="grid grid-cols-2 gap-3 text-xs">
                 {/* Sessions & Messages */}

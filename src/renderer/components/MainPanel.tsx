@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Wand2, Radio, ExternalLink, Wifi, Info, Columns, Copy, List, Loader2, Clock, GitBranch, ArrowUp, ArrowDown, FileEdit } from 'lucide-react';
+import { Wand2, Radio, ExternalLink, Wifi, Columns, Copy, List, Loader2, Clock, GitBranch, ArrowUp, ArrowDown, FileEdit } from 'lucide-react';
 import { LogViewer } from './LogViewer';
 import { TerminalOutput } from './TerminalOutput';
 import { InputArea } from './InputArea';
@@ -565,9 +565,6 @@ export function MainPanel(props: MainPanelProps) {
                 )}
               </div>
 
-              <button onClick={() => setAboutModalOpen(true)} className="p-2 rounded hover:bg-white/5" title="About Maestro">
-                <Info className="w-4 h-4" />
-              </button>
               <button onClick={() => setAgentSessionsOpen(true)} className="p-2 rounded hover:bg-white/5" title={`Agent Sessions (${shortcuts.agentSessions.keys.join('+').replace('Meta', 'Cmd').replace('Shift', '\u21E7')})`}>
                 <List className="w-4 h-4" />
               </button>

@@ -119,6 +119,49 @@ export function AgentSessionsBrowser({
     }
   }, [viewingSession, updateLayerHandler]);
 
+  // Load messages when viewing a session (defined early for use in effects below)
+  const loadMessages = useCallback(async (session: ClaudeSession, offset: number = 0) => {
+    if (!activeSession?.cwd) return;
+
+    setMessagesLoading(true);
+    try {
+      const result = await window.maestro.claude.readSessionMessages(
+        activeSession.cwd,
+        session.sessionId,
+        { offset, limit: 20 }
+      );
+
+      if (offset === 0) {
+        setMessages(result.messages);
+        // Scroll to bottom after initial load and focus the container for keyboard nav
+        requestAnimationFrame(() => {
+          if (messagesContainerRef.current) {
+            messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+            messagesContainerRef.current.focus();
+          }
+        });
+      } else {
+        // Prepend older messages
+        setMessages(prev => [...result.messages, ...prev]);
+      }
+      setTotalMessages(result.total);
+      setHasMoreMessages(result.hasMore);
+      setMessagesOffset(offset + result.messages.length);
+    } catch (error) {
+      console.error('Failed to load messages:', error);
+    } finally {
+      setMessagesLoading(false);
+    }
+  }, [activeSession?.cwd]);
+
+  // Handle viewing a session (defined early for use in effects below)
+  const handleViewSession = useCallback((session: ClaudeSession) => {
+    setViewingSession(session);
+    setMessages([]);
+    setMessagesOffset(0);
+    loadMessages(session, 0);
+  }, [loadMessages]);
+
   // Load sessions on mount
   useEffect(() => {
     const loadSessions = async () => {
@@ -217,49 +260,6 @@ export function AgentSessionsBrowser({
       }
     };
   }, [search, searchMode, activeSession?.cwd]);
-
-  // Load messages when viewing a session
-  const loadMessages = useCallback(async (session: ClaudeSession, offset: number = 0) => {
-    if (!activeSession?.cwd) return;
-
-    setMessagesLoading(true);
-    try {
-      const result = await window.maestro.claude.readSessionMessages(
-        activeSession.cwd,
-        session.sessionId,
-        { offset, limit: 20 }
-      );
-
-      if (offset === 0) {
-        setMessages(result.messages);
-        // Scroll to bottom after initial load and focus the container for keyboard nav
-        requestAnimationFrame(() => {
-          if (messagesContainerRef.current) {
-            messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
-            messagesContainerRef.current.focus();
-          }
-        });
-      } else {
-        // Prepend older messages
-        setMessages(prev => [...result.messages, ...prev]);
-      }
-      setTotalMessages(result.total);
-      setHasMoreMessages(result.hasMore);
-      setMessagesOffset(offset + result.messages.length);
-    } catch (error) {
-      console.error('Failed to load messages:', error);
-    } finally {
-      setMessagesLoading(false);
-    }
-  }, [activeSession?.cwd]);
-
-  // Handle viewing a session
-  const handleViewSession = useCallback((session: ClaudeSession) => {
-    setViewingSession(session);
-    setMessages([]);
-    setMessagesOffset(0);
-    loadMessages(session, 0);
-  }, [loadMessages]);
 
   // Handle loading more messages (scroll to top)
   const handleLoadMore = useCallback(() => {
