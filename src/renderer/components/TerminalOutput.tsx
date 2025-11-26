@@ -50,6 +50,38 @@ export const TerminalOutput = forwardRef<HTMLDivElement, TerminalOutputProps>((p
   // Delete confirmation state
   const [deleteConfirmLogId, setDeleteConfirmLogId] = useState<string | null>(null);
 
+  // Elapsed time for thinking indicator (in seconds)
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  // Update elapsed time when session is busy
+  useEffect(() => {
+    if (session.state === 'busy' && session.thinkingStartTime) {
+      // Set initial elapsed time
+      setElapsedSeconds(Math.floor((Date.now() - session.thinkingStartTime) / 1000));
+
+      // Update every second
+      const interval = setInterval(() => {
+        setElapsedSeconds(Math.floor((Date.now() - session.thinkingStartTime!) / 1000));
+      }, 1000);
+
+      return () => clearInterval(interval);
+    } else {
+      setElapsedSeconds(0);
+    }
+  }, [session.state, session.thinkingStartTime]);
+
+  // Format elapsed time as mm:ss or hh:mm:ss
+  const formatElapsedTime = (seconds: number): string => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${minutes}:${secs.toString().padStart(2, '0')}`;
+  };
+
   // Layer stack integration for search overlay
   const { registerLayer, unregisterLayer, updateLayerHandler } = useLayerStack();
   const layerIdRef = useRef<string>();
@@ -284,13 +316,54 @@ export const TerminalOutput = forwardRef<HTMLDivElement, TerminalOutputProps>((p
 
   const activeLogs: LogEntry[] = session.inputMode === 'ai' ? session.aiLogs : session.shellLogs;
 
+  // In AI mode, collapse consecutive non-user entries into single response blocks
+  // This provides a cleaner view where each user message gets one response
+  const collapsedLogs = useMemo(() => {
+    // Only collapse in AI mode
+    if (session.inputMode !== 'ai') return activeLogs;
+
+    const result: LogEntry[] = [];
+    let currentResponseGroup: LogEntry[] = [];
+
+    for (const log of activeLogs) {
+      if (log.source === 'user') {
+        // Flush any accumulated response group
+        if (currentResponseGroup.length > 0) {
+          // Combine all response entries into one
+          const combinedText = currentResponseGroup.map(l => l.text).join('');
+          result.push({
+            ...currentResponseGroup[0],
+            text: combinedText,
+            // Keep the first entry's timestamp and id
+          });
+          currentResponseGroup = [];
+        }
+        result.push(log);
+      } else {
+        // Accumulate non-user entries (AI responses)
+        currentResponseGroup.push(log);
+      }
+    }
+
+    // Flush final response group
+    if (currentResponseGroup.length > 0) {
+      const combinedText = currentResponseGroup.map(l => l.text).join('');
+      result.push({
+        ...currentResponseGroup[0],
+        text: combinedText,
+      });
+    }
+
+    return result;
+  }, [activeLogs, session.inputMode]);
+
   // Filter logs based on search query - memoized for performance
   const filteredLogs = useMemo(() => {
-    if (!outputSearchQuery) return activeLogs;
-    return activeLogs.filter(log =>
+    if (!outputSearchQuery) return collapsedLogs;
+    return collapsedLogs.filter(log =>
       log.text.toLowerCase().includes(outputSearchQuery.toLowerCase())
     );
-  }, [activeLogs, outputSearchQuery]);
+  }, [collapsedLogs, outputSearchQuery]);
 
   // Auto-scroll to bottom when new logs are added (not when deleted)
   const prevLogCountRef = useRef(filteredLogs.length);
@@ -765,9 +838,37 @@ export const TerminalOutput = forwardRef<HTMLDivElement, TerminalOutputProps>((p
         itemContent={(index, log) => <LogItem index={index} log={log} />}
         components={{
           Footer: () => session.state === 'busy' ? (
-            <div className="flex items-center justify-center gap-2 text-xs opacity-50 animate-pulse py-4">
-              <Activity className="w-4 h-4" />
-              {session.statusMessage || (session.inputMode === 'ai' ? 'Claude is thinking...' : 'Executing shell command...')}
+            <div
+              className="flex flex-col items-center justify-center gap-1 py-6 mx-6 my-4 rounded-xl border"
+              style={{
+                backgroundColor: theme.colors.bgActivity,
+                borderColor: theme.colors.border
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-2 h-2 rounded-full animate-pulse"
+                  style={{ backgroundColor: theme.colors.warning }}
+                />
+                <span className="text-sm" style={{ color: theme.colors.textMain }}>
+                  {session.statusMessage || (session.inputMode === 'ai' ? 'Claude is thinking...' : 'Executing command...')}
+                </span>
+                <span
+                  className="text-sm font-mono"
+                  style={{ color: theme.colors.textDim }}
+                >
+                  {formatElapsedTime(elapsedSeconds)}
+                </span>
+              </div>
+              {session.usageStats && (
+                <div className="flex items-center gap-4 mt-1 text-xs" style={{ color: theme.colors.textDim }}>
+                  <span>In: {session.usageStats.inputTokens.toLocaleString()}</span>
+                  <span>Out: {session.usageStats.outputTokens.toLocaleString()}</span>
+                  {session.usageStats.cacheReadInputTokens > 0 && (
+                    <span>Cache: {session.usageStats.cacheReadInputTokens.toLocaleString()}</span>
+                  )}
+                </div>
+              )}
             </div>
           ) : <div ref={logsEndRef} />
         }}

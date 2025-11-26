@@ -142,6 +142,8 @@ export interface Session {
   pendingJumpPath?: string;
   // Custom status message for the thinking indicator (e.g., "Agent is synopsizing...")
   statusMessage?: string;
+  // Timestamp when agent started processing (for elapsed time display)
+  thinkingStartTime?: number;
 }
 
 export interface Group {

@@ -485,7 +485,8 @@ export default function MaestroConsole() {
         if (isFromAi) {
           return {
             ...s,
-            state: 'idle' as SessionState
+            state: 'idle' as SessionState,
+            thinkingStartTime: undefined
           };
         }
 
@@ -664,9 +665,9 @@ export default function MaestroConsole() {
       // This prevents batch output from appearing in the interactive AI terminal
       const targetSessionId = `${sessionId}-batch-${Date.now()}`;
 
-      // Set session to busy
+      // Set session to busy with thinking start time
       setSessions(prev => prev.map(s =>
-        s.id === sessionId ? { ...s, state: 'busy' as SessionState } : s
+        s.id === sessionId ? { ...s, state: 'busy' as SessionState, thinkingStartTime: Date.now() } : s
       ));
 
       // Create a promise that resolves when the agent completes
@@ -704,7 +705,7 @@ export default function MaestroConsole() {
             cleanup();
 
             setSessions(prev => prev.map(s =>
-              s.id === sessionId ? { ...s, state: 'idle' as SessionState, claudeSessionId } : s
+              s.id === sessionId ? { ...s, state: 'idle' as SessionState, thinkingStartTime: undefined, claudeSessionId } : s
             ));
 
             resolve({ success: true, response: responseText, claudeSessionId });
@@ -1770,6 +1771,7 @@ export default function MaestroConsole() {
         ...s,
         [targetLogKey]: [...s[targetLogKey], newEntry],
         state: 'busy',
+        thinkingStartTime: currentMode === 'ai' ? Date.now() : s.thinkingStartTime,
         contextUsage: Math.min(s.contextUsage + 5, 100),
         shellCwd: newShellCwd,
         [historyKey]: newHistory
