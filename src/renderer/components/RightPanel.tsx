@@ -47,6 +47,7 @@ interface RightPanelProps {
   expandAllFolders: (activeSessionId: string, activeSession: Session, setSessions: React.Dispatch<React.SetStateAction<Session[]>>) => void;
   collapseAllFolders: (activeSessionId: string, setSessions: React.Dispatch<React.SetStateAction<Session[]>>) => void;
   updateSessionWorkingDirectory: (activeSessionId: string, setSessions: React.Dispatch<React.SetStateAction<Session[]>>) => Promise<void>;
+  refreshFileTree: (sessionId: string) => Promise<void>;
   setSessions: React.Dispatch<React.SetStateAction<Session[]>>;
 
   // Scratchpad handlers
@@ -72,7 +73,7 @@ export const RightPanel = forwardRef<RightPanelHandle, RightPanelProps>(function
     fileTreeFilter, setFileTreeFilter, fileTreeFilterOpen, setFileTreeFilterOpen,
     filteredFileTree, selectedFileIndex, setSelectedFileIndex, previewFile, fileTreeContainerRef,
     fileTreeFilterInputRef, toggleFolder, handleFileClick, expandAllFolders, collapseAllFolders,
-    updateSessionWorkingDirectory, setSessions, updateScratchPad, updateScratchPadState,
+    updateSessionWorkingDirectory, refreshFileTree, setSessions, updateScratchPad, updateScratchPadState,
     batchRunState, onOpenBatchRunner, onStopBatchRun, onJumpToClaudeSession
   } = props;
 
@@ -206,6 +207,7 @@ export const RightPanel = forwardRef<RightPanelHandle, RightPanelProps>(function
             expandAllFolders={expandAllFolders}
             collapseAllFolders={collapseAllFolders}
             updateSessionWorkingDirectory={updateSessionWorkingDirectory}
+            refreshFileTree={refreshFileTree}
             setSessions={setSessions}
           />
         )}

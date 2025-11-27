@@ -532,8 +532,9 @@ export default function MaestroConsole() {
           }
 
           // Task complete - show toast notification
-          // Get the last AI response to summarize
-          const lastAiLog = s.aiLogs.filter(log => log.source === 'ai').pop();
+          // Get the last user request and AI response
+          const lastUserLog = s.aiLogs.filter(log => log.source === 'user').pop();
+          const lastAiLog = s.aiLogs.filter(log => log.source === 'stdout' || log.source === 'ai').pop();
           const duration = s.thinkingStartTime ? Date.now() - s.thinkingStartTime : 0;
 
           // Get group name for this session
@@ -541,20 +542,35 @@ export default function MaestroConsole() {
           const groupName = sessionGroup?.name || 'Ungrouped';
           const projectName = s.name || s.cwd.split('/').pop() || 'Unknown';
 
-          // Create a short summary from the last response
-          let summary = 'Task completed';
+          // Create title from user's request (truncated)
+          let title = 'Task Complete';
+          if (lastUserLog?.text) {
+            const userText = lastUserLog.text.trim();
+            // Truncate to ~50 chars for title
+            title = userText.length > 50 ? userText.substring(0, 47) + '...' : userText;
+          }
+
+          // Create a short summary from the last AI response
+          let summary = '';
           if (lastAiLog?.text) {
-            // Extract first sentence or first 100 chars
             const text = lastAiLog.text.trim();
-            const firstSentence = text.match(/^[^.!?]*[.!?]/)?.[0] || text.substring(0, 100);
-            summary = firstSentence.length < text.length ? firstSentence : text.substring(0, 100) + (text.length > 100 ? '...' : '');
+            // Skip empty or very short responses
+            if (text.length > 10) {
+              // Extract first meaningful sentence or first 120 chars
+              const firstSentence = text.match(/^[^.!?\n]*[.!?]/)?.[0] || text.substring(0, 120);
+              summary = firstSentence.length < text.length ? firstSentence : text.substring(0, 120) + (text.length > 120 ? '...' : '');
+            }
+          }
+          // Fallback if no good summary
+          if (!summary) {
+            summary = 'Completed successfully';
           }
 
           // Fire toast notification (async, don't block state update)
           setTimeout(() => {
             addToastRef.current({
               type: 'success',
-              title: 'Task Complete',
+              title,
               message: summary,
               group: groupName,
               project: projectName,
@@ -2572,6 +2588,28 @@ export default function MaestroConsole() {
     }));
   };
 
+  // Refresh file tree for a session
+  const refreshFileTree = useCallback(async (sessionId: string) => {
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) return;
+
+    try {
+      const tree = await loadFileTree(session.cwd);
+      setSessions(prev => prev.map(s =>
+        s.id === sessionId ? { ...s, fileTree: tree, fileTreeError: undefined } : s
+      ));
+    } catch (error) {
+      console.error('File tree refresh error:', error);
+      const errorMsg = (error as Error)?.message || 'Unknown error';
+      setSessions(prev => prev.map(s =>
+        s.id === sessionId ? {
+          ...s,
+          fileTree: [],
+          fileTreeError: `Cannot access directory: ${session.cwd}\n${errorMsg}`
+        } : s
+      ));
+    }
+  }, [sessions]);
 
   // Load file tree when active session changes
   useEffect(() => {

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { ChevronRight, ChevronDown, ChevronUp, Folder } from 'lucide-react';
+import { ChevronRight, ChevronDown, ChevronUp, Folder, RefreshCw } from 'lucide-react';
 import type { Session, Theme, FileChangeType } from '../types';
 import { getFileIcon } from '../utils/theme';
 import { useLayerStack } from '../contexts/LayerStackContext';
