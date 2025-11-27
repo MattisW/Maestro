@@ -129,13 +129,16 @@ export function MainPanel(props: MainPanelProps) {
   // Git pill tooltip hover state
   const [gitTooltipOpen, setGitTooltipOpen] = useState(false);
   // Panel width for responsive hiding of widgets
-  const [panelWidth, setPanelWidth] = useState(0);
+  const [panelWidth, setPanelWidth] = useState(Infinity); // Start with Infinity so widgets show by default
   const headerRef = useRef<HTMLDivElement>(null);
 
   // Track panel width for responsive widget hiding
   useEffect(() => {
     const header = headerRef.current;
     if (!header) return;
+
+    // Get initial width immediately
+    setPanelWidth(header.offsetWidth);
 
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
