@@ -209,6 +209,11 @@ contextBridge.exposeInMainWorld('maestro', {
       ipcRenderer.invoke('claude:searchSessions', projectPath, query, searchMode),
     getCommands: (projectPath: string) =>
       ipcRenderer.invoke('claude:getCommands', projectPath),
+    // Session origin tracking (distinguishes Maestro sessions from CLI sessions)
+    registerSessionOrigin: (projectPath: string, claudeSessionId: string, origin: 'user' | 'auto') =>
+      ipcRenderer.invoke('claude:registerSessionOrigin', projectPath, claudeSessionId, origin),
+    getSessionOrigins: (projectPath: string) =>
+      ipcRenderer.invoke('claude:getSessionOrigins', projectPath),
   },
 
   // Temp file API (for batch processing)
@@ -366,6 +371,7 @@ export interface MaestroAPI {
       firstMessage: string;
       messageCount: number;
       sizeBytes: number;
+      origin?: 'user' | 'auto'; // Maestro session origin, undefined for CLI sessions
     }>>;
     readSessionMessages: (projectPath: string, sessionId: string, options?: { offset?: number; limit?: number }) => Promise<{
       messages: Array<{
@@ -389,6 +395,8 @@ export interface MaestroAPI {
       command: string;
       description: string;
     }>>;
+    registerSessionOrigin: (projectPath: string, claudeSessionId: string, origin: 'user' | 'auto') => Promise<boolean>;
+    getSessionOrigins: (projectPath: string) => Promise<Record<string, 'user' | 'auto'>>;
   };
   tempfile: {
     write: (content: string, filename?: string) => Promise<{ success: boolean; path?: string; error?: string }>;

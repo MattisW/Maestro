@@ -27,6 +27,7 @@ interface ClaudeSession {
   cacheReadTokens: number;
   cacheCreationTokens: number;
   durationSeconds: number;
+  origin?: 'user' | 'auto'; // Maestro session origin, undefined for CLI sessions
 }
 
 interface SessionMessage {
@@ -910,12 +911,40 @@ export function AgentSessionsBrowser({
                         >
                           {session.firstMessage || `Session ${session.sessionId.slice(0, 8)}...`}
                         </div>
-                        {/* Line 2: Session ID pill + stats + match info */}
+                        {/* Line 2: Session origin pill + Session ID + stats + match info */}
                         <div className="flex items-center gap-3 text-xs" style={{ color: theme.colors.textDim }}>
+                          {/* Session origin pill - shows source of session */}
+                          {session.origin === 'user' && (
+                            <span
+                              className="text-[10px] font-bold px-1.5 py-0.5 rounded"
+                              style={{ backgroundColor: theme.colors.accent + '30', color: theme.colors.accent }}
+                              title="User-initiated through Maestro"
+                            >
+                              MAESTRO
+                            </span>
+                          )}
+                          {session.origin === 'auto' && (
+                            <span
+                              className="text-[10px] font-bold px-1.5 py-0.5 rounded"
+                              style={{ backgroundColor: theme.colors.warning + '30', color: theme.colors.warning }}
+                              title="Auto-batch session through Maestro"
+                            >
+                              AUTO
+                            </span>
+                          )}
+                          {!session.origin && (
+                            <span
+                              className="text-[10px] font-bold px-1.5 py-0.5 rounded"
+                              style={{ backgroundColor: theme.colors.border, color: theme.colors.textDim }}
+                              title="Claude Code CLI session"
+                            >
+                              CLI
+                            </span>
+                          )}
                           {/* Session ID pill */}
                           <span
-                            className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded"
-                            style={{ backgroundColor: theme.colors.border, color: theme.colors.textDim }}
+                            className="text-[10px] font-mono px-1.5 py-0.5 rounded"
+                            style={{ backgroundColor: theme.colors.border + '60', color: theme.colors.textDim }}
                           >
                             {session.sessionId.startsWith('agent-')
                               ? `AGENT-${session.sessionId.split('-')[1]?.toUpperCase() || ''}`

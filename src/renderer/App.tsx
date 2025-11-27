@@ -648,6 +648,11 @@ export default function MaestroConsole() {
           });
         }
 
+        // Register this as a user-initiated Maestro session (batch sessions are filtered above)
+        window.maestro.claude.registerSessionOrigin(session.cwd, claudeSessionId, 'user')
+          .then(() => console.log('[onSessionId] Registered session origin as user:', claudeSessionId))
+          .catch(err => console.error('[onSessionId] Failed to register session origin:', err));
+
         return prev.map(s => {
           if (s.id !== actualSessionId) return s;
           console.log('[onSessionId] Storing Claude session ID for session:', actualSessionId, 'claudeSessionId:', claudeSessionId);

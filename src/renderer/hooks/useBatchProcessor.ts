@@ -168,6 +168,9 @@ export function useBatchProcessor({
 
         if (result.claudeSessionId) {
           claudeSessionIds.push(result.claudeSessionId);
+          // Register as auto-initiated Maestro session
+          window.maestro.claude.registerSessionOrigin(session.cwd, result.claudeSessionId, 'auto')
+            .catch(err => console.error('[BatchProcessor] Failed to register session origin:', err));
         }
 
         completedCount++;

@@ -133,6 +133,21 @@ const historyStore = new Store<HistoryData>({
   },
 });
 
+// Claude session origins store - tracks which Claude sessions were created by Maestro
+// and their origin type (user-initiated vs auto/batch)
+type ClaudeSessionOrigin = 'user' | 'auto';
+interface ClaudeSessionOriginsData {
+  // Map of projectPath -> { claudeSessionId -> origin type }
+  origins: Record<string, Record<string, ClaudeSessionOrigin>>;
+}
+
+const claudeSessionOriginsStore = new Store<ClaudeSessionOriginsData>({
+  name: 'maestro-claude-session-origins',
+  defaults: {
+    origins: {},
+  },
+});
+
 let mainWindow: BrowserWindow | null = null;
 let processManager: ProcessManager | null = null;
 let webServer: WebServer | null = null;
@@ -1065,8 +1080,18 @@ function setupIpcHandlers() {
         .filter((s): s is NonNullable<typeof s> => s !== null)
         .sort((a, b) => new Date(b.modifiedAt).getTime() - new Date(a.modifiedAt).getTime());
 
+      // Get Maestro session origins to identify which sessions were created via Maestro
+      const origins = claudeSessionOriginsStore.get('origins', {});
+      const projectOrigins = origins[projectPath] || {};
+
+      // Add origin info to each session
+      const sessionsWithOrigins = validSessions.map(session => ({
+        ...session,
+        origin: projectOrigins[session.sessionId] as ClaudeSessionOrigin | undefined,
+      }));
+
       logger.info(`Found ${validSessions.length} Claude sessions for project`, 'ClaudeSessions', { projectPath });
-      return validSessions;
+      return sessionsWithOrigins;
     } catch (error) {
       logger.error('Error listing Claude sessions', 'ClaudeSessions', error);
       return [];
@@ -1497,6 +1522,23 @@ function setupIpcHandlers() {
     historyStore.set('entries', filtered);
     logger.info(`Deleted history entry: ${entryId}`, 'History');
     return true;
+  });
+
+  // Claude session origins tracking (distinguishes Maestro-created sessions from CLI sessions)
+  ipcMain.handle('claude:registerSessionOrigin', async (_event, projectPath: string, claudeSessionId: string, origin: 'user' | 'auto') => {
+    const origins = claudeSessionOriginsStore.get('origins', {});
+    if (!origins[projectPath]) {
+      origins[projectPath] = {};
+    }
+    origins[projectPath][claudeSessionId] = origin;
+    claudeSessionOriginsStore.set('origins', origins);
+    logger.debug(`Registered Claude session origin: ${claudeSessionId} = ${origin}`, 'ClaudeSessionOrigins', { projectPath });
+    return true;
+  });
+
+  ipcMain.handle('claude:getSessionOrigins', async (_event, projectPath: string) => {
+    const origins = claudeSessionOriginsStore.get('origins', {});
+    return origins[projectPath] || {};
   });
 
   // Notification operations
