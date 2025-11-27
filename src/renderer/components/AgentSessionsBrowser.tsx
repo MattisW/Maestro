@@ -80,6 +80,12 @@ export function AgentSessionsBrowser({
 
   const { registerLayer, unregisterLayer, updateLayerHandler } = useLayerStack();
 
+  // Reset to list view on mount - ensures we always start with list view when opening
+  useEffect(() => {
+    setViewingSession(null);
+    setMessages([]);
+  }, []);
+
   // Register layer on mount for Escape key handling
   useEffect(() => {
     layerIdRef.current = registerLayer({
@@ -773,7 +779,7 @@ export function AgentSessionsBrowser({
                           {/* Show match preview for content searches */}
                           {searchResultInfo && searchResultInfo.matchPreview && searchMode !== 'title' && (
                             <span
-                              className="truncate italic max-w-[200px]"
+                              className="truncate italic max-w-[400px]"
                               style={{ color: theme.colors.accent }}
                             >
                               "{searchResultInfo.matchPreview}"

@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { FileCode, X, Copy, FileText, Eye, ChevronUp, ChevronDown } from 'lucide-react';
+import { FileCode, X, Copy, FileText, Eye, ChevronUp, ChevronDown, Clipboard } from 'lucide-react';
 import { visit } from 'unist-util-visit';
 import { useLayerStack } from '../contexts/LayerStackContext';
 import { MODAL_PRIORITIES } from '../constants/modalPriorities';
@@ -276,8 +276,35 @@ export function FilePreview({ file, onClose, theme, markdownRawMode, setMarkdown
     };
   }, [searchQuery, file.content, isMarkdown, isImage, theme.colors.accent]);
 
+  const [copyNotificationMessage, setCopyNotificationMessage] = useState('');
+
   const copyPathToClipboard = () => {
     navigator.clipboard.writeText(file.path);
+    setCopyNotificationMessage('File Path Copied to Clipboard');
+    setShowCopyNotification(true);
+    setTimeout(() => setShowCopyNotification(false), 2000);
+  };
+
+  const copyContentToClipboard = async () => {
+    if (isImage) {
+      // For images, copy the image to clipboard
+      try {
+        const response = await fetch(file.content);
+        const blob = await response.blob();
+        await navigator.clipboard.write([
+          new ClipboardItem({ [blob.type]: blob })
+        ]);
+        setCopyNotificationMessage('Image Copied to Clipboard');
+      } catch (err) {
+        // Fallback: copy the data URL if image copy fails
+        navigator.clipboard.writeText(file.content);
+        setCopyNotificationMessage('Image URL Copied to Clipboard');
+      }
+    } else {
+      // For text files, copy the content
+      navigator.clipboard.writeText(file.content);
+      setCopyNotificationMessage('Content Copied to Clipboard');
+    }
     setShowCopyNotification(true);
     setTimeout(() => setShowCopyNotification(false), 2000);
   };
@@ -499,6 +526,14 @@ export function FilePreview({ file, onClose, theme, markdownRawMode, setMarkdown
             </button>
           )}
           <button
+            onClick={copyContentToClipboard}
+            className="p-2 rounded hover:bg-white/10 transition-colors"
+            style={{ color: theme.colors.textDim }}
+            title={isImage ? "Copy image to clipboard" : "Copy content to clipboard"}
+          >
+            <Clipboard className="w-4 h-4" />
+          </button>
+          <button
             onClick={copyPathToClipboard}
             className="p-2 rounded hover:bg-white/10 transition-colors"
             style={{ color: theme.colors.textDim }}
@@ -709,7 +744,7 @@ export function FilePreview({ file, onClose, theme, markdownRawMode, setMarkdown
             textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)'
           }}
         >
-          File Path Copied to Clipboard
+          {copyNotificationMessage}
         </div>
       )}
 

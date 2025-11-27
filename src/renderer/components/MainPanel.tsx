@@ -287,7 +287,10 @@ export function MainPanel(props: MainPanelProps) {
                 >
                   <span
                     className={`flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full border cursor-pointer ${activeSession.isGitRepo ? 'border-orange-500/30 text-orange-500 bg-orange-500/10 hover:bg-orange-500/20' : 'border-blue-500/30 text-blue-500 bg-blue-500/10'}`}
-                    onClick={() => activeSession.isGitRepo && setGitLogOpen(true)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (activeSession.isGitRepo) setGitLogOpen(true);
+                    }}
                   >
                     {activeSession.isGitRepo ? (
                       <>
@@ -298,10 +301,10 @@ export function MainPanel(props: MainPanelProps) {
                   </span>
                   {activeSession.isGitRepo && gitTooltipOpen && gitInfo && (
                     <div
-                      className="absolute top-full left-0 pt-2 w-80 z-50"
+                      className="absolute top-full left-0 pt-2 w-80 z-50 pointer-events-none"
                     >
                       <div
-                        className="rounded shadow-xl"
+                        className="rounded shadow-xl pointer-events-auto"
                         style={{
                           backgroundColor: theme.colors.bgSidebar,
                           borderColor: theme.colors.border,

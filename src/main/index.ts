@@ -1149,8 +1149,8 @@ function setupIpcHandlers() {
                 if (!matchPreview) {
                   // Find the matching substring with context
                   const idx = textLower.indexOf(searchLower);
-                  const start = Math.max(0, idx - 30);
-                  const end = Math.min(textContent.length, idx + query.length + 30);
+                  const start = Math.max(0, idx - 60);
+                  const end = Math.min(textContent.length, idx + query.length + 60);
                   matchPreview = (start > 0 ? '...' : '') + textContent.slice(start, end) + (end < textContent.length ? '...' : '');
                 }
               }
@@ -1160,8 +1160,8 @@ function setupIpcHandlers() {
                 userMatches++;
                 if (!matchPreview && (searchMode === 'user' || searchMode === 'all')) {
                   const idx = textLower.indexOf(searchLower);
-                  const start = Math.max(0, idx - 30);
-                  const end = Math.min(textContent.length, idx + query.length + 30);
+                  const start = Math.max(0, idx - 60);
+                  const end = Math.min(textContent.length, idx + query.length + 60);
                   matchPreview = (start > 0 ? '...' : '') + textContent.slice(start, end) + (end < textContent.length ? '...' : '');
                 }
               }
@@ -1171,8 +1171,8 @@ function setupIpcHandlers() {
                 assistantMatches++;
                 if (!matchPreview && (searchMode === 'assistant' || searchMode === 'all')) {
                   const idx = textLower.indexOf(searchLower);
-                  const start = Math.max(0, idx - 30);
-                  const end = Math.min(textContent.length, idx + query.length + 30);
+                  const start = Math.max(0, idx - 60);
+                  const end = Math.min(textContent.length, idx + query.length + 60);
                   matchPreview = (start > 0 ? '...' : '') + textContent.slice(start, end) + (end < textContent.length ? '...' : '');
                 }
               }

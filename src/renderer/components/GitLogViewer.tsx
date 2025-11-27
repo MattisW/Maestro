@@ -162,11 +162,11 @@ export function GitLogViewer({ cwd, theme, onClose }: GitLogViewerProps) {
         return;
       }
 
-      // Navigate with arrow keys
-      if (e.key === 'ArrowDown' || e.key === 'j') {
+      // Navigate with arrow keys (j/k only when search not focused)
+      if (e.key === 'ArrowDown' || (e.key === 'j' && !isSearchFocused)) {
         e.preventDefault();
         setSelectedIndex(prev => Math.min(prev + 1, filteredEntries.length - 1));
-      } else if (e.key === 'ArrowUp' || e.key === 'k') {
+      } else if (e.key === 'ArrowUp' || (e.key === 'k' && !isSearchFocused)) {
         e.preventDefault();
         setSelectedIndex(prev => Math.max(prev - 1, 0));
       } else if (e.key === 'PageDown') {

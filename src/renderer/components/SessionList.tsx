@@ -72,6 +72,7 @@ export function SessionList(props: SessionListProps) {
   const [ungroupedCollapsed, setUngroupedCollapsed] = useState(false);
   const [preFilterGroupStates, setPreFilterGroupStates] = useState<Map<string, boolean>>(new Map());
   const [menuOpen, setMenuOpen] = useState(false);
+  const [globeTooltipOpen, setGlobeTooltipOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close menu when clicking outside
@@ -207,18 +208,31 @@ export function SessionList(props: SessionListProps) {
             <div className="flex items-center gap-2">
               <Wand2 className="w-5 h-5" style={{ color: theme.colors.accent }} />
               <h1 className="font-bold tracking-widest text-lg" style={{ color: theme.colors.textMain }}>MAESTRO</h1>
-              <div className="ml-2 relative group cursor-help" title={anyTunnelActive ? "Index Active" : "No Public Tunnels"}>
+              <div
+                className="ml-2 relative cursor-help"
+                onMouseEnter={() => anyTunnelActive && setGlobeTooltipOpen(true)}
+                onMouseLeave={() => setGlobeTooltipOpen(false)}
+                title={anyTunnelActive ? "Index Active" : "No Public Tunnels"}
+              >
                 <Globe className={`w-3 h-3 ${anyTunnelActive ? 'text-green-500 animate-pulse' : 'opacity-30'}`} />
-                {anyTunnelActive && (
-                  <div className="absolute top-full left-0 mt-2 w-56 bg-black border border-gray-700 rounded p-3 shadow-xl z-50 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                    <div className="text-[10px] uppercase font-bold text-gray-500 mb-2">Maestro Index</div>
-                    <div className="flex items-center gap-1 text-xs text-green-400 font-mono mb-1">
-                      <Globe className="w-3 h-3" />
-                      https://maestro-index.ngrok.io
-                    </div>
-                    <div className="flex items-center gap-1 text-xs text-gray-400 font-mono">
-                      <Network className="w-3 h-3" />
-                      http://192.168.1.42:8000
+                {anyTunnelActive && globeTooltipOpen && (
+                  <div className="absolute top-full left-0 pt-2 w-56 z-50">
+                    <div
+                      className="rounded p-3 shadow-xl"
+                      style={{
+                        backgroundColor: theme.colors.bgSidebar,
+                        border: `1px solid ${theme.colors.border}`
+                      }}
+                    >
+                      <div className="text-[10px] uppercase font-bold mb-2" style={{ color: theme.colors.textDim }}>Maestro Index</div>
+                      <div className="flex items-center gap-1 text-xs text-green-400 font-mono mb-1">
+                        <Globe className="w-3 h-3" />
+                        https://maestro-index.ngrok.io
+                      </div>
+                      <div className="flex items-center gap-1 text-xs font-mono" style={{ color: theme.colors.textDim }}>
+                        <Network className="w-3 h-3" />
+                        http://192.168.1.42:8000
+                      </div>
                     </div>
                   </div>
                 )}
