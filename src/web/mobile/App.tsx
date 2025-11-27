@@ -7,7 +7,7 @@
  * Phase 1 implementation will expand this component.
  */
 
-import React, { useEffect, useCallback, useState, useMemo } from 'react';
+import React, { useEffect, useCallback, useState, useMemo, useRef } from 'react';
 import { useThemeColors } from '../components/ThemeProvider';
 import { useWebSocket, type WebSocketState } from '../hooks/useWebSocket';
 import { useCommandHistory } from '../hooks/useCommandHistory';
@@ -157,12 +157,9 @@ export default function MobileApp() {
   } = useCommandHistory();
 
   // Notification permission hook - requests permission on first visit
-  // Note: These values will be used in upcoming notification features (tasks 1.39-1.42)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const {
     permission: notificationPermission,
-    isSupported: notificationsSupported,
-    hasPrompted: notificationPrompted,
+    showNotification,
   } = useNotifications({
     autoRequest: true,
     requestDelay: 3000, // Wait 3 seconds before prompting
@@ -174,6 +171,76 @@ export default function MobileApp() {
       console.log('[Mobile] Notification permission denied');
     },
   });
+
+  // Track previous session states for detecting busy -> idle transitions
+  const previousSessionStatesRef = useRef<Map<string, string>>(new Map());
+
+  /**
+   * Get the first line of a response for notification display
+   * Strips markdown/code markers and truncates to reasonable length
+   */
+  const getFirstLineOfResponse = useCallback((text: string): string => {
+    if (!text) return 'Response completed';
+
+    // Split by newlines and find first non-empty, non-markdown line
+    const lines = text.split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      // Skip empty lines and common markdown markers
+      if (!trimmed) continue;
+      if (trimmed.startsWith('```')) continue;
+      if (trimmed === '---') continue;
+
+      // Found a content line - truncate if too long
+      const maxLength = 100;
+      if (trimmed.length > maxLength) {
+        return trimmed.substring(0, maxLength) + '...';
+      }
+      return trimmed;
+    }
+
+    return 'Response completed';
+  }, []);
+
+  /**
+   * Show notification when AI response completes (if app is backgrounded)
+   */
+  const showResponseNotification = useCallback((session: Session, response?: LastResponsePreview | null) => {
+    // Only show if app is backgrounded
+    if (document.visibilityState !== 'hidden') {
+      return;
+    }
+
+    // Only show if permission is granted
+    if (notificationPermission !== 'granted') {
+      return;
+    }
+
+    const title = `${session.name} - Response Ready`;
+    const firstLine = response?.text
+      ? getFirstLineOfResponse(response.text)
+      : 'AI response completed';
+
+    const notification = showNotification(title, {
+      body: firstLine,
+      tag: `maestro-response-${session.id}`, // Prevent duplicate notifications for same session
+      renotify: true, // Allow notification to be re-shown if same tag
+      silent: false,
+      requireInteraction: false, // Auto-dismiss on mobile
+    });
+
+    if (notification) {
+      console.log('[Mobile] Notification shown for session:', session.name);
+
+      // Handle notification click - focus the app
+      notification.onclick = () => {
+        window.focus();
+        notification.close();
+        // Set this session as active
+        setActiveSessionId(session.id);
+      };
+    }
+  }, [notificationPermission, showNotification, getFirstLineOfResponse]);
 
   const { state: connectionState, connect, send, error, reconnectAttempts } = useWebSocket({
     autoReconnect: true,
@@ -188,6 +255,12 @@ export default function MobileApp() {
       },
       onSessionsUpdate: (newSessions) => {
         console.log('[Mobile] Sessions updated:', newSessions.length);
+
+        // Update previous states map for all sessions
+        newSessions.forEach(s => {
+          previousSessionStatesRef.current.set(s.id, s.state);
+        });
+
         setSessions(newSessions as Session[]);
         // Auto-select first session if none selected
         if (!activeSessionId && newSessions.length > 0) {
@@ -195,19 +268,46 @@ export default function MobileApp() {
         }
       },
       onSessionStateChange: (sessionId, state, additionalData) => {
-        setSessions(prev => prev.map(s =>
-          s.id === sessionId
-            ? { ...s, state, ...additionalData }
-            : s
-        ));
+        // Check if this is a busy -> idle transition (AI response completed)
+        const previousState = previousSessionStatesRef.current.get(sessionId);
+        const isResponseComplete = previousState === 'busy' && state === 'idle';
+
+        // Update the previous state
+        previousSessionStatesRef.current.set(sessionId, state);
+
+        setSessions(prev => {
+          const updatedSessions = prev.map(s =>
+            s.id === sessionId
+              ? { ...s, state, ...additionalData }
+              : s
+          );
+
+          // Show notification if response completed and app is backgrounded
+          if (isResponseComplete) {
+            const session = updatedSessions.find(s => s.id === sessionId);
+            if (session) {
+              // Get the response from additionalData or the updated session
+              const response = (additionalData as any)?.lastResponse || (session as any).lastResponse;
+              showResponseNotification(session, response);
+            }
+          }
+
+          return updatedSessions;
+        });
       },
       onSessionAdded: (session) => {
+        // Track state for new session
+        previousSessionStatesRef.current.set(session.id, session.state);
+
         setSessions(prev => {
           if (prev.some(s => s.id === session.id)) return prev;
           return [...prev, session as Session];
         });
       },
       onSessionRemoved: (sessionId) => {
+        // Clean up state tracking
+        previousSessionStatesRef.current.delete(sessionId);
+
         setSessions(prev => prev.filter(s => s.id !== sessionId));
         if (activeSessionId === sessionId) {
           setActiveSessionId(null);
