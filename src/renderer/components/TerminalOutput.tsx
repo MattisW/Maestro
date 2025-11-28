@@ -1091,7 +1091,7 @@ export const TerminalOutput = forwardRef<HTMLDivElement, TerminalOutputProps>((p
                 style={{ backgroundColor: theme.colors.warning }}
               />
               <span className="text-sm" style={{ color: theme.colors.textMain }}>
-                {session.statusMessage || (session.inputMode === 'ai' ? 'Claude is thinking...' : 'Executing command...')}
+                {session.statusMessage || (session.busySource === 'terminal' ? 'Executing command...' : 'Claude is thinking...')}
               </span>
               {session.thinkingStartTime && (
                 <ElapsedTimeDisplay

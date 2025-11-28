@@ -641,6 +641,7 @@ export default function MaestroConsole() {
             return {
               ...s,
               state: 'busy' as SessionState,
+              busySource: 'ai',
               aiLogs: [...s.aiLogs, nextMessage],
               messageQueue: remainingQueue,
               thinkingStartTime: Date.now()
@@ -651,6 +652,7 @@ export default function MaestroConsole() {
           return {
             ...s,
             state: 'idle' as SessionState,
+            busySource: undefined,
             thinkingStartTime: undefined,
             pendingAICommandForSynopsis: undefined
           };
@@ -667,6 +669,7 @@ export default function MaestroConsole() {
         return {
           ...s,
           state: 'idle' as SessionState,
+          busySource: undefined,
           shellLogs: [...s.shellLogs, exitLog]
         };
       }));
@@ -841,11 +844,12 @@ export default function MaestroConsole() {
           return {
             ...s,
             state: 'idle' as SessionState,
+            busySource: undefined,
             shellLogs: [...s.shellLogs, exitLog]
           };
         }
 
-        return { ...s, state: 'idle' as SessionState };
+        return { ...s, state: 'idle' as SessionState, busySource: undefined };
       }));
     });
 
@@ -1138,7 +1142,7 @@ export default function MaestroConsole() {
 
       // Set session to busy with thinking start time
       setSessions(prev => prev.map(s =>
-        s.id === sessionId ? { ...s, state: 'busy' as SessionState, thinkingStartTime: Date.now() } : s
+        s.id === sessionId ? { ...s, state: 'busy' as SessionState, busySource: 'ai', thinkingStartTime: Date.now() } : s
       ));
 
       // Create a promise that resolves when the agent completes
@@ -1178,7 +1182,7 @@ export default function MaestroConsole() {
             // Reset session state to idle, but do NOT overwrite the main session's claudeSessionId
             // The batch task's claudeSessionId is separate and returned via resolve() for tracking purposes
             setSessions(prev => prev.map(s =>
-              s.id === sessionId ? { ...s, state: 'idle' as SessionState, thinkingStartTime: undefined } : s
+              s.id === sessionId ? { ...s, state: 'idle' as SessionState, busySource: undefined, thinkingStartTime: undefined } : s
             ));
 
             resolve({ success: true, response: responseText, claudeSessionId });
@@ -2554,6 +2558,7 @@ export default function MaestroConsole() {
         ...s,
         [targetLogKey]: [...s[targetLogKey], newEntry],
         state: 'busy',
+        busySource: currentMode,
         thinkingStartTime: currentMode === 'ai' ? Date.now() : s.thinkingStartTime,
         contextUsage: Math.min(s.contextUsage + 5, 100),
         shellCwd: newShellCwd,
@@ -2738,6 +2743,7 @@ export default function MaestroConsole() {
           return {
             ...s,
             state: 'busy' as SessionState,
+            busySource: 'terminal',
             shellLogs: [...s.shellLogs, {
               id: generateId(),
               timestamp: Date.now(),
@@ -2764,6 +2770,7 @@ export default function MaestroConsole() {
             return {
               ...s,
               state: 'idle' as SessionState,
+              busySource: undefined,
               shellLogs: [...s.shellLogs, {
                 id: generateId(),
                 timestamp: Date.now(),
@@ -2935,6 +2942,7 @@ export default function MaestroConsole() {
           return {
             ...s,
             state: 'busy' as SessionState,
+            busySource: 'ai',
             thinkingStartTime: Date.now(),
             aiLogs: [...s.aiLogs, {
               id: generateId(),
@@ -2968,6 +2976,7 @@ export default function MaestroConsole() {
           return {
             ...s,
             state: 'idle' as SessionState,
+            busySource: undefined,
             aiLogs: [...s.aiLogs, {
               id: generateId(),
               timestamp: Date.now(),

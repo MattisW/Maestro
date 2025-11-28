@@ -158,6 +158,9 @@ export interface Session {
   statusMessage?: string;
   // Timestamp when agent started processing (for elapsed time display)
   thinkingStartTime?: number;
+  // Tracks which mode (ai/terminal) triggered the busy state
+  // Used to show the correct busy indicator message when user switches modes
+  busySource?: 'ai' | 'terminal';
   // Message queue for AI mode - messages sent while busy are queued here
   messageQueue: LogEntry[];
   // Active time tracking - cumulative milliseconds of active use
