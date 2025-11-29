@@ -319,3 +319,54 @@ export function setActiveTab(session: Session, tabId: string): SetActiveTabResul
     session: updatedSession
   };
 }
+
+/**
+ * Get the tab that is currently in write mode (busy state) for a session.
+ * In write-mode locking, only one tab can be busy at a time per Maestro session
+ * to prevent file clobbering when multiple Claude sessions write to the same project.
+ *
+ * @param session - The Maestro session
+ * @returns The busy AITab or undefined if no tab is in write mode
+ *
+ * @example
+ * const busyTab = getWriteModeTab(session);
+ * if (busyTab) {
+ *   console.log(`Tab ${busyTab.name || busyTab.claudeSessionId} is currently writing`);
+ *   // Disable input for other tabs
+ * }
+ */
+export function getWriteModeTab(session: Session): AITab | undefined {
+  if (!session.aiTabs || session.aiTabs.length === 0) {
+    return undefined;
+  }
+
+  return session.aiTabs.find(tab => tab.state === 'busy');
+}
+
+/**
+ * Get all tabs that are currently busy (in write mode) for a session.
+ * While the system enforces single write-mode, multiple busy tabs can exist
+ * temporarily when resuming already-running sessions.
+ *
+ * This is useful for the busy tab indicator which needs to show ALL busy tabs,
+ * not just the first one found.
+ *
+ * @param session - The Maestro session
+ * @returns Array of busy AITabs (empty if none are busy)
+ *
+ * @example
+ * const busyTabs = getBusyTabs(session);
+ * if (busyTabs.length > 0) {
+ *   // Show busy indicator with pills for each busy tab
+ *   busyTabs.forEach(tab => {
+ *     console.log(`Tab ${tab.name || tab.claudeSessionId} is busy`);
+ *   });
+ * }
+ */
+export function getBusyTabs(session: Session): AITab[] {
+  if (!session.aiTabs || session.aiTabs.length === 0) {
+    return [];
+  }
+
+  return session.aiTabs.filter(tab => tab.state === 'busy');
+}
