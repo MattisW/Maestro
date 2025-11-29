@@ -110,6 +110,21 @@ export interface RecentClaudeSession {
   sessionName?: string;
 }
 
+// AI Tab for multi-tab support within a Maestro session
+// Each tab represents a separate Claude Code conversation
+export interface AITab {
+  id: string;                      // Unique tab ID (generated UUID)
+  claudeSessionId: string | null;  // Claude Code session UUID (null for new tabs)
+  name: string | null;             // User-defined name (null = show UUID octet)
+  starred: boolean;                // Whether session is starred (for pill display)
+  logs: LogEntry[];                // Conversation history
+  messageQueue: LogEntry[];        // Pending messages while busy
+  inputValue: string;              // Pending input text for this tab
+  usageStats?: UsageStats;         // Token usage for this tab
+  createdAt: number;               // Timestamp for ordering
+  state: 'idle' | 'busy';          // Tab-level state for write-mode tracking
+}
+
 export interface Session {
   id: string;
   groupId?: string;
