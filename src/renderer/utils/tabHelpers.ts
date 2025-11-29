@@ -265,3 +265,57 @@ export function reopenClosedTab(session: Session): ReopenTabResult | null {
     wasDuplicate: false
   };
 }
+
+/**
+ * Result of setting the active tab.
+ */
+export interface SetActiveTabResult {
+  tab: AITab;                       // The newly active tab
+  session: Session;                 // Updated session with activeTabId changed
+}
+
+/**
+ * Set the active AI tab for a session.
+ * Changes which tab is currently displayed and receives input.
+ *
+ * @param session - The Maestro session
+ * @param tabId - The ID of the tab to make active
+ * @returns Object containing the active tab and updated session, or null if tab not found
+ *
+ * @example
+ * const result = setActiveTab(session, 'tab-456');
+ * if (result) {
+ *   const { tab, session: updatedSession } = result;
+ *   console.log(`Now viewing tab: ${tab.name || tab.claudeSessionId}`);
+ * }
+ */
+export function setActiveTab(session: Session, tabId: string): SetActiveTabResult | null {
+  // Validate that the tab exists
+  if (!session.aiTabs || session.aiTabs.length === 0) {
+    return null;
+  }
+
+  const targetTab = session.aiTabs.find(tab => tab.id === tabId);
+  if (!targetTab) {
+    return null;
+  }
+
+  // If already active, return current state (no mutation needed)
+  if (session.activeTabId === tabId) {
+    return {
+      tab: targetTab,
+      session
+    };
+  }
+
+  // Update the session with the new active tab
+  const updatedSession: Session = {
+    ...session,
+    activeTabId: tabId
+  };
+
+  return {
+    tab: targetTab,
+    session: updatedSession
+  };
+}
