@@ -1273,7 +1273,8 @@ function ScratchpadInner({
           onClick={closeLightbox}
           onKeyDown={(e) => {
             e.stopPropagation();
-            if (e.key === 'ArrowLeft') { e.preventDefault(); goToPrevImage(); }
+            if (e.key === 'Escape') { e.preventDefault(); closeLightbox(); }
+            else if (e.key === 'ArrowLeft') { e.preventDefault(); goToPrevImage(); }
             else if (e.key === 'ArrowRight') { e.preventDefault(); goToNextImage(); }
             else if (e.key === 'Delete' || e.key === 'Backspace') {
               e.preventDefault();
