@@ -414,22 +414,30 @@ export function MainPanel(props: MainPanelProps) {
                           <span className="text-sm font-mono font-medium" style={{ color: theme.colors.textMain }}>
                             {gitInfo.branch}
                           </span>
-                          {(gitInfo.ahead > 0 || gitInfo.behind > 0) && (
-                            <div className="flex items-center gap-2 ml-auto">
-                              {gitInfo.ahead > 0 && (
-                                <span className="flex items-center gap-0.5 text-xs text-green-500">
-                                  <ArrowUp className="w-3 h-3" />
-                                  {gitInfo.ahead}
-                                </span>
-                              )}
-                              {gitInfo.behind > 0 && (
-                                <span className="flex items-center gap-0.5 text-xs text-red-500">
-                                  <ArrowDown className="w-3 h-3" />
-                                  {gitInfo.behind}
-                                </span>
-                              )}
-                            </div>
-                          )}
+                          <div className="flex items-center gap-2 ml-auto">
+                            {gitInfo.ahead > 0 && (
+                              <span className="flex items-center gap-0.5 text-xs text-green-500">
+                                <ArrowUp className="w-3 h-3" />
+                                {gitInfo.ahead}
+                              </span>
+                            )}
+                            {gitInfo.behind > 0 && (
+                              <span className="flex items-center gap-0.5 text-xs text-red-500">
+                                <ArrowDown className="w-3 h-3" />
+                                {gitInfo.behind}
+                              </span>
+                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                copyToClipboard(gitInfo.branch, `"${gitInfo.branch}" copied to clipboard`);
+                              }}
+                              className="p-1 rounded hover:bg-white/10 transition-colors shrink-0"
+                              title="Copy branch name"
+                            >
+                              <Copy className="w-3 h-3" style={{ color: theme.colors.textDim }} />
+                            </button>
+                          </div>
                         </div>
                       </div>
 
