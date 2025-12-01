@@ -21,6 +21,8 @@ interface ThinkingStatusPillProps {
   // AutoRun state for the active session - when provided and running, shows AutoRun pill instead
   autoRunState?: BatchRunState;
   activeSessionId?: string;
+  // Callback to stop auto-run (shows stop button in AutoRunPill when provided)
+  onStopAutoRun?: () => void;
 }
 
 // ElapsedTimeDisplay - shows time since thinking started
@@ -144,13 +146,16 @@ SessionRow.displayName = 'SessionRow';
 /**
  * AutoRunPill - Shows when AutoRun is active
  * Displays total elapsed time since AutoRun started, with task progress.
+ * Includes a stop button when onStop callback is provided.
  */
 const AutoRunPill = memo(({
   theme,
-  autoRunState
+  autoRunState,
+  onStop
 }: {
   theme: Theme;
   autoRunState: BatchRunState;
+  onStop?: () => void;
 }) => {
   const startTime = autoRunState.startTime || Date.now();
   const { completedTasks, totalTasks, isStopping } = autoRunState;
@@ -206,6 +211,40 @@ const AutoRunPill = memo(({
             textColor={theme.colors.textMain}
           />
         </div>
+
+        {/* Stop button - only show when callback provided and not already stopping */}
+        {onStop && (
+          <>
+            <div
+              className="w-px h-4 shrink-0"
+              style={{ backgroundColor: theme.colors.border }}
+            />
+            <button
+              onClick={onStop}
+              disabled={isStopping}
+              className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                isStopping ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-80'
+              }`}
+              style={{
+                backgroundColor: theme.colors.error,
+                color: 'white'
+              }}
+              title={isStopping ? 'Stopping after current task...' : 'Stop auto-run after current task'}
+            >
+              {isStopping ? (
+                <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+                  <path d="M12 2a10 10 0 0 1 10 10" />
+                </svg>
+              ) : (
+                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="6" y="6" width="12" height="12" rx="1" />
+                </svg>
+              )}
+              {isStopping ? 'Stopping' : 'Stop'}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -220,12 +259,12 @@ AutoRunPill.displayName = 'AutoRunPill';
  *
  * When AutoRun is active for the active session, shows AutoRunPill instead.
  */
-function ThinkingStatusPillInner({ sessions, theme, onSessionClick, namedSessions, autoRunState, activeSessionId }: ThinkingStatusPillProps) {
+function ThinkingStatusPillInner({ sessions, theme, onSessionClick, namedSessions, autoRunState, activeSessionId, onStopAutoRun }: ThinkingStatusPillProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   // If AutoRun is active for the current session, show the AutoRun pill instead
   if (autoRunState?.isRunning) {
-    return <AutoRunPill theme={theme} autoRunState={autoRunState} />;
+    return <AutoRunPill theme={theme} autoRunState={autoRunState} onStop={onStopAutoRun} />;
   }
 
   // Filter to only busy sessions with AI source

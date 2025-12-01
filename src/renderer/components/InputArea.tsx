@@ -54,6 +54,7 @@ interface InputAreaProps {
   namedSessions?: Record<string, string>;
   onSessionClick?: (sessionId: string, tabId?: string) => void;
   autoRunState?: BatchRunState;
+  onStopAutoRun?: () => void;
   // ExecutionQueueIndicator props
   onOpenQueueBrowser?: () => void;
   // Read-only mode toggle (per-tab)
@@ -75,7 +76,7 @@ export const InputArea = React.memo(function InputArea(props: InputAreaProps) {
     tabCompletionOpen = false, setTabCompletionOpen,
     tabCompletionSuggestions = [], selectedTabCompletionIndex = 0,
     setSelectedTabCompletionIndex,
-    sessions = [], namedSessions, onSessionClick, autoRunState,
+    sessions = [], namedSessions, onSessionClick, autoRunState, onStopAutoRun,
     onOpenQueueBrowser,
     tabReadOnlyMode = false, onToggleTabReadOnlyMode
   } = props;
@@ -186,6 +187,7 @@ export const InputArea = React.memo(function InputArea(props: InputAreaProps) {
           namedSessions={namedSessions}
           autoRunState={autoRunState}
           activeSessionId={session.id}
+          onStopAutoRun={onStopAutoRun}
         />
       )}
 
