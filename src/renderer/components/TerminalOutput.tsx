@@ -368,19 +368,6 @@ const LogItemComponent = memo(({
             </span>
           </div>
         )}
-        {/* Markdown toggle button for AI responses */}
-        {log.source !== 'user' && isAIMode && (
-          <div className="absolute top-2 right-2">
-            <button
-              onClick={onToggleMarkdownRawMode}
-              className="p-1.5 rounded opacity-0 group-hover:opacity-100 hover:bg-white/10 transition-opacity"
-              style={{ color: markdownRawMode ? theme.colors.accent : theme.colors.textDim }}
-              title={markdownRawMode ? "Show rendered markdown (⌘E)" : "Show raw markdown (⌘E)"}
-            >
-              {markdownRawMode ? <Eye className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
-            </button>
-          </div>
-        )}
         {/* Local filter icon for system output only */}
         {log.source !== 'user' && isTerminal && (
           <div className="absolute top-2 right-2 flex items-center gap-2">
@@ -876,6 +863,17 @@ const LogItemComponent = memo(({
           className="absolute bottom-2 right-2 flex items-center gap-1"
           style={{ transition: 'opacity 0.15s ease-in-out' }}
         >
+          {/* Markdown toggle button for AI responses */}
+          {log.source !== 'user' && isAIMode && (
+            <button
+              onClick={onToggleMarkdownRawMode}
+              className="p-1.5 rounded opacity-0 group-hover:opacity-50 hover:!opacity-100"
+              style={{ color: markdownRawMode ? theme.colors.accent : theme.colors.textDim }}
+              title={markdownRawMode ? "Show rendered markdown (⌘E)" : "Show raw markdown (⌘E)"}
+            >
+              {markdownRawMode ? <Eye className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+            </button>
+          )}
           {/* Speak/Stop Button - only show for non-user messages when TTS is configured */}
           {audioFeedbackCommand && log.source !== 'user' && (
             speakingLogId === log.id ? (
