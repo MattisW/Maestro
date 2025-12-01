@@ -446,8 +446,6 @@ export function useSettings(): UseSettingsReturn {
   // Load settings from electron-store on mount
   useEffect(() => {
     const loadSettings = async () => {
-      // Migration: check for old enterToSend setting
-      const oldEnterToSend = await window.maestro.settings.get('enterToSend');
       const savedEnterToSendAI = await window.maestro.settings.get('enterToSendAI');
       const savedEnterToSendTerminal = await window.maestro.settings.get('enterToSendTerminal');
 
@@ -478,16 +476,8 @@ export function useSettings(): UseSettingsReturn {
       const savedGlobalStats = await window.maestro.settings.get('globalStats');
       const savedAutoRunStats = await window.maestro.settings.get('autoRunStats');
 
-      // Migration: if old setting exists but new ones don't, migrate
-      if (oldEnterToSend !== undefined && savedEnterToSendAI === undefined && savedEnterToSendTerminal === undefined) {
-        setEnterToSendAIState(oldEnterToSend);
-        setEnterToSendTerminalState(oldEnterToSend);
-        window.maestro.settings.set('enterToSendAI', oldEnterToSend);
-        window.maestro.settings.set('enterToSendTerminal', oldEnterToSend);
-      } else {
-        if (savedEnterToSendAI !== undefined) setEnterToSendAIState(savedEnterToSendAI);
-        if (savedEnterToSendTerminal !== undefined) setEnterToSendTerminalState(savedEnterToSendTerminal);
-      }
+      if (savedEnterToSendAI !== undefined) setEnterToSendAIState(savedEnterToSendAI);
+      if (savedEnterToSendTerminal !== undefined) setEnterToSendTerminalState(savedEnterToSendTerminal);
 
       if (savedLlmProvider !== undefined) setLlmProviderState(savedLlmProvider);
       if (savedModelSlug !== undefined) setModelSlugState(savedModelSlug);

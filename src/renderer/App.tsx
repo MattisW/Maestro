@@ -438,19 +438,17 @@ export default function MaestroConsole() {
     }
   };
 
-  // Load sessions and groups from electron-store on mount (with localStorage migration)
+  // Load sessions and groups from electron-store on mount
   useEffect(() => {
     const loadSessionsAndGroups = async () => {
       let hasSessionsLoaded = false;
 
       try {
-        // Try to load from electron-store first
         const savedSessions = await window.maestro.sessions.getAll();
         const savedGroups = await window.maestro.groups.getAll();
 
         // Handle sessions
         if (savedSessions && savedSessions.length > 0) {
-          // electron-store has data - restore processes for all sessions
           const restoredSessions = await Promise.all(
             savedSessions.map(s => restoreSession(s))
           );
@@ -461,58 +459,14 @@ export default function MaestroConsole() {
             setActiveSessionId(restoredSessions[0].id);
           }
         } else {
-          // Try to migrate from localStorage
-          try {
-            const localStorageSessions = localStorage.getItem('maestro_sessions');
-            if (localStorageSessions) {
-              const parsed = JSON.parse(localStorageSessions);
-              // Restore processes for migrated sessions too
-              const restoredSessions = await Promise.all(
-                parsed.map((s: Session) => restoreSession(s))
-              );
-              setSessions(restoredSessions);
-              hasSessionsLoaded = restoredSessions.length > 0;
-              // Set active session to first session if current activeSessionId is invalid
-              if (restoredSessions.length > 0 && !restoredSessions.find(s => s.id === activeSessionId)) {
-                setActiveSessionId(restoredSessions[0].id);
-              }
-              // Save to electron-store for future
-              await window.maestro.sessions.setAll(restoredSessions);
-              // Clean up localStorage
-              localStorage.removeItem('maestro_sessions');
-            } else {
-              // No data anywhere - explicitly set empty array
-              setSessions([]);
-            }
-          } catch (e) {
-            console.error('Failed to migrate sessions from localStorage:', e);
-            setSessions([]);
-          }
+          setSessions([]);
         }
 
         // Handle groups
         if (savedGroups && savedGroups.length > 0) {
-          // electron-store has data, use it
           setGroups(savedGroups);
         } else {
-          // Try to migrate from localStorage
-          try {
-            const localStorageGroups = localStorage.getItem('maestro_groups');
-            if (localStorageGroups) {
-              const parsed = JSON.parse(localStorageGroups);
-              setGroups(parsed);
-              // Save to electron-store for future
-              await window.maestro.groups.setAll(parsed);
-              // Clean up localStorage
-              localStorage.removeItem('maestro_groups');
-            } else {
-              // No data anywhere - explicitly set empty array
-              setGroups([]);
-            }
-          } catch (e) {
-            console.error('Failed to migrate groups from localStorage:', e);
-            setGroups([]);
-          }
+          setGroups([]);
         }
       } catch (e) {
         console.error('Failed to load sessions/groups:', e);
