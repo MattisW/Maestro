@@ -543,6 +543,7 @@ const LogItemComponent = memo(({
                     .prose h5 { color: ${theme.colors.textMain}; font-size: 1.2em; font-weight: bold; margin: 0; line-height: 1.4; }
                     .prose h6 { color: ${theme.colors.textDim}; font-size: 1.1em; font-weight: bold; margin: 0; line-height: 1.4; }
                     .prose p { color: ${theme.colors.textMain}; margin: 0; line-height: 1.4; }
+                    .prose p:empty { display: none; }
                     .prose > ul, .prose > ol { color: ${theme.colors.textMain}; margin: 0.5em 0; padding-left: 2em; }
                     .prose li ul, .prose li ol { margin: 0 !important; padding-left: 1.5em; }
                     .prose li { margin: 0 !important; padding: 0; line-height: 1.4; display: list-item; }
@@ -694,6 +695,7 @@ const LogItemComponent = memo(({
                     .prose h5 { color: ${theme.colors.textMain}; font-size: 1.2em; font-weight: bold; margin: 0; line-height: 1.4; }
                     .prose h6 { color: ${theme.colors.textDim}; font-size: 1.1em; font-weight: bold; margin: 0; line-height: 1.4; }
                     .prose p { color: ${theme.colors.textMain}; margin: 0; line-height: 1.4; }
+                    .prose p:empty { display: none; }
                     .prose > ul, .prose > ol { color: ${theme.colors.textMain}; margin: 0.5em 0; padding-left: 2em; }
                     .prose li ul, .prose li ol { margin: 0 !important; padding-left: 1.5em; }
                     .prose li { margin: 0 !important; padding: 0; line-height: 1.4; display: list-item; }
@@ -827,6 +829,7 @@ const LogItemComponent = memo(({
                   .prose h5 { color: ${theme.colors.textMain}; font-size: 1.2em; font-weight: bold; margin: 0; line-height: 1.4; }
                   .prose h6 { color: ${theme.colors.textDim}; font-size: 1.1em; font-weight: bold; margin: 0; line-height: 1.4; }
                   .prose p { color: ${theme.colors.textMain}; margin: 0; line-height: 1.4; }
+                  .prose p:empty { display: none; }
                   .prose > ul, .prose > ol { color: ${theme.colors.textMain}; margin: 0.5em 0; padding-left: 2em; }
                   .prose li ul, .prose li ol { margin: 0 !important; padding-left: 1.5em; }
                   .prose li { margin: 0 !important; padding: 0; line-height: 1.4; display: list-item; }
