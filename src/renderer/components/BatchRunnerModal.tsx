@@ -173,6 +173,7 @@ export function BatchRunnerModal(props: BatchRunnerModalProps) {
     currentBranch?: string;
     branchMismatch: boolean;
     sameRepo: boolean;
+    hasUncommittedChanges?: boolean;
     error?: string;
   }>({ checking: false, exists: false, isWorktree: false, branchMismatch: false, sameRepo: true });
 
@@ -234,6 +235,108 @@ export function BatchRunnerModal(props: BatchRunnerModalProps) {
 
     checkGitRepo();
   }, [sessionCwd]);
+
+  // Validate worktree path when it changes (debounced 500ms)
+  useEffect(() => {
+    // Reset validation state when worktree is disabled or path is empty
+    if (!worktreeEnabled || !worktreePath) {
+      setWorktreeValidation({
+        checking: false,
+        exists: false,
+        isWorktree: false,
+        branchMismatch: false,
+        sameRepo: true,
+        hasUncommittedChanges: false
+      });
+      return;
+    }
+
+    // Set checking state immediately
+    setWorktreeValidation(prev => ({ ...prev, checking: true }));
+
+    // Debounce the validation check
+    const timeoutId = setTimeout(async () => {
+      try {
+        // Check if the path exists and get worktree info
+        const worktreeInfoResult = await window.maestro.git.worktreeInfo(worktreePath);
+
+        if (!worktreeInfoResult.success) {
+          setWorktreeValidation({
+            checking: false,
+            exists: false,
+            isWorktree: false,
+            branchMismatch: false,
+            sameRepo: true,
+            hasUncommittedChanges: false,
+            error: worktreeInfoResult.error
+          });
+          return;
+        }
+
+        // If the path doesn't exist, that's fine - it will be created
+        if (!worktreeInfoResult.exists) {
+          setWorktreeValidation({
+            checking: false,
+            exists: false,
+            isWorktree: false,
+            branchMismatch: false,
+            sameRepo: true,
+            hasUncommittedChanges: false
+          });
+          return;
+        }
+
+        // Path exists - check if it's part of the same repo
+        const mainRepoRootResult = await window.maestro.git.getRepoRoot(sessionCwd);
+        const sameRepo = mainRepoRootResult.success &&
+          worktreeInfoResult.repoRoot === mainRepoRootResult.root;
+
+        // Check for branch mismatch (only if branch name is provided)
+        const branchMismatch = branchName !== '' &&
+          worktreeInfoResult.currentBranch !== branchName;
+
+        // If there's a branch mismatch and it's the same repo, check for uncommitted changes
+        // This helps warn users that checkout will fail if there are uncommitted changes
+        let hasUncommittedChanges = false;
+        if (branchMismatch && sameRepo) {
+          try {
+            // Use git status to check for uncommitted changes in the worktree
+            const statusResult = await window.maestro.git.status(worktreePath);
+            // If there's any output from git status --porcelain, there are changes
+            hasUncommittedChanges = statusResult.stdout.trim().length > 0;
+          } catch {
+            // If we can't check, assume no uncommitted changes
+            hasUncommittedChanges = false;
+          }
+        }
+
+        setWorktreeValidation({
+          checking: false,
+          exists: true,
+          isWorktree: worktreeInfoResult.isWorktree || false,
+          currentBranch: worktreeInfoResult.currentBranch,
+          branchMismatch,
+          sameRepo,
+          hasUncommittedChanges,
+          error: !sameRepo ? 'This path contains a worktree for a different repository' : undefined
+        });
+      } catch (error) {
+        console.error('Failed to validate worktree path:', error);
+        setWorktreeValidation({
+          checking: false,
+          exists: false,
+          isWorktree: false,
+          branchMismatch: false,
+          sameRepo: true,
+          hasUncommittedChanges: false,
+          error: 'Failed to validate worktree path'
+        });
+      }
+    }, 500); // 500ms debounce
+
+    // Cleanup timeout on unmount or when dependencies change
+    return () => clearTimeout(timeoutId);
+  }, [worktreePath, branchName, worktreeEnabled, sessionCwd]);
 
   // Calculate total tasks across selected documents
   const totalTaskCount = documents.reduce((sum, doc) => sum + (taskCounts[doc.filename] || 0), 0);
@@ -1067,21 +1170,41 @@ export function BatchRunnerModal(props: BatchRunnerModalProps) {
                   )}
 
                   {/* Warning: Worktree exists with different branch */}
-                  {!worktreeValidation.checking && worktreeValidation.exists && worktreeValidation.branchMismatch && (
+                  {!worktreeValidation.checking && worktreeValidation.exists && worktreeValidation.branchMismatch && worktreeValidation.sameRepo && (
                     <div
                       className="flex items-start gap-2 p-3 rounded border"
                       style={{
-                        backgroundColor: theme.colors.warning + '10',
-                        borderColor: theme.colors.warning
+                        backgroundColor: worktreeValidation.hasUncommittedChanges
+                          ? theme.colors.error + '10'
+                          : theme.colors.warning + '10',
+                        borderColor: worktreeValidation.hasUncommittedChanges
+                          ? theme.colors.error
+                          : theme.colors.warning
                       }}
                     >
-                      <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" style={{ color: theme.colors.warning }} />
+                      <AlertTriangle
+                        className="w-4 h-4 mt-0.5 shrink-0"
+                        style={{
+                          color: worktreeValidation.hasUncommittedChanges
+                            ? theme.colors.error
+                            : theme.colors.warning
+                        }}
+                      />
                       <div className="text-sm">
-                        <p style={{ color: theme.colors.warning }}>
+                        <p style={{
+                          color: worktreeValidation.hasUncommittedChanges
+                            ? theme.colors.error
+                            : theme.colors.warning
+                        }}>
                           Worktree exists with branch "{worktreeValidation.currentBranch}"
                         </p>
                         <p style={{ color: theme.colors.textDim }}>
                           Will checkout to "{branchName}"
+                          {worktreeValidation.hasUncommittedChanges && (
+                            <span style={{ color: theme.colors.error }}>
+                              {' '}(uncommitted changes will block checkout)
+                            </span>
+                          )}
                         </p>
                       </div>
                     </div>
