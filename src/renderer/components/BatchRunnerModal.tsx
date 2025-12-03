@@ -238,6 +238,34 @@ export function BatchRunnerModal(props: BatchRunnerModalProps) {
     setDocuments(prev => prev.filter(d => d.id !== id));
   }, []);
 
+  const handleToggleReset = useCallback((id: string) => {
+    setDocuments(prev => prev.map(d =>
+      d.id === id ? { ...d, resetOnCompletion: !d.resetOnCompletion } : d
+    ));
+  }, []);
+
+  const handleDuplicateDocument = useCallback((id: string) => {
+    setDocuments(prev => {
+      const index = prev.findIndex(d => d.id === id);
+      if (index === -1) return prev;
+
+      const original = prev[index];
+      const duplicate: BatchDocumentEntry = {
+        id: crypto.randomUUID(),
+        filename: original.filename,
+        resetOnCompletion: original.resetOnCompletion, // Inherit reset setting
+        isDuplicate: true
+      };
+
+      // Insert duplicate immediately after the original
+      return [
+        ...prev.slice(0, index + 1),
+        duplicate,
+        ...prev.slice(index + 1)
+      ];
+    });
+  }, []);
+
   const handleOpenDocSelector = useCallback(() => {
     // Pre-select currently added documents
     const currentFilenames = new Set(documents.map(d => d.filename));
@@ -440,6 +468,15 @@ export function BatchRunnerModal(props: BatchRunnerModalProps) {
                           {doc.filename}
                         </span>
 
+                        {/* Reset Indicator (shown when reset is enabled) */}
+                        {doc.resetOnCompletion && (
+                          <RotateCcw
+                            className="w-3.5 h-3.5 shrink-0"
+                            style={{ color: theme.colors.accent }}
+                            title="Resets on completion"
+                          />
+                        )}
+
                         {/* Task Count Badge */}
                         <span
                           className="text-xs px-2 py-0.5 rounded shrink-0"
@@ -451,8 +488,35 @@ export function BatchRunnerModal(props: BatchRunnerModalProps) {
                           {loadingTaskCounts ? '...' : `${docTaskCount} ${docTaskCount === 1 ? 'task' : 'tasks'}`}
                         </span>
 
-                        {/* Remove Button (only if more than one doc or it's a duplicate) */}
-                        {(documents.length > 1 || doc.isDuplicate) && (
+                        {/* Reset Toggle Button */}
+                        <button
+                          onClick={() => handleToggleReset(doc.id)}
+                          className={`p-1 rounded transition-colors shrink-0 ${
+                            doc.resetOnCompletion ? '' : 'hover:bg-white/10'
+                          }`}
+                          style={{
+                            backgroundColor: doc.resetOnCompletion ? theme.colors.accent + '20' : 'transparent',
+                            color: doc.resetOnCompletion ? theme.colors.accent : theme.colors.textDim
+                          }}
+                          title={doc.resetOnCompletion ? 'Disable reset on completion' : 'Enable reset on completion'}
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                        </button>
+
+                        {/* Duplicate Button (only shown for reset-enabled docs) */}
+                        {doc.resetOnCompletion && (
+                          <button
+                            onClick={() => handleDuplicateDocument(doc.id)}
+                            className="p-1 rounded hover:bg-white/10 transition-colors shrink-0"
+                            style={{ color: theme.colors.textDim }}
+                            title="Duplicate document"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+
+                        {/* Remove Button (only for duplicates or when multiple docs exist) */}
+                        {(doc.isDuplicate || documents.length > 1) && (
                           <button
                             onClick={() => handleRemoveDocument(doc.id)}
                             className="p-1 rounded hover:bg-white/10 transition-colors shrink-0"
