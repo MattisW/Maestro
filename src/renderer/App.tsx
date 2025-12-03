@@ -3004,7 +3004,7 @@ export default function MaestroConsole() {
       else if (ctx.isShortcut(e, 'settings')) { ctx.setSettingsModalOpen(true); ctx.setSettingsTab('general'); }
       else if (ctx.isShortcut(e, 'goToFiles')) { e.preventDefault(); ctx.setRightPanelOpen(true); ctx.setActiveRightTab('files'); ctx.setActiveFocus('right'); }
       else if (ctx.isShortcut(e, 'goToHistory')) { e.preventDefault(); ctx.setRightPanelOpen(true); ctx.setActiveRightTab('history'); ctx.setActiveFocus('right'); }
-      else if (ctx.isShortcut(e, 'goToScratchpad')) { e.preventDefault(); ctx.setRightPanelOpen(true); ctx.setActiveRightTab('scratchpad'); ctx.setActiveFocus('right'); }
+      else if (ctx.isShortcut(e, 'goToAutoRun')) { e.preventDefault(); ctx.setRightPanelOpen(true); ctx.setActiveRightTab('autorun'); ctx.setActiveFocus('right'); }
       else if (ctx.isShortcut(e, 'openImageCarousel')) {
         e.preventDefault();
         if (ctx.stagedImages.length > 0) {

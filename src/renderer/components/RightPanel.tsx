@@ -153,7 +153,7 @@ export const RightPanel = forwardRef<RightPanelHandle, RightPanelProps>(function
           {rightPanelOpen ? <PanelRightClose className="w-4 h-4 opacity-50" /> : <PanelRightOpen className="w-4 h-4 opacity-50" />}
         </button>
 
-        {['files', 'history', 'scratchpad'].map(tab => (
+        {['files', 'history', 'autorun'].map(tab => (
           <button
             key={tab}
             onClick={() => setActiveRightTab(tab as RightPanelTab)}
@@ -175,7 +175,7 @@ export const RightPanel = forwardRef<RightPanelHandle, RightPanelProps>(function
         tabIndex={-1}
         onClick={() => {
           setActiveFocus('right');
-          // Only focus the container for file explorer, not for scratchpad (which has its own focus management)
+          // Only focus the container for file explorer, not for autorun (which has its own focus management)
           if (activeRightTab === 'files') {
             fileTreeContainerRef.current?.focus();
           }
@@ -228,7 +228,7 @@ export const RightPanel = forwardRef<RightPanelHandle, RightPanelProps>(function
           />
         )}
 
-        {activeRightTab === 'scratchpad' && (
+        {activeRightTab === 'autorun' && (
           <AutoRun
             content={session.scratchPadContent}
             onChange={updateScratchPad}

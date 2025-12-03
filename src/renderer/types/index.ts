@@ -6,7 +6,7 @@ export { Theme, ThemeId, ThemeMode, ThemeColors, isValidThemeId } from '../../sh
 export type ToolType = 'claude' | 'claude-code' | 'aider' | 'opencode' | 'terminal';
 export type SessionState = 'idle' | 'busy' | 'waiting_input' | 'connecting' | 'error';
 export type FileChangeType = 'modified' | 'added' | 'deleted';
-export type RightPanelTab = 'files' | 'history' | 'scratchpad';
+export type RightPanelTab = 'files' | 'history' | 'autorun';
 export type ScratchPadMode = 'raw' | 'preview' | 'wysiwyg';
 export type FocusArea = 'sidebar' | 'main' | 'right';
 export type LLMProvider = 'openrouter' | 'anthropic' | 'ollama';

@@ -250,7 +250,7 @@ export function QuickActionsModal(props: QuickActionsModalProps) {
     { id: 'about', label: 'About Maestro', action: () => { setAboutModalOpen(true); setQuickActionOpen(false); } },
     { id: 'goToFiles', label: 'Go to Files Tab', action: () => { setRightPanelOpen(true); setActiveRightTab('files'); setQuickActionOpen(false); } },
     { id: 'goToHistory', label: 'Go to History Tab', action: () => { setRightPanelOpen(true); setActiveRightTab('history'); setQuickActionOpen(false); } },
-    { id: 'goToScratchpad', label: 'Go to Scratchpad Tab', action: () => { setRightPanelOpen(true); setActiveRightTab('scratchpad'); setQuickActionOpen(false); } },
+    { id: 'goToAutoRun', label: 'Go to Auto Run Tab', action: () => { setRightPanelOpen(true); setActiveRightTab('autorun'); setQuickActionOpen(false); } },
     // Debug commands - only visible when user types "debug"
     { id: 'debugResetBusy', label: 'Debug: Reset Busy State', subtext: 'Clear stuck thinking/busy state for all sessions', action: () => {
       // Reset all sessions and tabs to idle state
