@@ -18,6 +18,14 @@ import { tunnelManager } from './tunnel-manager';
 import { getThemeById } from './themes';
 import Store from 'electron-store';
 
+// Demo mode: use a separate data directory for fresh demos
+const DEMO_MODE = process.argv.includes('--demo') || !!process.env.MAESTRO_DEMO_DIR;
+if (DEMO_MODE) {
+  const demoPath = process.env.MAESTRO_DEMO_DIR || path.join(os.tmpdir(), 'maestro-demo');
+  app.setPath('userData', demoPath);
+  console.log(`[DEMO MODE] Using data directory: ${demoPath}`);
+}
+
 // Constants for Claude session parsing
 const CLAUDE_SESSION_PARSE_LIMITS = {
   /** Max lines to scan from start of file to find first user message */
