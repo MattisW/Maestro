@@ -233,7 +233,7 @@ export function useSettings(): UseSettingsReturn {
   const [activeThemeId, setActiveThemeIdState] = useState<ThemeId>('dracula');
   const [enterToSendAI, setEnterToSendAIState] = useState(false); // AI mode defaults to Command+Enter
   const [enterToSendTerminal, setEnterToSendTerminalState] = useState(true); // Terminal defaults to Enter
-  const [defaultSaveToHistory, setDefaultSaveToHistoryState] = useState(false); // History toggle defaults to off
+  const [defaultSaveToHistory, setDefaultSaveToHistoryState] = useState(true); // History toggle defaults to on
   const [leftSidebarWidth, setLeftSidebarWidthState] = useState(256);
   const [rightPanelWidth, setRightPanelWidthState] = useState(384);
   const [markdownRawMode, setMarkdownRawModeState] = useState(false);

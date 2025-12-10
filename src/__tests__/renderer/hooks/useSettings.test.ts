@@ -74,7 +74,7 @@ describe('useSettings', () => {
       expect(result.current.activeThemeId).toBe('dracula');
       expect(result.current.enterToSendAI).toBe(false);
       expect(result.current.enterToSendTerminal).toBe(true);
-      expect(result.current.defaultSaveToHistory).toBe(false);
+      expect(result.current.defaultSaveToHistory).toBe(true);
       expect(result.current.leftSidebarWidth).toBe(256);
       expect(result.current.rightPanelWidth).toBe(384);
       expect(result.current.markdownRawMode).toBe(false);
