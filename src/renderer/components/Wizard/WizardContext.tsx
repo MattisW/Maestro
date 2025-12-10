@@ -11,6 +11,8 @@ import {
   useContext,
   useCallback,
   useReducer,
+  useEffect,
+  useRef,
   ReactNode,
 } from 'react';
 import type { ToolType, AgentConfig } from '../../types';
@@ -331,6 +333,23 @@ function wizardReducer(state: WizardState, action: WizardAction): WizardState {
 }
 
 /**
+ * Serializable wizard state for persistence
+ */
+export interface SerializableWizardState {
+  currentStep: WizardStep;
+  selectedAgent: ToolType | null;
+  agentName: string;
+  directoryPath: string;
+  isGitRepo: boolean;
+  conversationHistory: WizardMessage[];
+  confidenceLevel: number;
+  isReadyToProceed: boolean;
+  generatedDocuments: GeneratedDocument[];
+  editedPhase1Content: string | null;
+  wantsTour: boolean;
+}
+
+/**
  * Wizard context API type
  */
 export interface WizardContextAPI {
@@ -417,7 +436,13 @@ export interface WizardContextAPI {
   /** Restore state from saved data */
   restoreState: (state: Partial<WizardState>) => void;
   /** Get serializable state for persistence */
-  getSerializableState: () => Partial<WizardState>;
+  getSerializableState: () => SerializableWizardState;
+  /** Check if there's saved resume state (async) */
+  hasResumeState: () => Promise<boolean>;
+  /** Load saved resume state (async, returns null if none) */
+  loadResumeState: () => Promise<SerializableWizardState | null>;
+  /** Clear saved resume state */
+  clearResumeState: () => void;
 }
 
 // Create the context
@@ -442,6 +467,9 @@ function generateMessageId(): string {
  */
 export function WizardProvider({ children }: WizardProviderProps) {
   const [state, dispatch] = useReducer(wizardReducer, initialState);
+
+  // Track previous step to detect step changes
+  const prevStepRef = useRef<WizardStep>(state.currentStep);
 
   // Wizard lifecycle
   const openWizard = useCallback(() => {
@@ -598,34 +626,13 @@ export function WizardProvider({ children }: WizardProviderProps) {
 
   // Completion
   const completeWizard = useCallback((sessionId: string | null) => {
+    // Clear saved resume state since wizard completed successfully
+    window.maestro.settings.set('wizardResumeState', null);
     dispatch({ type: 'SET_COMPLETE', sessionId });
   }, []);
 
   // State persistence
-  const saveStateForResume = useCallback(() => {
-    const serializableState = {
-      currentStep: state.currentStep,
-      selectedAgent: state.selectedAgent,
-      agentName: state.agentName,
-      directoryPath: state.directoryPath,
-      isGitRepo: state.isGitRepo,
-      conversationHistory: state.conversationHistory,
-      confidenceLevel: state.confidenceLevel,
-      isReadyToProceed: state.isReadyToProceed,
-      generatedDocuments: state.generatedDocuments,
-      editedPhase1Content: state.editedPhase1Content,
-      wantsTour: state.wantsTour,
-    };
-
-    // Save to settings (async, fire-and-forget)
-    window.maestro.settings.set('wizardResumeState', serializableState);
-  }, [state]);
-
-  const restoreState = useCallback((savedState: Partial<WizardState>) => {
-    dispatch({ type: 'RESTORE_STATE', state: savedState });
-  }, []);
-
-  const getSerializableState = useCallback((): Partial<WizardState> => {
+  const getSerializableState = useCallback((): SerializableWizardState => {
     return {
       currentStep: state.currentStep,
       selectedAgent: state.selectedAgent,
@@ -640,6 +647,62 @@ export function WizardProvider({ children }: WizardProviderProps) {
       wantsTour: state.wantsTour,
     };
   }, [state]);
+
+  const saveStateForResume = useCallback(() => {
+    const serializableState = getSerializableState();
+    // Save to settings (async, fire-and-forget)
+    window.maestro.settings.set('wizardResumeState', serializableState);
+  }, [getSerializableState]);
+
+  const restoreState = useCallback((savedState: Partial<WizardState>) => {
+    dispatch({ type: 'RESTORE_STATE', state: savedState });
+  }, []);
+
+  const hasResumeState = useCallback(async (): Promise<boolean> => {
+    try {
+      const saved = await window.maestro.settings.get('wizardResumeState');
+      // Check if saved state exists and wizard is not complete
+      return saved !== undefined && saved !== null && typeof saved === 'object';
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const loadResumeState = useCallback(async (): Promise<SerializableWizardState | null> => {
+    try {
+      const saved = await window.maestro.settings.get('wizardResumeState');
+      if (saved && typeof saved === 'object') {
+        // Validate that required fields exist
+        const state = saved as SerializableWizardState;
+        if (state.currentStep && state.currentStep !== 'agent-selection') {
+          // Only return state if past the first step
+          return state;
+        }
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const clearResumeState = useCallback(() => {
+    window.maestro.settings.set('wizardResumeState', null);
+  }, []);
+
+  // Auto-save state when step changes (only for steps past the first)
+  useEffect(() => {
+    // Check if step has changed
+    if (prevStepRef.current !== state.currentStep) {
+      prevStepRef.current = state.currentStep;
+
+      // Save state when advancing past the first step
+      // This ensures user progress is preserved for resume
+      if (STEP_INDEX[state.currentStep] > 1) {
+        const serializableState = getSerializableState();
+        window.maestro.settings.set('wizardResumeState', serializableState);
+      }
+    }
+  }, [state.currentStep, getSerializableState]);
 
   // Build the context value
   const contextValue: WizardContextAPI = {
@@ -694,6 +757,9 @@ export function WizardProvider({ children }: WizardProviderProps) {
     saveStateForResume,
     restoreState,
     getSerializableState,
+    hasResumeState,
+    loadResumeState,
+    clearResumeState,
   };
 
   return (

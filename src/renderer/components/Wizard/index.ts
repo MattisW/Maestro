@@ -8,4 +8,8 @@
 
 export { MaestroWizard } from './MaestroWizard';
 export { WizardProvider, useWizard } from './WizardContext';
-export type { WizardState, WizardStep } from './WizardContext';
+export type {
+  WizardState,
+  WizardStep,
+  SerializableWizardState,
+} from './WizardContext';
