@@ -104,6 +104,8 @@ const mockMaestro = {
     saveImage: vi.fn(),
     writeDoc: vi.fn(),
     deleteImage: vi.fn(),
+    listDocs: vi.fn().mockResolvedValue({ success: true, files: [] }),
+    readDoc: vi.fn().mockResolvedValue({ success: true, content: '' }),
   },
   fs: {
     readFile: vi.fn(),
@@ -474,7 +476,7 @@ describe('Wizard Keyboard Navigation', () => {
 
       renderWithProviders(<ConversationWithEscape theme={mockTheme} />);
 
-      const container = screen.getByText('Project Understanding').closest('div[tabindex]');
+      const container = screen.getByText('Project Understanding Confidence').closest('div[tabindex]');
 
       // Press Escape to go back
       fireEvent.keyDown(container!, { key: 'Escape' });
@@ -594,7 +596,7 @@ describe('Wizard Keyboard Navigation', () => {
       renderWithProviders(<TestWrapper />);
 
       await waitFor(() => {
-        expect(screen.getByText('Select Your Agent')).toBeInTheDocument();
+        expect(screen.getByText('Create a Maestro Agent')).toBeInTheDocument();
       });
 
       // Click close button on step 1
@@ -630,7 +632,7 @@ describe('Wizard Keyboard Navigation', () => {
       renderWithProviders(<TestWrapper />);
 
       await waitFor(() => {
-        expect(screen.getByText('Select Your Agent')).toBeInTheDocument();
+        expect(screen.getByText('Create a Maestro Agent')).toBeInTheDocument();
       });
 
       // Click the backdrop (the div with wizard-backdrop class)

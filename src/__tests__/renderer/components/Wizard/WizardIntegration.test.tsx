@@ -249,6 +249,8 @@ const mockMaestro = {
     saveImage: vi.fn(),
     writeDoc: vi.fn(),
     deleteImage: vi.fn(),
+    listDocs: vi.fn().mockResolvedValue({ success: true, files: [] }),
+    readDoc: vi.fn().mockResolvedValue({ success: true, content: '' }),
   },
   fs: {
     readFile: vi.fn(),
@@ -307,7 +309,7 @@ describe('Wizard Integration Tests', () => {
       renderWithProviders(<TestWrapper />);
 
       await waitFor(() => {
-        expect(screen.getByText('Select Your Agent')).toBeInTheDocument();
+        expect(screen.getByText('Create a Maestro Agent')).toBeInTheDocument();
         expect(screen.getByText('Step 1 of 4')).toBeInTheDocument();
       });
     });
@@ -342,7 +344,7 @@ describe('Wizard Integration Tests', () => {
       renderWithProviders(<TestWrapper />);
 
       await waitFor(() => {
-        expect(screen.getByText('Select Your Agent')).toBeInTheDocument();
+        expect(screen.getByText('Create a Maestro Agent')).toBeInTheDocument();
       });
 
       // Trigger manual continue
@@ -477,7 +479,7 @@ describe('Wizard Integration Tests', () => {
       fireEvent.click(screen.getByTestId('open-wizard'));
 
       await waitFor(() => {
-        expect(screen.getByText('Select Your Agent')).toBeInTheDocument();
+        expect(screen.getByText('Create a Maestro Agent')).toBeInTheDocument();
       });
 
       // Click close button in wizard modal
@@ -662,7 +664,7 @@ describe('Wizard Integration Tests', () => {
       renderWithProviders(<TestWrapper />);
 
       await waitFor(() => {
-        expect(screen.getByText('Select Your Agent')).toBeInTheDocument();
+        expect(screen.getByText('Create a Maestro Agent')).toBeInTheDocument();
       });
 
       // Navigate to step 2
@@ -932,7 +934,7 @@ describe('Wizard Integration Tests', () => {
       renderWithProviders(<TestWrapper />);
 
       await waitFor(() => {
-        expect(screen.getByText('Select Your Agent')).toBeInTheDocument();
+        expect(screen.getByText('Create a Maestro Agent')).toBeInTheDocument();
       });
 
       // Analytics callback should be called for fresh start
@@ -1123,7 +1125,7 @@ describe('Wizard Integration Tests', () => {
       renderWithProviders(<TestWrapper />);
 
       await waitFor(() => {
-        expect(screen.getByText('Select Your Agent')).toBeInTheDocument();
+        expect(screen.getByText('Create a Maestro Agent')).toBeInTheDocument();
       });
 
       // Content should have wizard-content class
@@ -1404,7 +1406,7 @@ describe('Wizard Integration Tests', () => {
 
       // Wizard should still open
       await waitFor(() => {
-        expect(screen.getByText('Select Your Agent')).toBeInTheDocument();
+        expect(screen.getByText('Create a Maestro Agent')).toBeInTheDocument();
       });
     });
   });
