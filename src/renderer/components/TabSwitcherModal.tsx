@@ -320,9 +320,16 @@ export function TabSwitcherModal({
       }
 
       // Add closed named sessions from the SAME PROJECT (not currently open)
+      // Only include sessions with actual custom names (not UUID-based names)
       for (const session of namedSessions) {
         if (session.projectPath === projectRoot && !openTabSessionIds.has(session.claudeSessionId)) {
-          items.push({ type: 'named' as const, session });
+          // Skip sessions where the name is just the UUID or first octet of the UUID
+          const firstOctet = session.claudeSessionId.split('-')[0].toUpperCase();
+          const isUuidBasedName = session.sessionName === session.claudeSessionId ||
+                                   session.sessionName.toUpperCase() === firstOctet;
+          if (!isUuidBasedName) {
+            items.push({ type: 'named' as const, session });
+          }
         }
       }
 
@@ -377,11 +384,17 @@ export function TabSwitcherModal({
     setFirstVisibleIndex(0);
   }, [search, viewMode]);
 
-  const toggleViewMode = () => {
+  const toggleViewMode = (reverse = false) => {
     setViewMode(prev => {
-      if (prev === 'open') return 'all-named';
-      if (prev === 'all-named') return 'starred';
-      return 'open';
+      if (reverse) {
+        if (prev === 'open') return 'starred';
+        if (prev === 'starred') return 'all-named';
+        return 'open';
+      } else {
+        if (prev === 'open') return 'all-named';
+        if (prev === 'all-named') return 'starred';
+        return 'open';
+      }
     });
   };
 
@@ -397,7 +410,7 @@ export function TabSwitcherModal({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Tab') {
       e.preventDefault();
-      toggleViewMode();
+      toggleViewMode(e.shiftKey);
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
       setSelectedIndex(prev => Math.min(prev + 1, filteredItems.length - 1));
@@ -481,7 +494,11 @@ export function TabSwitcherModal({
               color: viewMode === 'all-named' ? theme.colors.accentForeground : theme.colors.textDim
             }}
           >
-            All Named ({tabs.filter(t => t.claudeSessionId && t.name).length + namedSessions.filter(s => s.projectPath === projectRoot && !openTabSessionIds.has(s.claudeSessionId)).length})
+            All Named ({tabs.filter(t => t.claudeSessionId && t.name).length + namedSessions.filter(s => {
+              if (s.projectPath !== projectRoot || openTabSessionIds.has(s.claudeSessionId)) return false;
+              const firstOctet = s.claudeSessionId.split('-')[0].toUpperCase();
+              return s.sessionName !== s.claudeSessionId && s.sessionName.toUpperCase() !== firstOctet;
+            }).length})
           </button>
           <button
             onClick={() => setViewMode('starred')}
@@ -495,7 +512,7 @@ export function TabSwitcherModal({
             Starred ({tabs.filter(t => t.starred && t.claudeSessionId).length + namedSessions.filter(s => s.starred && s.projectPath === projectRoot && !openTabSessionIds.has(s.claudeSessionId)).length})
           </button>
           <span className="text-[10px] opacity-50 ml-auto" style={{ color: theme.colors.textDim }}>
-            Tab to switch
+            Tab / ⇧Tab to switch
           </span>
         </div>
 
