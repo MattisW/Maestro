@@ -165,6 +165,7 @@ export default function MaestroConsole() {
     leftSidebarWidth, setLeftSidebarWidth,
     rightPanelWidth, setRightPanelWidth,
     markdownEditMode, setMarkdownEditMode,
+    showHiddenFiles, setShowHiddenFiles,
     terminalWidth, setTerminalWidth,
     logLevel, setLogLevel,
     logViewerSelectedLevels, setLogViewerSelectedLevels,
@@ -7368,6 +7369,8 @@ export default function MaestroConsole() {
             setSessions={setSessions}
             onAutoRefreshChange={handleAutoRefreshChange}
             onShowFlash={showSuccessFlash}
+            showHiddenFiles={showHiddenFiles}
+            setShowHiddenFiles={setShowHiddenFiles}
             autoRunDocumentList={autoRunDocumentList}
             autoRunDocumentTree={autoRunDocumentTree}
             autoRunContent={autoRunContent}

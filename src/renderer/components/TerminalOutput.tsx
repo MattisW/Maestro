@@ -279,9 +279,27 @@ const LogItemComponent = memo(({
 
   return (
     <div ref={logItemRef} className={`flex gap-4 group ${isUserMessage ? 'flex-row-reverse' : ''} px-6 py-2`} data-log-index={index}>
-      <div className={`w-12 shrink-0 text-[10px] pt-2 ${isUserMessage ? 'text-right' : 'text-left'}`}
+      <div className={`w-16 shrink-0 text-[10px] pt-2 ${isUserMessage ? 'text-right' : 'text-left'}`}
            style={{ fontFamily, color: theme.colors.textDim, opacity: 0.6 }}>
-        {new Date(log.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
+        {(() => {
+          const logDate = new Date(log.timestamp);
+          const today = new Date();
+          const isToday = logDate.toDateString() === today.toDateString();
+          const time = logDate.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+          if (isToday) {
+            return time;
+          }
+          // Format: YYYY-MM-DD on first line, time on second
+          const year = logDate.getFullYear();
+          const month = String(logDate.getMonth() + 1).padStart(2, '0');
+          const day = String(logDate.getDate()).padStart(2, '0');
+          return (
+            <>
+              <div>{year}-{month}-{day}</div>
+              <div>{time}</div>
+            </>
+          );
+        })()}
       </div>
       <div className={`flex-1 min-w-0 p-4 pb-10 ${isUserMessage && log.readOnly ? 'pt-8' : ''} rounded-xl border ${isUserMessage ? 'rounded-tr-none' : 'rounded-tl-none'} relative overflow-hidden`}
            style={{
