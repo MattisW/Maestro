@@ -190,3 +190,16 @@ export type {
   MobileInputMode,
   UseMobileKeyboardHandlerDeps,
 } from './useMobileKeyboardHandler';
+
+export {
+  useMobileSessionManagement,
+  default as useMobileSessionManagementDefault,
+} from './useMobileSessionManagement';
+
+export type {
+  LogEntry,
+  SessionLogsState,
+  UseMobileSessionManagementDeps,
+  MobileSessionHandlers,
+  UseMobileSessionManagementReturn,
+} from './useMobileSessionManagement';
