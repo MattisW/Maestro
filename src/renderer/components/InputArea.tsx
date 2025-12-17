@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useMemo } from 'react';
-import { Terminal, Cpu, Keyboard, ImageIcon, X, ArrowUp, Eye, History, File, Folder, GitBranch, Tag, PenLine } from 'lucide-react';
+import { Terminal, Cpu, Keyboard, ImageIcon, X, ArrowUp, Eye, History, File, Folder, GitBranch, Tag, PenLine, Shield, ShieldAlert } from 'lucide-react';
 import type { Session, Theme, BatchRunState } from '../types';
 import type { TabCompletionSuggestion, TabCompletionFilter } from '../hooks/useTabCompletion';
 import { ThinkingStatusPill } from './ThinkingStatusPill';
@@ -683,25 +683,61 @@ export const InputArea = React.memo(function InputArea(props: InputAreaProps) {
               )}
               {/* Read-only mode toggle - AI mode only, if agent supports it */}
               {/* When AutoRun is active, pill is locked to enabled state */}
+              {/* For Codex: Shows sandbox mode indicator (read-only vs full-access) */}
               {session.inputMode === 'ai' && onToggleTabReadOnlyMode && hasCapability('supportsReadOnlyMode') && (
-                <button
-                  onClick={isAutoReadOnly ? undefined : onToggleTabReadOnlyMode}
-                  disabled={isAutoReadOnly}
-                  className={`flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-full transition-all ${
-                    isAutoReadOnly ? 'cursor-not-allowed' : 'cursor-pointer'
-                  } ${
-                    isReadOnlyMode ? '' : 'opacity-40 hover:opacity-70'
-                  }`}
-                  style={{
-                    backgroundColor: isReadOnlyMode ? `${theme.colors.warning}25` : 'transparent',
-                    color: isReadOnlyMode ? theme.colors.warning : theme.colors.textDim,
-                    border: isReadOnlyMode ? `1px solid ${theme.colors.warning}50` : '1px solid transparent'
-                  }}
-                  title={isAutoReadOnly ? "Read-only mode locked during AutoRun" : "Toggle read-only mode (Claude won't modify files)"}
-                >
-                  <Eye className="w-3 h-3" />
-                  <span>Read-only</span>
-                </button>
+                session.toolType === 'codex' ? (
+                  // Codex-specific sandbox mode indicator with three states
+                  <button
+                    onClick={isAutoReadOnly ? undefined : onToggleTabReadOnlyMode}
+                    disabled={isAutoReadOnly}
+                    className={`flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-full transition-all ${
+                      isAutoReadOnly ? 'cursor-not-allowed' : 'cursor-pointer'
+                    }`}
+                    style={{
+                      backgroundColor: isReadOnlyMode
+                        ? `${theme.colors.warning}25`
+                        : `${theme.colors.error}15`,
+                      color: isReadOnlyMode
+                        ? theme.colors.warning
+                        : theme.colors.error,
+                      border: isReadOnlyMode
+                        ? `1px solid ${theme.colors.warning}50`
+                        : `1px solid ${theme.colors.error}30`
+                    }}
+                    title={isAutoReadOnly
+                      ? "Sandbox mode locked during AutoRun"
+                      : isReadOnlyMode
+                        ? "Sandbox: read-only (can only read files). Click to enable full access."
+                        : "Sandbox: full-access (can modify system). Click to enable read-only mode."}
+                  >
+                    {isReadOnlyMode ? (
+                      <Shield className="w-3 h-3" />
+                    ) : (
+                      <ShieldAlert className="w-3 h-3" />
+                    )}
+                    <span>{isReadOnlyMode ? 'read-only' : 'full-access'}</span>
+                  </button>
+                ) : (
+                  // Standard read-only toggle for other agents (Claude Code, etc.)
+                  <button
+                    onClick={isAutoReadOnly ? undefined : onToggleTabReadOnlyMode}
+                    disabled={isAutoReadOnly}
+                    className={`flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-full transition-all ${
+                      isAutoReadOnly ? 'cursor-not-allowed' : 'cursor-pointer'
+                    } ${
+                      isReadOnlyMode ? '' : 'opacity-40 hover:opacity-70'
+                    }`}
+                    style={{
+                      backgroundColor: isReadOnlyMode ? `${theme.colors.warning}25` : 'transparent',
+                      color: isReadOnlyMode ? theme.colors.warning : theme.colors.textDim,
+                      border: isReadOnlyMode ? `1px solid ${theme.colors.warning}50` : '1px solid transparent'
+                    }}
+                    title={isAutoReadOnly ? "Read-only mode locked during AutoRun" : "Toggle read-only mode (Claude won't modify files)"}
+                  >
+                    <Eye className="w-3 h-3" />
+                    <span>Read-only</span>
+                  </button>
+                )
               )}
               <button
                 onClick={() => setEnterToSend(!enterToSend)}
