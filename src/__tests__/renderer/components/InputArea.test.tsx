@@ -292,6 +292,41 @@ describe('InputArea', () => {
       expect(toggle).toHaveTextContent('Read-only');
     });
 
+    it('hides read-only toggle when agent does not support read-only mode', async () => {
+      // Mock capabilities to return false for supportsReadOnlyMode
+      const useAgentCapabilitiesMock = await import('../../../renderer/hooks/useAgentCapabilities');
+      vi.mocked(useAgentCapabilitiesMock.useAgentCapabilities).mockReturnValueOnce({
+        capabilities: {
+          supportsResume: true,
+          supportsReadOnlyMode: false, // Not supported
+          supportsJsonOutput: true,
+          supportsSessionId: true,
+          supportsImageInput: true,
+          supportsSlashCommands: true,
+          supportsSessionStorage: false,
+          supportsCostTracking: false,
+          supportsUsageStats: false,
+          supportsBatchMode: false,
+          supportsStreaming: true,
+          supportsResultMessages: true,
+        },
+        loading: false,
+        error: null,
+        refresh: vi.fn(),
+        hasCapability: vi.fn((cap: string) => cap !== 'supportsReadOnlyMode'),
+      });
+
+      const onToggleTabReadOnlyMode = vi.fn();
+      const props = createDefaultProps({
+        session: createMockSession({ inputMode: 'ai', toolType: 'opencode' }),
+        onToggleTabReadOnlyMode,
+      });
+      render(<InputArea {...props} />);
+
+      // Read-only toggle should not be present
+      expect(screen.queryByTitle(/Toggle read-only mode/)).not.toBeInTheDocument();
+    });
+
     it('shows save to history toggle when onToggleTabSaveToHistory is provided', () => {
       const onToggleTabSaveToHistory = vi.fn();
       const props = createDefaultProps({
