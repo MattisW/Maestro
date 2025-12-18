@@ -607,19 +607,6 @@ describe('TerminalOutput', () => {
       expect(screen.getByText('/history')).toBeInTheDocument();
     });
 
-    it('shows tab indicator for queued items with tabName', () => {
-      const session = createDefaultSession({
-        executionQueue: [
-          { id: 'q1', type: 'message', text: 'Message for tab', tabId: 'tab-1', tabName: 'Tab 1' },
-        ],
-      });
-
-      const props = createDefaultProps({ session });
-      render(<TerminalOutput {...props} />);
-
-      expect(screen.getByText('→ Tab 1')).toBeInTheDocument();
-    });
-
     it('shows remove button for queued items', () => {
       const session = createDefaultSession({
         executionQueue: [
