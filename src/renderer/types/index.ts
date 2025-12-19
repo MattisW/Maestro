@@ -42,7 +42,7 @@ export interface FileArtifact {
 export interface LogEntry {
   id: string;
   timestamp: number;
-  source: 'stdout' | 'stderr' | 'system' | 'user' | 'ai';
+  source: 'stdout' | 'stderr' | 'system' | 'user' | 'ai' | 'error';
   text: string;
   interactive?: boolean;
   options?: string[];
@@ -56,6 +56,8 @@ export interface LogEntry {
   delivered?: boolean;
   // For user messages - tracks if message was sent in read-only mode
   readOnly?: boolean;
+  // For error entries - stores the full AgentError for "View Details" functionality
+  agentError?: AgentError;
 }
 
 // Queued item for the session-level execution queue

@@ -310,10 +310,11 @@ export function useAutoRunImageHandling({
     // Extract just the filename for the alt text pattern
     const filename = relativePath.split('/').pop() || relativePath;
     // Remove the markdown reference from content - update local and sync to parent immediately
-    // Match both the full relative path and just filename in the alt text
-    const escapedPath = relativePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // The markdown content uses URL-encoded paths, so we need to match the encoded version
+    const encodedPath = relativePath.split('/').map(part => encodeURIComponent(part)).join('/');
+    const escapedEncodedPath = encodedPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const escapedFilename = filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`!\\[${escapedFilename}\\]\\(${escapedPath}\\)\\n?`, 'g');
+    const regex = new RegExp(`!\\[${escapedFilename}\\]\\(${escapedEncodedPath}\\)\\n?`, 'g');
     const newContent = localContent.replace(regex, '');
     setLocalContent(newContent);
     handleContentChange(newContent);
@@ -365,9 +366,11 @@ export function useAutoRunImageHandling({
     // Extract just the filename for the alt text pattern
     const filename = relativePath.split('/').pop() || relativePath;
     // Remove the markdown reference from content - update local and sync to parent immediately
-    const escapedPath = relativePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // The markdown content uses URL-encoded paths, so we need to match the encoded version
+    const encodedPath = relativePath.split('/').map(part => encodeURIComponent(part)).join('/');
+    const escapedEncodedPath = encodedPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const escapedFilename = filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`!\\[${escapedFilename}\\]\\(${escapedPath}\\)\\n?`, 'g');
+    const regex = new RegExp(`!\\[${escapedFilename}\\]\\(${escapedEncodedPath}\\)\\n?`, 'g');
     const newContent = localContent.replace(regex, '');
     setLocalContent(newContent);
     handleContentChange(newContent);

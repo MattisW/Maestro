@@ -1491,16 +1491,36 @@ export default function MaestroConsole() {
         sessionId: error.sessionId,
         timestamp: error.timestamp,
         raw: error.raw,
+        parsedJson: error.parsedJson,
       };
 
-      // Update session with error state
+      // Create an error log entry to show in the chat
+      const errorLogEntry: LogEntry = {
+        id: generateId(),
+        timestamp: agentError.timestamp,
+        source: 'error',
+        text: agentError.message,
+        agentError, // Include full error for "View Details" functionality
+      };
+
+      // Update session with error state and add error log entry to active tab
       setSessions(prev => prev.map(s => {
         if (s.id !== actualSessionId) return s;
+
+        // Add error log entry to the active tab
+        const activeTabIndex = s.aiTabs.findIndex(tab => tab.id === s.activeTabId);
+        const updatedAiTabs = activeTabIndex >= 0
+          ? s.aiTabs.map((tab, i) =>
+              i === activeTabIndex ? { ...tab, logs: [...tab.logs, errorLogEntry] } : tab
+            )
+          : s.aiTabs;
+
         return {
           ...s,
           agentError,
           agentErrorPaused: true, // Block new operations until resolved
           state: 'error' as SessionState,
+          aiTabs: updatedAiTabs,
         };
       }));
 
@@ -5272,6 +5292,14 @@ export default function MaestroConsole() {
             setTimeout(() => inputRef.current?.focus(), 0);
           }}
           onNavigate={(img) => setLightboxImage(img)}
+          onDelete={(img) => {
+            // Remove from both lightboxImages and stagedImages
+            if (lightboxImages.length > 0) {
+              setLightboxImages(prev => prev.filter(i => i !== img));
+            }
+            setStagedImages(prev => prev.filter(i => i !== img));
+          }}
+          theme={theme}
         />
       )}
 

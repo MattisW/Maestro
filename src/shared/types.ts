@@ -168,6 +168,9 @@ export interface AgentError {
     stdout?: string;
     errorLine?: string;
   };
+
+  /** Parsed JSON error details (if the error contains structured JSON) */
+  parsedJson?: unknown;
 }
 
 /**

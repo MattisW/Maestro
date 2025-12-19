@@ -10,12 +10,13 @@
  *
  * The modal provides:
  * - Clear error description with type indicator
+ * - Collapsible JSON details viewer for structured error data
  * - Recovery action buttons (re-authenticate, start new session, retry, etc.)
  * - Dismiss option for non-critical errors
  * - Auto-focus on primary recovery action
  */
 
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, useState } from 'react';
 import {
   AlertCircle,
   RefreshCw,
@@ -25,10 +26,14 @@ import {
   XCircle,
   Clock,
   ShieldAlert,
+  ChevronDown,
+  ChevronRight,
+  Code2,
 } from 'lucide-react';
 import type { Theme, AgentError, AgentErrorType } from '../types';
 import { MODAL_PRIORITIES } from '../constants/modalPriorities';
 import { Modal } from './ui/Modal';
+import { CollapsibleJsonViewer } from './CollapsibleJsonViewer';
 
 /**
  * Props for recovery action buttons
@@ -118,12 +123,16 @@ export function AgentErrorModal({
   dismissible = true,
 }: AgentErrorModalProps) {
   const primaryButtonRef = useRef<HTMLButtonElement>(null);
+  const [showJsonDetails, setShowJsonDetails] = useState(false);
 
   // Find the primary recovery action for initial focus
   const primaryAction = useMemo(
     () => recoveryActions.find((a) => a.primary) || recoveryActions[0],
     [recoveryActions]
   );
+
+  // Check if we have JSON details to show
+  const hasJsonDetails = error.parsedJson !== undefined;
 
   const errorColor = getErrorColor(error, theme);
   const errorIcon = getErrorIcon(error.type);
@@ -135,7 +144,7 @@ export function AgentErrorModal({
       title={errorTitle}
       priority={MODAL_PRIORITIES.AGENT_ERROR}
       onClose={onDismiss}
-      width={480}
+      width={hasJsonDetails && showJsonDetails ? 600 : 480}
       zIndex={10001}
       showCloseButton={dismissible}
       headerIcon={
@@ -180,6 +189,36 @@ export function AgentErrorModal({
           >
             <span className="font-medium">Tip:</span> This error can be resolved.
             Choose a recovery action below.
+          </div>
+        )}
+
+        {/* Collapsible JSON Details */}
+        {hasJsonDetails && (
+          <div className="border rounded" style={{ borderColor: theme.colors.border }}>
+            <button
+              type="button"
+              onClick={() => setShowJsonDetails(!showJsonDetails)}
+              className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-white/5 transition-colors rounded"
+              style={{ color: theme.colors.textDim }}
+            >
+              {showJsonDetails ? (
+                <ChevronDown className="w-3 h-3" />
+              ) : (
+                <ChevronRight className="w-3 h-3" />
+              )}
+              <Code2 className="w-3 h-3" />
+              <span>Error Details (JSON)</span>
+            </button>
+            {showJsonDetails && (
+              <div className="px-2 pb-2">
+                <CollapsibleJsonViewer
+                  data={error.parsedJson}
+                  theme={theme}
+                  initialExpandLevel={2}
+                  maxStringLength={80}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>

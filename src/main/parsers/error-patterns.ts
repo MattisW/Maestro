@@ -225,6 +225,16 @@ export const OPENCODE_ERROR_PATTERNS: AgentErrorPatterns = {
       message: 'Maximum input length exceeded.',
       recoverable: true,
     },
+    {
+      pattern: /prompt.*too\s+long/i,
+      message: 'Maximum input length exceeded.',
+      recoverable: true,
+    },
+    {
+      pattern: /tokens?\s*>\s*\d+\s*maximum/i,
+      message: 'Maximum token limit exceeded.',
+      recoverable: true,
+    },
   ],
 
   rate_limited: [

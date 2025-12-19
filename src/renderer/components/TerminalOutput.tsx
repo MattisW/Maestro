@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useMemo, forwardRef, useState, useCallback, memo } from 'react';
-import { Activity, X, ChevronDown, ChevronUp, Trash2, Copy, Volume2, Square, Check, ArrowDown, Eye, FileText, RotateCcw } from 'lucide-react';
+import { Activity, X, ChevronDown, ChevronUp, Trash2, Copy, Volume2, Square, Check, ArrowDown, Eye, FileText, RotateCcw, AlertCircle } from 'lucide-react';
 import type { Session, Theme, LogEntry } from '../types';
 import type { FileNode } from '../hooks/useFileExplorer';
 import Convert from 'ansi-to-html';
@@ -68,6 +68,8 @@ interface LogItemProps {
   cwd?: string;
   projectRoot?: string;
   onFileClick?: (path: string) => void;
+  // Error details callback
+  onShowErrorDetails?: () => void;
 }
 
 const LogItemComponent = memo(({
@@ -107,6 +109,7 @@ const LogItemComponent = memo(({
   cwd,
   projectRoot,
   onFileClick,
+  onShowErrorDetails,
 }: LogItemProps) => {
   // Ref for the log item container - used for scroll-into-view on expand
   const logItemRef = useRef<HTMLDivElement>(null);
@@ -317,12 +320,12 @@ const LogItemComponent = memo(({
                ? isAIMode
                  ? `color-mix(in srgb, ${theme.colors.accent} 20%, ${theme.colors.bgSidebar})`
                  : `color-mix(in srgb, ${theme.colors.accent} 15%, ${theme.colors.bgActivity})`
-               : log.source === 'stderr'
+               : log.source === 'stderr' || log.source === 'error'
                  ? `color-mix(in srgb, ${theme.colors.error} 8%, ${theme.colors.bgActivity})`
                  : isAIMode ? theme.colors.bgActivity : 'transparent',
              borderColor: isUserMessage && isAIMode
                ? theme.colors.accent + '40'
-               : log.source === 'stderr' ? theme.colors.error : theme.colors.border
+               : (log.source === 'stderr' || log.source === 'error') ? theme.colors.error : theme.colors.border
            }}>
         {/* Read-only badge - top right of message for user messages sent in read-only mode */}
         {isUserMessage && log.readOnly && (
@@ -384,7 +387,35 @@ const LogItemComponent = memo(({
             </span>
           </div>
         )}
-        {hasNoMatches ? (
+        {/* Special rendering for error log entries */}
+        {log.source === 'error' && (
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5" style={{ color: theme.colors.error }} />
+              <span className="text-sm font-medium" style={{ color: theme.colors.error }}>
+                Error
+              </span>
+            </div>
+            <p className="text-sm" style={{ color: theme.colors.textMain }}>
+              {log.text}
+            </p>
+            {log.agentError?.parsedJson && onShowErrorDetails && (
+              <button
+                onClick={onShowErrorDetails}
+                className="self-start flex items-center gap-2 px-3 py-1.5 text-xs rounded border hover:opacity-80 transition-opacity"
+                style={{
+                  backgroundColor: theme.colors.error + '15',
+                  borderColor: theme.colors.error + '40',
+                  color: theme.colors.error,
+                }}
+              >
+                <Eye className="w-3 h-3" />
+                View Details
+              </button>
+            )}
+          </div>
+        )}
+        {log.source !== 'error' && (hasNoMatches ? (
           <div className="flex items-center justify-center py-8 text-sm" style={{ color: theme.colors.textDim }}>
             <span>No matches found for filter</span>
           </div>
@@ -564,7 +595,7 @@ const LogItemComponent = memo(({
               </div>
             )}
           </>
-        )}
+        ))}
         {/* Action buttons - bottom right corner */}
         <div
           className="absolute bottom-2 right-2 flex items-center gap-1"
@@ -771,6 +802,7 @@ interface TerminalOutputProps {
   cwd?: string; // Current working directory for proximity-based matching
   projectRoot?: string; // Project root absolute path for converting absolute paths to relative
   onFileClick?: (path: string) => void; // Callback when a file link is clicked
+  onShowErrorDetails?: () => void; // Callback to show the error modal (for error log entries)
 }
 
 export const TerminalOutput = forwardRef<HTMLDivElement, TerminalOutputProps>((props, ref) => {
@@ -780,7 +812,7 @@ export const TerminalOutput = forwardRef<HTMLDivElement, TerminalOutputProps>((p
     inputRef, logsEndRef, maxOutputLines, onDeleteLog, onRemoveQueuedItem, onInterrupt,
     audioFeedbackCommand, onScrollPositionChange, onAtBottomChange, initialScrollTop,
     markdownEditMode, setMarkdownEditMode, onReplayMessage,
-    fileTree, cwd, projectRoot, onFileClick
+    fileTree, cwd, projectRoot, onFileClick, onShowErrorDetails
   } = props;
 
   // Use the forwarded ref if provided, otherwise create a local one
@@ -1444,6 +1476,7 @@ export const TerminalOutput = forwardRef<HTMLDivElement, TerminalOutputProps>((p
             cwd={cwd}
             projectRoot={projectRoot}
             onFileClick={onFileClick}
+            onShowErrorDetails={onShowErrorDetails}
           />
         ))}
 

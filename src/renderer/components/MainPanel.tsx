@@ -953,6 +953,7 @@ export const MainPanel = forwardRef<MainPanelHandle, MainPanelProps>(function Ma
                   : ''}
                 projectRoot={activeSession.fullPath}
                 onFileClick={props.onFileClick}
+                onShowErrorDetails={props.onShowAgentErrorModal}
               />
               </div>
 

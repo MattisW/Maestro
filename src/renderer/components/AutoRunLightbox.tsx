@@ -128,8 +128,9 @@ export const AutoRunLightbox = memo(({
   const copyMarkdownReference = useCallback(async () => {
     if (!lightboxFilename) return;
 
-    // For external URLs, use the URL directly; for local images, use the relative path
-    const imagePath = lightboxExternalUrl || lightboxFilename;
+    // For external URLs, use the URL directly; for local images, URL-encode the path
+    const imagePath = lightboxExternalUrl ||
+      lightboxFilename.split('/').map(part => encodeURIComponent(part)).join('/');
     // Extract just the filename for the alt text
     const altText = lightboxFilename.split('/').pop()?.replace(/\.[^.]+$/, '') || 'image';
     const markdownString = `![${altText}](${imagePath})`;
@@ -278,12 +279,13 @@ export const AutoRunLightbox = memo(({
         </button>
       )}
 
-      {/* Bottom info */}
+      {/* Bottom info - unified format matching LightboxModal */}
       <div className="absolute bottom-10 text-white text-sm opacity-70 text-center max-w-[80%]">
         <div className="truncate">{lightboxFilename}</div>
         <div className="mt-1">
-          {canNavigate ? `Image ${currentIndex + 1} of ${attachmentsList.length} • ← → to navigate • ` : ''}
-          {!lightboxExternalUrl && onDelete ? 'Delete to remove • ' : ''}ESC to close
+          {canNavigate && <span>Image {currentIndex + 1} of {attachmentsList.length} • ← → to navigate • </span>}
+          {!lightboxExternalUrl && onDelete && <span>Delete to remove • </span>}
+          <span>ESC to close</span>
         </div>
       </div>
 

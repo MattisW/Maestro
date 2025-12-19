@@ -504,8 +504,14 @@ export class ProcessManager extends EventEmitter {
                     }
 
                     // Accumulate text from partial streaming events (OpenCode text messages)
+                    // Skip error events - they're handled separately by detectErrorFromLine
                     if (event.type === 'text' && event.isPartial && event.text) {
                       managedProcess.streamedText = (managedProcess.streamedText || '') + event.text;
+                    }
+
+                    // Skip processing error events further - they're handled by agent-error emission
+                    if (event.type === 'error') {
+                      continue;
                     }
 
                     // Extract text data from result events (final complete response)
@@ -529,6 +535,12 @@ export class ProcessManager extends EventEmitter {
                 } else {
                   // Fallback for agents without parsers (legacy Claude Code format)
                   // Handle different message types from stream-json output
+
+                  // Skip error messages in fallback mode - they're handled by detectErrorFromLine
+                  if (msg.type === 'error' || msg.error) {
+                    continue;
+                  }
+
                   if (msg.type === 'result' && msg.result && !managedProcess.resultEmitted) {
                     managedProcess.resultEmitted = true;
                     logger.debug('[ProcessManager] Emitting result data', 'ProcessManager', { sessionId, resultLength: msg.result.length });

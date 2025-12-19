@@ -142,11 +142,14 @@ function AttachmentImage({
       return;
     }
 
+    // Decode URL-encoded paths (e.g., "images/Image%20Test.png" -> "images/Image Test.png")
+    const decodedSrc = decodeURIComponent(src);
+
     // Check if this is a relative path (e.g., images/{docName}-{timestamp}.{ext})
-    if (src.startsWith('images/') && folderPath) {
-      const fname = src.split('/').pop() || src;
+    if (decodedSrc.startsWith('images/') && folderPath) {
+      const fname = decodedSrc.split('/').pop() || decodedSrc;
       setFilename(fname);
-      const cacheKey = `${folderPath}:${src}`;
+      const cacheKey = `${folderPath}:${decodedSrc}`;
 
       // Check cache first
       if (imageCache.has(cacheKey)) {
@@ -156,7 +159,7 @@ function AttachmentImage({
       }
 
       // Load from folder using absolute path
-      const absolutePath = `${folderPath}/${src}`;
+      const absolutePath = `${folderPath}/${decodedSrc}`;
       window.maestro.fs.readFile(absolutePath)
         .then((result) => {
           if (result.startsWith('data:')) {
@@ -245,12 +248,13 @@ function AttachmentImage({
     return null;
   }
 
-  // For lightbox, pass the original src (which is the relative path like "images/...")
-  // rather than just the extracted filename
+  // For lightbox, pass the decoded path (which matches attachmentsList)
+  // rather than the URL-encoded src from markdown
+  const decodedSrcForClick = src ? decodeURIComponent(src) : '';
   return (
     <span
       className="inline-block align-middle mx-1 my-1 cursor-pointer group relative"
-      onClick={() => onImageClick?.(src || '')}
+      onClick={() => onImageClick?.(decodedSrcForClick)}
       title={filename ? `Click to enlarge: ${filename}` : 'Click to enlarge'}
     >
       <img
