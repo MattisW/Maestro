@@ -49,6 +49,8 @@ interface GroupChatPanelProps {
   // Input send behavior
   enterToSendAI?: boolean;
   setEnterToSendAI?: (value: boolean) => void;
+  // Flash notification callback
+  showFlashNotification?: (message: string) => void;
 }
 
 export function GroupChatPanel({
@@ -81,6 +83,7 @@ export function GroupChatPanel({
   maxOutputLines,
   enterToSendAI,
   setEnterToSendAI,
+  showFlashNotification,
 }: GroupChatPanelProps): JSX.Element {
   return (
     <div
@@ -131,6 +134,7 @@ export function GroupChatPanel({
         onReorderQueuedItems={onReorderQueuedItems}
         enterToSendAI={enterToSendAI}
         setEnterToSendAI={setEnterToSendAI}
+        showFlashNotification={showFlashNotification}
       />
     </div>
   );

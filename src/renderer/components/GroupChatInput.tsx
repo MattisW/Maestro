@@ -52,6 +52,8 @@ interface GroupChatInputProps {
   // Input send behavior (synced with global settings)
   enterToSendAI?: boolean;
   setEnterToSendAI?: (value: boolean) => void;
+  // Flash notification callback
+  showFlashNotification?: (message: string) => void;
 }
 
 export function GroupChatInput({
@@ -76,6 +78,7 @@ export function GroupChatInput({
   onReorderQueuedItems,
   enterToSendAI: enterToSendAIProp,
   setEnterToSendAI: setEnterToSendAIProp,
+  showFlashNotification,
 }: GroupChatInputProps): JSX.Element {
   const [message, setMessage] = useState(draftMessage || '');
   const [showMentions, setShowMentions] = useState(false);
@@ -283,13 +286,20 @@ export function GroupChatInput({
       const reader = new FileReader();
       reader.onload = (event) => {
         if (event.target?.result) {
-          setStagedImages(prev => [...prev, event.target!.result as string]);
+          const imageData = event.target!.result as string;
+          setStagedImages(prev => {
+            if (prev.includes(imageData)) {
+              showFlashNotification?.('Duplicate image ignored');
+              return prev;
+            }
+            return [...prev, imageData];
+          });
         }
       };
       reader.readAsDataURL(file);
     });
     e.target.value = '';
-  }, []);
+  }, [showFlashNotification]);
 
   const removeImage = useCallback((index: number) => {
     setStagedImages(prev => prev.filter((_, i) => i !== index));

@@ -180,6 +180,8 @@ interface MainPanelProps {
   // Agent error handling
   onClearAgentError?: () => void;
   onShowAgentErrorModal?: () => void;
+  // Flash notification callback
+  showFlashNotification?: (message: string) => void;
 }
 
 export const MainPanel = forwardRef<MainPanelHandle, MainPanelProps>(function MainPanel(props, ref) {
@@ -201,7 +203,8 @@ export const MainPanel = forwardRef<MainPanelHandle, MainPanelProps>(function Ma
     fileTreeContainerRef, fileTreeFilterInputRef, toggleInputMode, processInput, handleInterrupt,
     handleInputKeyDown, handlePaste, handleDrop, getContextColor, setActiveSessionId,
     batchRunState, currentSessionBatchState, onStopBatchRun, showConfirmation, onRemoveQueuedItem, onOpenQueueBrowser,
-    isMobileLandscape = false
+    isMobileLandscape = false,
+    showFlashNotification
   } = props;
 
   // isCurrentSessionAutoMode: THIS session has active batch run (for all UI indicators)
@@ -1017,6 +1020,7 @@ export const MainPanel = forwardRef<MainPanelHandle, MainPanelProps>(function Ma
                 tabSaveToHistory={activeTab?.saveToHistory ?? false}
                 onToggleTabSaveToHistory={props.onToggleTabSaveToHistory}
                 onOpenPromptComposer={props.onOpenPromptComposer}
+                showFlashNotification={showFlashNotification}
               />
               </div>
               )}

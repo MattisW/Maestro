@@ -108,7 +108,8 @@ export const InputArea = React.memo(function InputArea(props: InputAreaProps) {
     onOpenQueueBrowser,
     tabReadOnlyMode = false, onToggleTabReadOnlyMode,
     tabSaveToHistory = false, onToggleTabSaveToHistory,
-    onOpenPromptComposer
+    onOpenPromptComposer,
+    showFlashNotification
   } = props;
 
   // Get agent capabilities for conditional feature rendering
@@ -655,7 +656,14 @@ export const InputArea = React.memo(function InputArea(props: InputAreaProps) {
                     const reader = new FileReader();
                     reader.onload = (event) => {
                       if (event.target?.result) {
-                        setStagedImages(prev => [...prev, event.target!.result as string]);
+                        const imageData = event.target!.result as string;
+                        setStagedImages(prev => {
+                          if (prev.includes(imageData)) {
+                            showFlashNotification?.('Duplicate image ignored');
+                            return prev;
+                          }
+                          return [...prev, imageData];
+                        });
                       }
                     };
                     reader.readAsDataURL(file);

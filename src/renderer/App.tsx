@@ -5748,6 +5748,10 @@ export default function MaestroConsole() {
               maxOutputLines={maxOutputLines}
               enterToSendAI={enterToSendAI}
               setEnterToSendAI={setEnterToSendAI}
+              showFlashNotification={(message: string) => {
+                setSuccessFlashNotification(message);
+                setTimeout(() => setSuccessFlashNotification(null), 2000);
+              }}
             />
           </div>
           <GroupChatRightPanel
@@ -6296,6 +6300,10 @@ export default function MaestroConsole() {
         }}
         onClearAgentError={activeSession?.agentError ? () => handleClearAgentError(activeSession.id) : undefined}
         onShowAgentErrorModal={activeSession?.agentError ? () => setAgentErrorModalSessionId(activeSession.id) : undefined}
+        showFlashNotification={(message: string) => {
+          setSuccessFlashNotification(message);
+          setTimeout(() => setSuccessFlashNotification(null), 2000);
+        }}
       />
       )}
 
