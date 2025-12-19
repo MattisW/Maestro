@@ -1755,7 +1755,10 @@ function extractTextFromAgentOutput(rawOutput: string, agentType: string): strin
   }
 
   const textParts: string[] = [];
+  let resultText: string | null = null;
   const lines = rawOutput.split('\n');
+  let resultMessageCount = 0;
+  let textMessageCount = 0;
 
   for (const line of lines) {
     if (!line.trim()) continue;
@@ -1765,15 +1768,33 @@ function extractTextFromAgentOutput(rawOutput: string, agentType: string): strin
 
     // Extract text based on event type
     if (event.type === 'result' && event.text) {
-      // Result message is the authoritative final response
-      return event.text;
+      // Result message is the authoritative final response - save it
+      resultText = event.text;
+      resultMessageCount++;
     }
 
     if (event.type === 'text' && event.text) {
       textParts.push(event.text);
+      textMessageCount++;
     }
   }
 
+  // Debug logging to understand what's being extracted
+  const extractedText = resultText || textParts.join('');
+  const newlineCount = (extractedText.match(/\n/g) || []).length;
+  logger.info(`[GroupChat] extractTextFromAgentOutput: agentType=${agentType}, resultMsgs=${resultMessageCount}, textMsgs=${textMessageCount}, hasResult=${!!resultText}, newlines=${newlineCount}, totalLen=${extractedText.length}`, '[GroupChat]');
+  if (newlineCount === 0 && extractedText.length > 100) {
+    // Log a sample if no newlines found in long text (likely a bug)
+    logger.warn(`[GroupChat] No newlines found in long response! First 200 chars: ${extractedText.substring(0, 200)}`, '[GroupChat]');
+  }
+
+  // Prefer result message if available (it contains the complete formatted response)
+  if (resultText) {
+    return resultText;
+  }
+
+  // Fallback: if no result message, concatenate streaming text parts
+  // This preserves the original streaming text which should contain embedded newlines
   return textParts.join('');
 }
 

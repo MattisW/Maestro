@@ -934,6 +934,28 @@ contextBridge.exposeInMainWorld('maestro', {
     removeParticipant: (id: string, name: string) =>
       ipcRenderer.invoke('groupChat:removeParticipant', id, name),
 
+    // History
+    getHistory: (id: string) =>
+      ipcRenderer.invoke('groupChat:getHistory', id),
+    addHistoryEntry: (id: string, entry: {
+      timestamp: number;
+      summary: string;
+      participantName: string;
+      participantColor: string;
+      type: 'delegation' | 'response' | 'synthesis' | 'error';
+      elapsedTimeMs?: number;
+      tokenCount?: number;
+      cost?: number;
+      fullResponse?: string;
+    }) =>
+      ipcRenderer.invoke('groupChat:addHistoryEntry', id, entry),
+    deleteHistoryEntry: (groupChatId: string, entryId: string) =>
+      ipcRenderer.invoke('groupChat:deleteHistoryEntry', groupChatId, entryId),
+    clearHistory: (id: string) =>
+      ipcRenderer.invoke('groupChat:clearHistory', id),
+    getHistoryFilePath: (id: string) =>
+      ipcRenderer.invoke('groupChat:getHistoryFilePath', id),
+
     // Events
     onMessage: (callback: (groupChatId: string, message: {
       timestamp: string;
@@ -967,6 +989,22 @@ contextBridge.exposeInMainWorld('maestro', {
       const handler = (_: any, groupChatId: string, usage: any) => callback(groupChatId, usage);
       ipcRenderer.on('groupChat:moderatorUsage', handler);
       return () => ipcRenderer.removeListener('groupChat:moderatorUsage', handler);
+    },
+    onHistoryEntry: (callback: (groupChatId: string, entry: {
+      id: string;
+      timestamp: number;
+      summary: string;
+      participantName: string;
+      participantColor: string;
+      type: 'delegation' | 'response' | 'synthesis' | 'error';
+      elapsedTimeMs?: number;
+      tokenCount?: number;
+      cost?: number;
+      fullResponse?: string;
+    }) => void) => {
+      const handler = (_: any, groupChatId: string, entry: any) => callback(groupChatId, entry);
+      ipcRenderer.on('groupChat:historyEntry', handler);
+      return () => ipcRenderer.removeListener('groupChat:historyEntry', handler);
     },
   },
 
@@ -1752,6 +1790,45 @@ export interface MaestroAPI {
     sendToParticipant: (id: string, name: string, message: string, images?: string[]) => Promise<void>;
     removeParticipant: (id: string, name: string) => Promise<void>;
 
+    // History
+    getHistory: (id: string) => Promise<Array<{
+      id: string;
+      timestamp: number;
+      summary: string;
+      participantName: string;
+      participantColor: string;
+      type: 'delegation' | 'response' | 'synthesis' | 'error';
+      elapsedTimeMs?: number;
+      tokenCount?: number;
+      cost?: number;
+      fullResponse?: string;
+    }>>;
+    addHistoryEntry: (id: string, entry: {
+      timestamp: number;
+      summary: string;
+      participantName: string;
+      participantColor: string;
+      type: 'delegation' | 'response' | 'synthesis' | 'error';
+      elapsedTimeMs?: number;
+      tokenCount?: number;
+      cost?: number;
+      fullResponse?: string;
+    }) => Promise<{
+      id: string;
+      timestamp: number;
+      summary: string;
+      participantName: string;
+      participantColor: string;
+      type: 'delegation' | 'response' | 'synthesis' | 'error';
+      elapsedTimeMs?: number;
+      tokenCount?: number;
+      cost?: number;
+      fullResponse?: string;
+    }>;
+    deleteHistoryEntry: (groupChatId: string, entryId: string) => Promise<boolean>;
+    clearHistory: (id: string) => Promise<void>;
+    getHistoryFilePath: (id: string) => Promise<string | null>;
+
     // Events
     onMessage: (callback: (groupChatId: string, message: {
       timestamp: string;
@@ -1769,6 +1846,18 @@ export interface MaestroAPI {
       contextUsage: number;
       totalCost: number;
       tokenCount: number;
+    }) => void) => () => void;
+    onHistoryEntry: (callback: (groupChatId: string, entry: {
+      id: string;
+      timestamp: number;
+      summary: string;
+      participantName: string;
+      participantColor: string;
+      type: 'delegation' | 'response' | 'synthesis' | 'error';
+      elapsedTimeMs?: number;
+      tokenCount?: number;
+      cost?: number;
+      fullResponse?: string;
     }) => void) => () => void;
   };
   leaderboard: {

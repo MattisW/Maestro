@@ -46,11 +46,18 @@ export function getParticipantSystemPrompt(
 Your Role: ${participantName}
 
 You will receive instructions from the moderator. When you complete a task or need to communicate:
-1. Respond with clear, concise messages
-2. Reference the chat log at "${logPath}" for context on what others have said
-3. Focus on your assigned role and tasks
 
-Be collaborative and professional. Your responses will be shared with the moderator and other participants.`;
+**IMPORTANT RESPONSE FORMAT:**
+Your response MUST begin with a single-sentence summary of what you accomplished or are reporting. This first sentence will be extracted for the group chat history. Keep it concise and action-oriented (e.g., "Implemented the user authentication endpoint with JWT tokens." or "Fixed the null pointer exception in the data parser.").
+
+After your summary sentence, you may provide additional details, code snippets, or explanations as needed.
+
+Additional guidelines:
+1. Reference the chat log at "${logPath}" for context on what others have said
+2. Focus on your assigned role and tasks
+3. Be collaborative and professional
+
+Your responses will be shared with the moderator and other participants.`;
 }
 
 /**

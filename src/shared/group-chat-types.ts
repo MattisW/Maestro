@@ -72,3 +72,35 @@ export interface GroupChatMessage {
  * Group chat state for UI display
  */
 export type GroupChatState = 'idle' | 'moderator-thinking' | 'agent-working';
+
+/**
+ * Type of history entry in a group chat
+ */
+export type GroupChatHistoryEntryType = 'delegation' | 'response' | 'synthesis' | 'error';
+
+/**
+ * History entry for group chat activity tracking.
+ * Stored in JSONL format in the group chat directory.
+ */
+export interface GroupChatHistoryEntry {
+  /** Unique identifier for the entry */
+  id: string;
+  /** Timestamp when this entry was created */
+  timestamp: number;
+  /** One-sentence summary of what was accomplished */
+  summary: string;
+  /** Name of the participant who did the work (or 'Moderator' for synthesis) */
+  participantName: string;
+  /** Color assigned to this participant (for visualization) */
+  participantColor: string;
+  /** Type of activity */
+  type: GroupChatHistoryEntryType;
+  /** Time taken to complete the task (ms) */
+  elapsedTimeMs?: number;
+  /** Token count for this activity */
+  tokenCount?: number;
+  /** Cost in USD for this activity */
+  cost?: number;
+  /** Full response text (optional, for detail view) */
+  fullResponse?: string;
+}

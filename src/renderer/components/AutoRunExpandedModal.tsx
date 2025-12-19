@@ -56,7 +56,7 @@ interface AutoRunExpandedModalProps {
 export function AutoRunExpandedModal({
   theme,
   onClose,
-  mode,
+  mode: initialMode,
   onModeChange,
   batchRunState,
   onOpenBatchRunner,
@@ -75,6 +75,9 @@ export function AutoRunExpandedModal({
   const autoRunRef = useRef<AutoRunHandle>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   onCloseRef.current = onClose;
+
+  // Local mode state - independent from the right panel behind the modal
+  const [localMode, setLocalMode] = useState<'edit' | 'preview'>(initialMode);
 
   const isLocked = batchRunState?.isRunning || false;
   const isAgentBusy = sessionState === 'busy' || sessionState === 'connecting';
@@ -144,14 +147,14 @@ export function AutoRunExpandedModal({
     return () => clearTimeout(timer);
   }, []);
 
-  // Use the AutoRun's switchMode for scroll sync, falling back to direct mode change
+  // Use the AutoRun's switchMode for scroll sync, falling back to local mode change
   const setMode = useCallback((newMode: 'edit' | 'preview') => {
     if (autoRunRef.current?.switchMode) {
       autoRunRef.current.switchMode(newMode);
     } else {
-      onModeChange(newMode);
+      setLocalMode(newMode);
     }
-  }, [onModeChange]);
+  }, []);
 
   return createPortal(
     <div
@@ -187,12 +190,12 @@ export function AutoRunExpandedModal({
               onClick={() => !isLocked && setMode('edit')}
               disabled={isLocked}
               className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs transition-colors ${
-                mode === 'edit' && !isLocked ? 'font-semibold' : ''
+                localMode === 'edit' && !isLocked ? 'font-semibold' : ''
               } ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
               style={{
-                backgroundColor: mode === 'edit' && !isLocked ? theme.colors.bgMain : 'transparent',
-                color: isLocked ? theme.colors.textDim : (mode === 'edit' ? theme.colors.textMain : theme.colors.textDim),
-                border: `1px solid ${mode === 'edit' && !isLocked ? theme.colors.accent : theme.colors.border}`
+                backgroundColor: localMode === 'edit' && !isLocked ? theme.colors.bgMain : 'transparent',
+                color: isLocked ? theme.colors.textDim : (localMode === 'edit' ? theme.colors.textMain : theme.colors.textDim),
+                border: `1px solid ${localMode === 'edit' && !isLocked ? theme.colors.accent : theme.colors.border}`
               }}
               title={isLocked ? 'Editing disabled while Auto Run active' : 'Edit document'}
             >
@@ -202,12 +205,12 @@ export function AutoRunExpandedModal({
             <button
               onClick={() => setMode('preview')}
               className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs transition-colors ${
-                mode === 'preview' || isLocked ? 'font-semibold' : ''
+                localMode === 'preview' || isLocked ? 'font-semibold' : ''
               }`}
               style={{
-                backgroundColor: mode === 'preview' || isLocked ? theme.colors.bgMain : 'transparent',
-                color: mode === 'preview' || isLocked ? theme.colors.textMain : theme.colors.textDim,
-                border: `1px solid ${mode === 'preview' || isLocked ? theme.colors.accent : theme.colors.border}`
+                backgroundColor: localMode === 'preview' || isLocked ? theme.colors.bgMain : 'transparent',
+                color: localMode === 'preview' || isLocked ? theme.colors.textMain : theme.colors.textDim,
+                border: `1px solid ${localMode === 'preview' || isLocked ? theme.colors.accent : theme.colors.border}`
               }}
               title="Preview document"
             >
@@ -216,17 +219,17 @@ export function AutoRunExpandedModal({
             </button>
             {/* Image upload button - always visible, ghosted in preview mode */}
             <button
-              onClick={() => mode === 'edit' && !isLocked && fileInputRef.current?.click()}
-              disabled={mode !== 'edit' || isLocked}
+              onClick={() => localMode === 'edit' && !isLocked && fileInputRef.current?.click()}
+              disabled={localMode !== 'edit' || isLocked}
               className={`flex items-center justify-center w-8 h-8 rounded text-xs transition-colors ${
-                mode === 'edit' && !isLocked ? 'hover:opacity-80' : 'opacity-30 cursor-not-allowed'
+                localMode === 'edit' && !isLocked ? 'hover:opacity-80' : 'opacity-30 cursor-not-allowed'
               }`}
               style={{
                 backgroundColor: 'transparent',
                 color: theme.colors.textDim,
                 border: `1px solid ${theme.colors.border}`
               }}
-              title={mode === 'edit' && !isLocked ? 'Add image (or paste from clipboard)' : 'Switch to Edit mode to add images'}
+              title={localMode === 'edit' && !isLocked ? 'Add image (or paste from clipboard)' : 'Switch to Edit mode to add images'}
             >
               <Image className="w-3.5 h-3.5" />
             </button>
@@ -237,7 +240,7 @@ export function AutoRunExpandedModal({
               className="hidden"
             />
             {/* Save/Revert buttons - shown when dirty */}
-            {isDirty && mode === 'edit' && !isLocked && (
+            {isDirty && localMode === 'edit' && !isLocked && (
               <>
                 <div className="w-px h-4 mx-1" style={{ backgroundColor: theme.colors.border }} />
                 <button

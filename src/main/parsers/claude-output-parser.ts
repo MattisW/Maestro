@@ -89,9 +89,16 @@ export class ClaudeOutputParser implements AgentOutputParser {
 
     // Handle result messages (final complete response)
     if (msg.type === 'result') {
+      // The result field contains the complete formatted response
+      // Fall back to message.content if result is not present
+      let resultText = msg.result;
+      if (!resultText && msg.message?.content) {
+        resultText = this.extractTextFromMessage(msg);
+      }
+
       const event: ParsedEvent = {
         type: 'result',
-        text: msg.result,
+        text: resultText,
         sessionId: msg.session_id,
         raw: msg,
       };

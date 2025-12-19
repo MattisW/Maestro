@@ -38,7 +38,7 @@ import { AgentErrorModal } from './components/AgentErrorModal';
 
 // Group Chat Components
 import { GroupChatPanel } from './components/GroupChatPanel';
-import { GroupChatParticipants } from './components/GroupChatParticipants';
+import { GroupChatRightPanel, type GroupChatRightTab } from './components/GroupChatRightPanel';
 import { NewGroupChatModal } from './components/NewGroupChatModal';
 import { DeleteGroupChatModal } from './components/DeleteGroupChatModal';
 import { RenameGroupChatModal } from './components/RenameGroupChatModal';
@@ -221,6 +221,7 @@ export default function MaestroConsole() {
   const [groupChatStagedImages, setGroupChatStagedImages] = useState<string[]>([]);
   const [groupChatReadOnlyMode, setGroupChatReadOnlyMode] = useState(false);
   const [groupChatExecutionQueue, setGroupChatExecutionQueue] = useState<QueuedItem[]>([]);
+  const [groupChatRightTab, setGroupChatRightTab] = useState<GroupChatRightTab>('participants');
   const [moderatorUsage, setModeratorUsage] = useState<{ contextUsage: number; totalCost: number; tokenCount: number } | null>(null);
 
   // --- BATCHED SESSION UPDATES (reduces React re-renders during AI streaming) ---
@@ -2684,6 +2685,14 @@ export default function MaestroConsole() {
       const messages = await window.maestro.groupChat.getMessages(id);
       setGroupChatMessages(messages);
 
+      // Load saved right tab preference for this group chat
+      const savedTab = await window.maestro.settings.get(`groupChatRightTab:${id}`);
+      if (savedTab === 'participants' || savedTab === 'history') {
+        setGroupChatRightTab(savedTab);
+      } else {
+        setGroupChatRightTab('participants'); // Default
+      }
+
       // Start moderator if not running
       await window.maestro.groupChat.startModerator(id);
 
@@ -2699,6 +2708,14 @@ export default function MaestroConsole() {
     setGroupChatMessages([]);
     setGroupChatState('idle');
   }, []);
+
+  // Handle right panel tab change with persistence
+  const handleGroupChatRightTabChange = useCallback((tab: GroupChatRightTab) => {
+    setGroupChatRightTab(tab);
+    if (activeGroupChatId) {
+      window.maestro.settings.set(`groupChatRightTab:${activeGroupChatId}`, tab);
+    }
+  }, [activeGroupChatId]);
 
   // Open the moderator session in the direct agent view
   const handleOpenModeratorSession = useCallback((moderatorSessionId: string) => {
@@ -5684,8 +5701,9 @@ export default function MaestroConsole() {
               setEnterToSendAI={setEnterToSendAI}
             />
           </div>
-          <GroupChatParticipants
+          <GroupChatRightPanel
             theme={theme}
+            groupChatId={activeGroupChatId}
             participants={groupChats.find(c => c.id === activeGroupChatId)?.participants || []}
             participantStates={new Map(
               sessions
@@ -5701,6 +5719,8 @@ export default function MaestroConsole() {
             moderatorSessionId={groupChats.find(c => c.id === activeGroupChatId)?.moderatorSessionId || ''}
             moderatorState={groupChatState === 'moderator-thinking' ? 'busy' : 'idle'}
             moderatorUsage={moderatorUsage}
+            activeTab={groupChatRightTab}
+            onTabChange={handleGroupChatRightTabChange}
           />
         </>
       )}

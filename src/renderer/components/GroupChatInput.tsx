@@ -170,13 +170,6 @@ export function GroupChatInput({
         setReadOnlyMode(!readOnlyMode);
         return;
       }
-      // Cmd+E: Open prompt composer
-      if (e.key === 'e' && onOpenPromptComposer) {
-        e.preventDefault();
-        e.stopPropagation();
-        onOpenPromptComposer();
-        return;
-      }
       // Cmd+Y: Open image carousel
       if (e.key === 'y' && stagedImages.length > 0 && onOpenLightbox) {
         e.preventDefault();
@@ -238,7 +231,7 @@ export function GroupChatInput({
         handleSend();
       }
     }
-  }, [handleSend, showMentions, filteredAgents, selectedMentionIndex, enterToSend, readOnlyMode, setReadOnlyMode, onOpenPromptComposer, stagedImages, onOpenLightbox]);
+  }, [handleSend, showMentions, filteredAgents, selectedMentionIndex, enterToSend, readOnlyMode, setReadOnlyMode, stagedImages, onOpenLightbox]);
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;

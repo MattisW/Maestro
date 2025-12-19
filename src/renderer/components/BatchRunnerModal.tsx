@@ -231,6 +231,7 @@ export function BatchRunnerModal(props: BatchRunnerModalProps) {
   useEffect(() => {
     const checkGitRepo = async () => {
       setCheckingGitRepo(true);
+      console.log(`[BatchRunnerModal] Checking git repo and gh CLI. ghPath prop: "${ghPath}"`);
       try {
         const result = await window.maestro.git.isRepo(sessionCwd);
         const isRepo = result === true;
@@ -238,10 +239,13 @@ export function BatchRunnerModal(props: BatchRunnerModalProps) {
 
         // If it's a git repo, fetch available branches and check gh CLI
         if (isRepo) {
+          const ghPathToUse = ghPath || undefined;
+          console.log(`[BatchRunnerModal] Checking gh CLI with path: ${ghPathToUse}`);
           const [branchResult, ghResult] = await Promise.all([
             window.maestro.git.branches(sessionCwd),
-            window.maestro.git.checkGhCli(ghPath || undefined)
+            window.maestro.git.checkGhCli(ghPathToUse)
           ]);
+          console.log(`[BatchRunnerModal] gh CLI check result:`, ghResult);
 
           if (branchResult.branches && branchResult.branches.length > 0) {
             setAvailableBranches(branchResult.branches);

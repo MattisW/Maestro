@@ -15,7 +15,7 @@ import { app } from 'electron';
 import Store from 'electron-store';
 import { v4 as uuidv4 } from 'uuid';
 import type { ToolType } from '../../shared/types';
-import type { ModeratorConfig } from '../../shared/group-chat-types';
+import type { ModeratorConfig, GroupChatHistoryEntry } from '../../shared/group-chat-types';
 
 /**
  * Valid agent IDs that can be used as moderators.
@@ -404,4 +404,190 @@ export async function updateParticipant(
   };
 
   return updateGroupChat(id, { participants: updatedParticipants });
+}
+
+// ============================================================================
+// Group Chat History Storage (JSONL format)
+// ============================================================================
+
+/**
+ * Get the history file path for a group chat
+ */
+function getHistoryPath(id: string): string {
+  return path.join(getGroupChatDir(id), 'history.jsonl');
+}
+
+/**
+ * Adds a history entry to a group chat's history log.
+ *
+ * @param groupChatId - The ID of the group chat
+ * @param entry - The history entry to add (without id, which will be generated)
+ * @returns The created history entry with generated id
+ */
+export async function addGroupChatHistoryEntry(
+  groupChatId: string,
+  entry: Omit<GroupChatHistoryEntry, 'id'>
+): Promise<GroupChatHistoryEntry> {
+  const historyPath = getHistoryPath(groupChatId);
+
+  // Ensure the group chat directory exists
+  const chatDir = getGroupChatDir(groupChatId);
+  await fs.mkdir(chatDir, { recursive: true });
+
+  // Create the full entry with generated ID
+  const fullEntry: GroupChatHistoryEntry = {
+    ...entry,
+    id: uuidv4(),
+  };
+
+  // Append to JSONL file (one JSON object per line)
+  const line = JSON.stringify(fullEntry) + '\n';
+  await fs.appendFile(historyPath, line, 'utf-8');
+
+  return fullEntry;
+}
+
+/**
+ * Reads all history entries for a group chat.
+ *
+ * @param groupChatId - The ID of the group chat
+ * @returns Array of history entries, sorted by timestamp (newest first)
+ */
+export async function getGroupChatHistory(groupChatId: string): Promise<GroupChatHistoryEntry[]> {
+  const historyPath = getHistoryPath(groupChatId);
+
+  try {
+    const content = await fs.readFile(historyPath, 'utf-8');
+    if (!content.trim()) {
+      return [];
+    }
+
+    const entries: GroupChatHistoryEntry[] = [];
+    const lines = content.trim().split('\n');
+
+    for (const line of lines) {
+      if (line.trim()) {
+        try {
+          entries.push(JSON.parse(line));
+        } catch {
+          // Skip malformed lines
+          console.warn(`[GroupChatHistory] Skipping malformed line: ${line.substring(0, 50)}...`);
+        }
+      }
+    }
+
+    // Sort by timestamp, newest first
+    return entries.sort((a, b) => b.timestamp - a.timestamp);
+  } catch (error: unknown) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return [];
+    }
+    throw error;
+  }
+}
+
+/**
+ * Deletes a specific history entry from a group chat.
+ *
+ * @param groupChatId - The ID of the group chat
+ * @param entryId - The ID of the entry to delete
+ * @returns True if the entry was deleted, false if not found
+ */
+export async function deleteGroupChatHistoryEntry(
+  groupChatId: string,
+  entryId: string
+): Promise<boolean> {
+  const historyPath = getHistoryPath(groupChatId);
+
+  try {
+    const content = await fs.readFile(historyPath, 'utf-8');
+    const lines = content.trim().split('\n');
+    let found = false;
+
+    const filteredLines = lines.filter(line => {
+      if (!line.trim()) return false;
+      try {
+        const entry = JSON.parse(line) as GroupChatHistoryEntry;
+        if (entry.id === entryId) {
+          found = true;
+          return false;
+        }
+        return true;
+      } catch {
+        return true; // Keep malformed lines
+      }
+    });
+
+    if (found) {
+      await fs.writeFile(historyPath, filteredLines.join('\n') + (filteredLines.length > 0 ? '\n' : ''), 'utf-8');
+    }
+
+    return found;
+  } catch (error: unknown) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return false;
+    }
+    throw error;
+  }
+}
+
+/**
+ * Clears all history entries for a group chat.
+ *
+ * @param groupChatId - The ID of the group chat
+ */
+export async function clearGroupChatHistory(groupChatId: string): Promise<void> {
+  const historyPath = getHistoryPath(groupChatId);
+
+  try {
+    await fs.writeFile(historyPath, '', 'utf-8');
+  } catch (error: unknown) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      throw error;
+    }
+    // File doesn't exist, nothing to clear
+  }
+}
+
+/**
+ * Gets the file path to the history file for a group chat.
+ * Useful for AI context integration.
+ *
+ * @param groupChatId - The ID of the group chat
+ * @returns The file path, or null if the group chat doesn't exist
+ */
+export async function getGroupChatHistoryFilePath(groupChatId: string): Promise<string | null> {
+  const chat = await loadGroupChat(groupChatId);
+  if (!chat) {
+    return null;
+  }
+  return getHistoryPath(groupChatId);
+}
+
+/**
+ * Extract the first sentence from a message for use as summary.
+ * Handles various sentence-ending patterns.
+ *
+ * @param message - The full message text
+ * @returns The first sentence, or truncated text if no sentence found
+ */
+export function extractFirstSentence(message: string): string {
+  // Trim and normalize whitespace
+  const trimmed = message.trim().replace(/\s+/g, ' ');
+
+  // Look for sentence-ending punctuation followed by space or end of string
+  // Handle common patterns: periods, exclamation, question marks
+  // Avoid matching periods in abbreviations like "e.g." or "Dr."
+  const sentenceMatch = trimmed.match(/^(.+?(?<![A-Z])[.!?])(?:\s|$)/);
+
+  if (sentenceMatch) {
+    return sentenceMatch[1].trim();
+  }
+
+  // If no sentence ending found, take first 150 chars
+  if (trimmed.length > 150) {
+    return trimmed.substring(0, 147) + '...';
+  }
+
+  return trimmed;
 }

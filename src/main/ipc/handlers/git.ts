@@ -526,16 +526,20 @@ export function registerGitHandlers(): void {
     async (ghPath?: string) => {
       // Use custom path if provided, otherwise fall back to 'gh' (expects it in PATH)
       const ghCommand = ghPath || 'gh';
+      logger.debug(`Checking gh CLI at: ${ghCommand} (custom path: ${ghPath || 'none'})`, LOG_CONTEXT);
 
       // Check if gh is installed by running gh --version
       const versionResult = await execFileNoThrow(ghCommand, ['--version']);
       if (versionResult.exitCode !== 0) {
+        logger.warn(`gh CLI not found at ${ghCommand}: exit=${versionResult.exitCode}, stderr=${versionResult.stderr}`, LOG_CONTEXT);
         return { installed: false, authenticated: false };
       }
+      logger.debug(`gh CLI found: ${versionResult.stdout.trim().split('\n')[0]}`, LOG_CONTEXT);
 
       // Check if gh is authenticated by running gh auth status
       const authResult = await execFileNoThrow(ghCommand, ['auth', 'status']);
       const authenticated = authResult.exitCode === 0;
+      logger.debug(`gh auth status: ${authenticated ? 'authenticated' : 'not authenticated'}`, LOG_CONTEXT);
 
       return { installed: true, authenticated };
     }

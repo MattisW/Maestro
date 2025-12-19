@@ -123,8 +123,9 @@ export function NewInstanceModal({ isOpen, onClose, onCreate, theme, existingSes
       }
       setAgentConfigs(configs);
 
-      // Select first available agent
-      const firstAvailable = detectedAgents.find((a: AgentConfig) => a.available);
+      // Select first available non-hidden agent
+      // (hidden agents like 'terminal' should never be auto-selected)
+      const firstAvailable = detectedAgents.find((a: AgentConfig) => a.available && !a.hidden);
       if (firstAvailable) {
         setSelectedAgent(firstAvailable.id);
       }

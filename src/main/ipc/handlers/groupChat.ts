@@ -22,7 +22,15 @@ import {
   updateGroupChat,
   GroupChat,
   GroupChatParticipant,
+  addGroupChatHistoryEntry,
+  getGroupChatHistory,
+  deleteGroupChatHistoryEntry,
+  clearGroupChatHistory,
+  getGroupChatHistoryFilePath,
 } from '../../group-chat/group-chat-storage';
+
+// Group chat history type
+import type { GroupChatHistoryEntry } from '../../../shared/group-chat-types';
 
 // Group chat log imports
 import {
@@ -79,6 +87,7 @@ export const groupChatEmitters: {
   emitStateChange?: (groupChatId: string, state: GroupChatState) => void;
   emitParticipantsChanged?: (groupChatId: string, participants: GroupChatParticipant[]) => void;
   emitModeratorUsage?: (groupChatId: string, usage: ModeratorUsage) => void;
+  emitHistoryEntry?: (groupChatId: string, entry: GroupChatHistoryEntry) => void;
 } = {};
 
 // Helper to create handler options with consistent context
@@ -358,6 +367,60 @@ export function registerGroupChatHandlers(deps: GroupChatHandlerDependencies): v
     })
   );
 
+  // ========== History Handlers ==========
+
+  // Get all history entries for a group chat
+  ipcMain.handle(
+    'groupChat:getHistory',
+    withIpcErrorLogging(handlerOpts('getHistory'), async (id: string): Promise<GroupChatHistoryEntry[]> => {
+      logger.debug(`Getting history for group chat: ${id}`, LOG_CONTEXT);
+      const entries = await getGroupChatHistory(id);
+      logger.debug(`Retrieved ${entries.length} history entries for ${id}`, LOG_CONTEXT);
+      return entries;
+    })
+  );
+
+  // Add a history entry (called internally by the moderator flow)
+  ipcMain.handle(
+    'groupChat:addHistoryEntry',
+    withIpcErrorLogging(
+      handlerOpts('addHistoryEntry'),
+      async (id: string, entry: Omit<GroupChatHistoryEntry, 'id'>): Promise<GroupChatHistoryEntry> => {
+        logger.debug(`Adding history entry to ${id}`, LOG_CONTEXT, { type: entry.type, participant: entry.participantName });
+        const created = await addGroupChatHistoryEntry(id, entry);
+        // Emit to renderer
+        groupChatEmitters.emitHistoryEntry?.(id, created);
+        return created;
+      }
+    )
+  );
+
+  // Delete a history entry
+  ipcMain.handle(
+    'groupChat:deleteHistoryEntry',
+    withIpcErrorLogging(handlerOpts('deleteHistoryEntry'), async (groupChatId: string, entryId: string): Promise<boolean> => {
+      logger.debug(`Deleting history entry ${entryId} from ${groupChatId}`, LOG_CONTEXT);
+      return deleteGroupChatHistoryEntry(groupChatId, entryId);
+    })
+  );
+
+  // Clear all history for a group chat
+  ipcMain.handle(
+    'groupChat:clearHistory',
+    withIpcErrorLogging(handlerOpts('clearHistory'), async (id: string): Promise<void> => {
+      logger.info(`Clearing history for group chat: ${id}`, LOG_CONTEXT);
+      await clearGroupChatHistory(id);
+    })
+  );
+
+  // Get the history file path (for AI context integration)
+  ipcMain.handle(
+    'groupChat:getHistoryFilePath',
+    withIpcErrorLogging(handlerOpts('getHistoryFilePath'), async (id: string): Promise<string | null> => {
+      return getGroupChatHistoryFilePath(id);
+    })
+  );
+
   // ========== Event Emission Helpers ==========
   // These are stored in module scope for access by the exported emitters
 
@@ -402,6 +465,17 @@ export function registerGroupChatHandlers(deps: GroupChatHandlerDependencies): v
     const mainWindow = getMainWindow();
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('groupChat:moderatorUsage', groupChatId, usage);
+    }
+  };
+
+  /**
+   * Emit a new history entry event to the renderer.
+   * Called when a new history entry is added to any group chat.
+   */
+  groupChatEmitters.emitHistoryEntry = (groupChatId: string, entry: GroupChatHistoryEntry): void => {
+    const mainWindow = getMainWindow();
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('groupChat:historyEntry', groupChatId, entry);
     }
   };
 

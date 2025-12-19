@@ -8,7 +8,7 @@
  * - Participants -> Moderator
  */
 
-import { GroupChatParticipant, loadGroupChat, updateParticipant } from './group-chat-storage';
+import { GroupChatParticipant, loadGroupChat, updateParticipant, addGroupChatHistoryEntry, extractFirstSentence } from './group-chat-storage';
 import { appendToLog, readLog } from './group-chat-log';
 import type { GroupChatMessage } from '../../shared/group-chat-types';
 
@@ -529,11 +529,12 @@ export async function routeAgentResponse(
   };
   groupChatEmitters.emitMessage?.(groupChatId, agentMessage);
 
+  // Extract summary from first sentence (agents are prompted to start with a summary sentence)
+  const summary = extractFirstSentence(message);
+
   // Update participant stats
   const currentParticipant = participant;
   const newMessageCount = (currentParticipant.messageCount || 0) + 1;
-  // Generate a brief summary from the message (first 50 chars)
-  const summary = message.length > 50 ? message.slice(0, 50) + '...' : message;
 
   try {
     await updateParticipant(groupChatId, participantName, {
@@ -550,6 +551,25 @@ export async function routeAgentResponse(
   } catch (error) {
     console.error(`[GroupChatRouter] Failed to update participant stats for ${participantName}:`, error);
     // Don't throw - stats update failure shouldn't break the message flow
+  }
+
+  // Add history entry for this response
+  try {
+    const historyEntry = await addGroupChatHistoryEntry(groupChatId, {
+      timestamp: Date.now(),
+      summary,
+      participantName,
+      participantColor: participant.color || '#808080', // Default gray if no color assigned
+      type: 'response',
+      fullResponse: message,
+    });
+
+    // Emit history entry event to renderer
+    groupChatEmitters.emitHistoryEntry?.(groupChatId, historyEntry);
+    console.log(`[GroupChatRouter] Added history entry for ${participantName}: ${summary.substring(0, 50)}...`);
+  } catch (error) {
+    console.error(`[GroupChatRouter] Failed to add history entry for ${participantName}:`, error);
+    // Don't throw - history logging failure shouldn't break the message flow
   }
 
   // Note: The moderator runs in batch mode (one-shot per message), so we can't write to it.
