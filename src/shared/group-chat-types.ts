@@ -15,6 +15,12 @@ export interface GroupChatParticipant {
   lastActivity?: number;
   lastSummary?: string;
   contextUsage?: number;
+  // Color for this participant (assigned on join)
+  color?: string;
+  // Stats tracking
+  tokenCount?: number;
+  messageCount?: number;
+  processingTimeMs?: number;
 }
 
 /**

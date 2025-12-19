@@ -23,6 +23,7 @@ const VALID_MODERATOR_AGENT_IDS: ToolType[] = ['claude-code', 'codex', 'opencode
 
 /**
  * Group chat participant
+ * Note: This should stay in sync with shared/group-chat-types.ts
  */
 export interface GroupChatParticipant {
   name: string;
@@ -32,6 +33,12 @@ export interface GroupChatParticipant {
   lastActivity?: number;
   lastSummary?: string;
   contextUsage?: number;
+  // Color for this participant (assigned on join)
+  color?: string;
+  // Stats tracking
+  tokenCount?: number;
+  messageCount?: number;
+  processingTimeMs?: number;
 }
 
 /**
@@ -338,4 +345,45 @@ export async function getParticipant(
   }
 
   return chat.participants.find(p => p.name === participantName);
+}
+
+/**
+ * Partial update for a participant
+ */
+export type ParticipantUpdate = Partial<Pick<
+  GroupChatParticipant,
+  'lastActivity' | 'lastSummary' | 'contextUsage' | 'tokenCount' | 'messageCount' | 'processingTimeMs'
+>>;
+
+/**
+ * Update a participant's stats in a group chat.
+ *
+ * @param id - The group chat ID
+ * @param participantName - The name of the participant to update
+ * @param updates - Partial update object for stats
+ * @returns The updated GroupChat object
+ */
+export async function updateParticipant(
+  id: string,
+  participantName: string,
+  updates: ParticipantUpdate
+): Promise<GroupChat> {
+  const chat = await loadGroupChat(id);
+  if (!chat) {
+    throw new Error(`Group chat not found: ${id}`);
+  }
+
+  const participantIndex = chat.participants.findIndex(p => p.name === participantName);
+  if (participantIndex === -1) {
+    throw new Error(`Participant '${participantName}' not found in group chat`);
+  }
+
+  // Update the participant with new stats
+  const updatedParticipants = [...chat.participants];
+  updatedParticipants[participantIndex] = {
+    ...updatedParticipants[participantIndex],
+    ...updates,
+  };
+
+  return updateGroupChat(id, { participants: updatedParticipants });
 }

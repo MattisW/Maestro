@@ -7,19 +7,41 @@
  */
 
 import { useState } from 'react';
-import { Copy, ChevronDown, ChevronRight } from 'lucide-react';
+import { Copy, ChevronDown, ChevronRight, Clock, MessageSquare, Zap } from 'lucide-react';
 import type { Theme, GroupChatParticipant, SessionState } from '../types';
 
 interface ParticipantCardProps {
   theme: Theme;
   participant: GroupChatParticipant;
   state: SessionState;
+  color?: string;
+}
+
+/**
+ * Format milliseconds as a human-readable duration.
+ */
+function formatDuration(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+  const minutes = Math.floor(ms / 60000);
+  const seconds = Math.round((ms % 60000) / 1000);
+  return `${minutes}m ${seconds}s`;
+}
+
+/**
+ * Format token count with K/M suffix for large numbers.
+ */
+function formatTokens(tokens: number): string {
+  if (tokens < 1000) return tokens.toString();
+  if (tokens < 1000000) return `${(tokens / 1000).toFixed(1)}K`;
+  return `${(tokens / 1000000).toFixed(1)}M`;
 }
 
 export function ParticipantCard({
   theme,
   participant,
   state,
+  color,
 }: ParticipantCardProps): JSX.Element {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -59,6 +81,8 @@ export function ParticipantCard({
       style={{
         backgroundColor: theme.colors.bgMain,
         borderColor: theme.colors.border,
+        borderLeftWidth: '3px',
+        borderLeftColor: color || theme.colors.accent,
       }}
     >
       {/* Header - always visible */}
@@ -80,7 +104,7 @@ export function ParticipantCard({
           )}
           <span
             className="font-medium"
-            style={{ color: theme.colors.textMain }}
+            style={{ color: color || theme.colors.textMain }}
           >
             {participant.name}
           </span>
@@ -95,12 +119,31 @@ export function ParticipantCard({
         </div>
       </div>
 
-      {/* Agent type */}
+      {/* Agent type and quick stats */}
       <div
-        className="text-xs mt-1 ml-6"
+        className="text-xs mt-1 ml-6 flex items-center gap-3"
         style={{ color: theme.colors.textDim }}
       >
-        {participant.agentId}
+        <span>{participant.agentId}</span>
+        {/* Quick stats row - show even when collapsed */}
+        {(participant.messageCount !== undefined && participant.messageCount > 0) && (
+          <span className="flex items-center gap-1" title="Messages sent">
+            <MessageSquare className="w-3 h-3" />
+            {participant.messageCount}
+          </span>
+        )}
+        {(participant.tokenCount !== undefined && participant.tokenCount > 0) && (
+          <span className="flex items-center gap-1" title="Tokens used">
+            <Zap className="w-3 h-3" />
+            {formatTokens(participant.tokenCount)}
+          </span>
+        )}
+        {(participant.processingTimeMs !== undefined && participant.processingTimeMs > 0) && (
+          <span className="flex items-center gap-1" title="Processing time">
+            <Clock className="w-3 h-3" />
+            {formatDuration(participant.processingTimeMs)}
+          </span>
+        )}
       </div>
 
       {/* Expanded details */}

@@ -10,6 +10,7 @@ import { BookOpen, Eye, FileText, Copy, ChevronDown, ChevronUp } from 'lucide-re
 import type { GroupChatMessage, GroupChatParticipant, GroupChatState, Theme } from '../types';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { stripMarkdown } from '../utils/textProcessing';
+import { generateParticipantColor, buildParticipantColorMap } from '../utils/participantColors';
 
 interface GroupChatMessagesProps {
   theme: Theme;
@@ -20,16 +21,6 @@ interface GroupChatMessagesProps {
   onToggleMarkdownEditMode?: () => void;
   maxOutputLines?: number;
 }
-
-// Color mapping for participants (used for sender label)
-const PARTICIPANT_COLORS = [
-  '#3B82F6', // blue
-  '#10B981', // green
-  '#F59E0B', // amber
-  '#8B5CF6', // purple
-  '#EF4444', // red
-  '#06B6D4', // cyan
-];
 
 export function GroupChatMessages({
   theme,
@@ -102,13 +93,18 @@ export function GroupChatMessages({
     }
   }, [messages]);
 
+  // Memoize participant colors to ensure consistency
+  const participantColors = useMemo(() => {
+    return buildParticipantColorMap(participants.map(p => p.name), theme);
+  }, [participants, theme]);
+
   const getParticipantColor = (name: string): string => {
-    const index = participants.findIndex(p => p.name === name);
-    return PARTICIPANT_COLORS[index % PARTICIPANT_COLORS.length];
+    return participantColors[name] || generateParticipantColor(0, theme);
   };
 
   // Format timestamp like AI Terminal (outside bubble)
-  const formatTimestamp = (timestamp: number) => {
+  // Accepts both ISO string and Unix timestamp
+  const formatTimestamp = (timestamp: string | number) => {
     const date = new Date(timestamp);
     const today = new Date();
     const isToday = date.toDateString() === today.toDateString();
@@ -137,6 +133,18 @@ export function GroupChatMessages({
       {messages.length === 0 ? (
         <div className="flex items-center justify-center h-full px-6">
           <div className="text-center max-w-md space-y-3">
+            <div className="flex justify-center mb-4">
+              <span
+                className="text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded"
+                style={{
+                  backgroundColor: `${theme.colors.accent}20`,
+                  color: theme.colors.accent,
+                  border: `1px solid ${theme.colors.accent}40`,
+                }}
+              >
+                Beta
+              </span>
+            </div>
             <p className="text-sm" style={{ color: theme.colors.textDim }}>
               Messages you send go directly to the <span style={{ color: theme.colors.warning }}>moderator</span>,
               who orchestrates the conversation and decides when to involve other agents.
@@ -187,6 +195,8 @@ export function GroupChatMessages({
                   borderColor: isUser
                     ? theme.colors.accent + '40'
                     : theme.colors.border,
+                  borderLeftWidth: !isUser ? '3px' : undefined,
+                  borderLeftColor: !isUser ? senderColor : undefined,
                   color: theme.colors.textMain,
                 }}
               >

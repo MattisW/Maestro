@@ -8,8 +8,26 @@
  * - Participants -> Moderator
  */
 
-import { GroupChatParticipant, loadGroupChat } from './group-chat-storage';
-import { appendToLog, readLog, GroupChatMessage } from './group-chat-log';
+import { GroupChatParticipant, loadGroupChat, updateParticipant } from './group-chat-storage';
+import { appendToLog, readLog } from './group-chat-log';
+import type { GroupChatMessage } from '../../shared/group-chat-types';
+
+/**
+ * Normalize a name for @mention matching.
+ * Converts spaces to hyphens for consistent matching.
+ */
+function normalizeMentionName(name: string): string {
+  return name.replace(/\s+/g, '-');
+}
+
+/**
+ * Check if a mentioned name matches a session/participant name.
+ * Handles both exact match and normalized (hyphenated) match.
+ */
+function mentionMatchesName(mentionedName: string, actualName: string): boolean {
+  return mentionedName.toLowerCase() === actualName.toLowerCase() ||
+         mentionedName.toLowerCase() === normalizeMentionName(actualName).toLowerCase();
+}
 import {
   IProcessManager,
   getModeratorSessionId,
@@ -70,27 +88,31 @@ export function setGetCustomEnvVarsCallback(callback: GetCustomEnvVarsCallback):
 
 /**
  * Extracts @mentions from text that match known participants.
+ * Supports hyphenated names matching participants with spaces.
  *
  * @param text - The text to search for mentions
  * @param participants - List of valid participants
- * @returns Array of participant names that were mentioned
+ * @returns Array of participant names that were mentioned (using original names, not hyphenated)
  */
 export function extractMentions(
   text: string,
   participants: GroupChatParticipant[]
 ): string[] {
-  const participantNames = new Set(participants.map((p) => p.name));
   const mentions: string[] = [];
 
   // Match @Name patterns (alphanumeric, underscores, dots, and hyphens)
-  // Supports names like @RunMaestro.ai, @my-agent, etc.
+  // Supports names like @RunMaestro.ai, @my-agent, @Maestro-Playbooks, etc.
   const mentionPattern = /@([\w.-]+)/g;
   let match;
 
   while ((match = mentionPattern.exec(text)) !== null) {
-    const name = match[1];
-    if (participantNames.has(name) && !mentions.includes(name)) {
-      mentions.push(name);
+    const mentionedName = match[1];
+    // Find participant that matches (either exact or normalized)
+    const matchingParticipant = participants.find(p =>
+      mentionMatchesName(mentionedName, p.name)
+    );
+    if (matchingParticipant && !mentions.includes(matchingParticipant.name)) {
+      mentions.push(matchingParticipant.name);
     }
   }
 
@@ -156,31 +178,36 @@ export async function routeUserMessage(
     const existingParticipantNames = new Set(chat.participants.map(p => p.name));
 
     for (const mentionedName of userMentions) {
-      // Skip if already a participant
-      if (existingParticipantNames.has(mentionedName)) {
+      // Skip if already a participant (check both exact and normalized names)
+      const alreadyParticipant = Array.from(existingParticipantNames).some(
+        existingName => mentionMatchesName(mentionedName, existingName)
+      );
+      if (alreadyParticipant) {
         continue;
       }
 
-      // Find matching session by name
+      // Find matching session by name (supports both exact and hyphenated names)
       const matchingSession = sessions.find(s =>
-        s.name === mentionedName && s.toolType !== 'terminal'
+        mentionMatchesName(mentionedName, s.name) && s.toolType !== 'terminal'
       );
 
       if (matchingSession) {
         try {
-          console.log(`[GroupChatRouter] Auto-adding participant @${mentionedName} from user mention (session ${matchingSession.id})`);
+          // Use the original session name as the participant name
+          const participantName = matchingSession.name;
+          console.log(`[GroupChatRouter] Auto-adding participant @${participantName} from user mention @${mentionedName} (session ${matchingSession.id})`);
           // Get custom env vars for this agent type
           const customEnvVars = getCustomEnvVarsCallback?.(matchingSession.toolType);
           await addParticipant(
             groupChatId,
-            mentionedName,
+            participantName,
             matchingSession.toolType,
             processManager,
             matchingSession.cwd,
             agentDetector,
             customEnvVars
           );
-          existingParticipantNames.add(mentionedName);
+          existingParticipantNames.add(participantName);
 
           // Emit participant changed event so UI updates
           const updatedChatForEmit = await loadGroupChat(groupChatId);
@@ -315,6 +342,14 @@ export async function routeModeratorResponse(
   // Log the message as coming from moderator
   await appendToLog(chat.logPath, 'moderator', message);
 
+  // Emit message event to renderer so it shows immediately
+  const moderatorMessage: GroupChatMessage = {
+    timestamp: new Date().toISOString(),
+    from: 'moderator',
+    content: message,
+  };
+  groupChatEmitters.emitMessage?.(groupChatId, moderatorMessage);
+
   // Extract ALL mentions from the message
   const allMentions = extractAllMentions(message);
   const existingParticipantNames = new Set(chat.participants.map(p => p.name));
@@ -324,31 +359,36 @@ export async function routeModeratorResponse(
     const sessions = getSessionsCallback();
 
     for (const mentionedName of allMentions) {
-      // Skip if already a participant
-      if (existingParticipantNames.has(mentionedName)) {
+      // Skip if already a participant (check both exact and normalized names)
+      const alreadyParticipant = Array.from(existingParticipantNames).some(
+        existingName => mentionMatchesName(mentionedName, existingName)
+      );
+      if (alreadyParticipant) {
         continue;
       }
 
-      // Find matching session by name
+      // Find matching session by name (supports both exact and hyphenated names)
       const matchingSession = sessions.find(s =>
-        s.name === mentionedName && s.toolType !== 'terminal'
+        mentionMatchesName(mentionedName, s.name) && s.toolType !== 'terminal'
       );
 
       if (matchingSession) {
         try {
-          console.log(`[GroupChatRouter] Auto-adding participant @${mentionedName} from session ${matchingSession.id}`);
+          // Use the original session name as the participant name
+          const participantName = matchingSession.name;
+          console.log(`[GroupChatRouter] Auto-adding participant @${participantName} from moderator mention @${mentionedName} (session ${matchingSession.id})`);
           // Get custom env vars for this agent type
           const customEnvVars = getCustomEnvVarsCallback?.(matchingSession.toolType);
           await addParticipant(
             groupChatId,
-            mentionedName,
+            participantName,
             matchingSession.toolType,
             processManager,
             matchingSession.cwd,
             agentDetector,
             customEnvVars
           );
-          existingParticipantNames.add(mentionedName);
+          existingParticipantNames.add(participantName);
 
           // Emit participant changed event so UI updates
           const updatedChatForEmit = await loadGroupChat(groupChatId);
@@ -420,6 +460,37 @@ export async function routeAgentResponse(
 
   // Log the message as coming from the participant
   await appendToLog(chat.logPath, participantName, message);
+
+  // Emit message event to renderer so it shows immediately
+  const agentMessage: GroupChatMessage = {
+    timestamp: new Date().toISOString(),
+    from: participantName,
+    content: message,
+  };
+  groupChatEmitters.emitMessage?.(groupChatId, agentMessage);
+
+  // Update participant stats
+  const currentParticipant = participant;
+  const newMessageCount = (currentParticipant.messageCount || 0) + 1;
+  // Generate a brief summary from the message (first 50 chars)
+  const summary = message.length > 50 ? message.slice(0, 50) + '...' : message;
+
+  try {
+    await updateParticipant(groupChatId, participantName, {
+      lastActivity: Date.now(),
+      lastSummary: summary,
+      messageCount: newMessageCount,
+    });
+
+    // Emit participants changed so UI updates
+    const updatedChat = await loadGroupChat(groupChatId);
+    if (updatedChat) {
+      groupChatEmitters.emitParticipantsChanged?.(groupChatId, updatedChat.participants);
+    }
+  } catch (error) {
+    console.error(`[GroupChatRouter] Failed to update participant stats for ${participantName}:`, error);
+    // Don't throw - stats update failure shouldn't break the message flow
+  }
 
   // Notify moderator
   if (processManager && isModeratorActive(groupChatId)) {

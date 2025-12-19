@@ -6,10 +6,12 @@
  * This panel replaces the RightPanel when a group chat is active.
  */
 
+import { useMemo } from 'react';
 import { PanelRightClose, PanelRightOpen } from 'lucide-react';
 import type { Theme, GroupChatParticipant, SessionState, Shortcut } from '../types';
 import { ParticipantCard } from './ParticipantCard';
 import { formatShortcutKeys } from '../utils/shortcutFormatter';
+import { buildParticipantColorMap } from '../utils/participantColors';
 
 interface GroupChatParticipantsProps {
   theme: Theme;
@@ -32,6 +34,11 @@ export function GroupChatParticipants({
   setWidthState,
   shortcuts,
 }: GroupChatParticipantsProps): JSX.Element {
+  // Generate consistent colors for all participants
+  const participantColors = useMemo(() => {
+    return buildParticipantColorMap(participants.map(p => p.name), theme);
+  }, [participants, theme]);
+
   if (!isOpen) return null;
 
   return (
@@ -105,6 +112,7 @@ export function GroupChatParticipants({
               theme={theme}
               participant={participant}
               state={participantStates.get(participant.sessionId) || 'idle'}
+              color={participantColors[participant.name]}
             />
           ))
         )}

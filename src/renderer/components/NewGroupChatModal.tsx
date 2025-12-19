@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Check } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 import type { Theme, AgentConfig } from '../types';
 import { MODAL_PRIORITIES } from '../constants/modalPriorities';
 import { Modal, ModalFooter, FormInput } from './ui';
@@ -108,6 +108,40 @@ export function NewGroupChatModal({
       onClose={onClose}
       initialFocusRef={nameInputRef}
       width={600}
+      customHeader={
+        <div
+          className="p-4 border-b flex items-center justify-between shrink-0"
+          style={{ borderColor: theme.colors.border }}
+        >
+          <div className="flex items-center gap-3">
+            <h2
+              className="text-sm font-bold"
+              style={{ color: theme.colors.textMain }}
+            >
+              New Group Chat
+            </h2>
+            <span
+              className="text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded"
+              style={{
+                backgroundColor: `${theme.colors.accent}20`,
+                color: theme.colors.accent,
+                border: `1px solid ${theme.colors.accent}40`,
+              }}
+            >
+              Beta
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1 rounded hover:bg-white/10 transition-colors"
+            style={{ color: theme.colors.textDim }}
+            aria-label="Close modal"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      }
       footer={
         <ModalFooter
           theme={theme}

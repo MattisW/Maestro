@@ -16,6 +16,7 @@ import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { ArrowUp, ImageIcon, Eye, Keyboard, PenLine } from 'lucide-react';
 import type { Theme, GroupChatParticipant, GroupChatState, Session, QueuedItem } from '../types';
 import { QueuedItemsList } from './QueuedItemsList';
+import { normalizeMentionName } from '../utils/participantColors';
 
 /** Maximum image file size in bytes (10MB) */
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
@@ -98,20 +99,23 @@ export function GroupChatInput({
   const prevGroupChatIdRef = useRef(groupChatId);
 
   // Build list of mentionable agents from sessions (excluding terminal-only)
+  // Uses normalized names (spaces -> hyphens) for @mention compatibility
   const mentionableAgents = useMemo(() => {
     return sessions
       .filter(s => s.toolType !== 'terminal')
       .map(s => ({
         name: s.name,
+        mentionName: normalizeMentionName(s.name), // Name used in @mentions
         agentId: s.toolType,
         sessionId: s.id,
       }));
   }, [sessions]);
 
-  // Filter agents based on mention filter
+  // Filter agents based on mention filter (matches both original and hyphenated names)
   const filteredAgents = useMemo(() => {
     return mentionableAgents.filter(a =>
-      a.name.toLowerCase().includes(mentionFilter)
+      a.name.toLowerCase().includes(mentionFilter) ||
+      a.mentionName.toLowerCase().includes(mentionFilter)
     );
   }, [mentionableAgents, mentionFilter]);
 
@@ -216,7 +220,7 @@ export function GroupChatInput({
       if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) {
         e.preventDefault();
         e.stopPropagation();
-        insertMention(filteredAgents[selectedMentionIndex].name);
+        insertMention(filteredAgents[selectedMentionIndex].mentionName);
         return;
       }
       if (e.key === 'Escape') {
@@ -330,7 +334,7 @@ export function GroupChatInput({
             <button
               key={agent.sessionId}
               ref={index === selectedMentionIndex ? selectedMentionRef : null}
-              onClick={() => insertMention(agent.name)}
+              onClick={() => insertMention(agent.mentionName)}
               className="w-full text-left px-3 py-1.5 rounded text-sm transition-colors"
               style={{
                 color: theme.colors.textMain,
@@ -339,12 +343,20 @@ export function GroupChatInput({
                   : 'transparent',
               }}
             >
-              @{agent.name}
+              @{agent.mentionName}
+              {agent.name !== agent.mentionName && (
+                <span
+                  className="ml-1 text-xs"
+                  style={{ color: theme.colors.textDim }}
+                >
+                  ({agent.name})
+                </span>
+              )}
               <span
                 className="ml-2 text-xs"
                 style={{ color: theme.colors.textDim }}
               >
-                ({agent.agentId})
+                {agent.agentId}
               </span>
             </button>
           ))}
