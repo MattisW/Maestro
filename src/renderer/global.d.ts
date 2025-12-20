@@ -28,6 +28,7 @@ interface ProcessConfig {
   sessionCustomArgs?: string;
   sessionCustomEnvVars?: Record<string, string>;
   sessionCustomModel?: string;
+  sessionCustomContextWindow?: number;
 }
 
 interface AgentConfigOption {

@@ -4195,6 +4195,7 @@ export default function MaestroConsole() {
           sessionCustomArgs: session.customArgs,
           sessionCustomEnvVars: session.customEnvVars,
           sessionCustomModel: session.customModel,
+          sessionCustomContextWindow: session.customContextWindow,
         });
 
         console.log(`[Remote] ${session.toolType} spawn initiated successfully`);
@@ -4371,6 +4372,7 @@ export default function MaestroConsole() {
           sessionCustomArgs: session.customArgs,
           sessionCustomEnvVars: session.customEnvVars,
           sessionCustomModel: session.customModel,
+          sessionCustomContextWindow: session.customContextWindow,
         });
       } else if (item.type === 'command' && item.command) {
         // Process a slash command - find the matching custom AI command
@@ -4441,6 +4443,7 @@ export default function MaestroConsole() {
             sessionCustomArgs: session.customArgs,
             sessionCustomEnvVars: session.customEnvVars,
             sessionCustomModel: session.customModel,
+            sessionCustomContextWindow: session.customContextWindow,
           });
         } else {
           // Unknown command - add error log

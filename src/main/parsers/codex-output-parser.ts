@@ -59,8 +59,8 @@ const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
   'gpt-5.1-codex-max': 200000,
   'gpt-5.2': 400000,
   'gpt-5.2-codex-max': 400000,
-  // Default fallback
-  'default': 128000,
+  // Default fallback (Codex defaults to GPT-5.2)
+  'default': 400000,
 };
 
 /**

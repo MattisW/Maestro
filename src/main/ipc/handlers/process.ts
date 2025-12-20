@@ -91,6 +91,7 @@ export function registerProcessHandlers(deps: ProcessHandlerDependencies): void 
       sessionCustomArgs?: string;     // Session-specific custom args
       sessionCustomEnvVars?: Record<string, string>; // Session-specific env vars
       sessionCustomModel?: string;    // Session-specific model selection
+      sessionCustomContextWindow?: number; // Session-specific context window size
     }) => {
       const processManager = requireProcessManager(getProcessManager);
       const agentDetector = requireDependency(getAgentDetector, 'Agent detector');
@@ -188,9 +189,9 @@ export function registerProcessHandlers(deps: ProcessHandlerDependencies): void 
         ...(config.prompt && { prompt: config.prompt.length > 500 ? config.prompt.substring(0, 500) + '...' : config.prompt })
       });
 
-      // Get contextWindow from agent config (for agents like OpenCode/Codex that need user configuration)
+      // Get contextWindow: session-level override takes priority over agent-level config
       // Falls back to the agent's configOptions default (e.g., 400000 for Codex, 128000 for OpenCode)
-      const contextWindow = getContextWindowValue(agent, agentConfigValues);
+      const contextWindow = getContextWindowValue(agent, agentConfigValues, config.sessionCustomContextWindow);
 
       const result = processManager.spawn({
         ...config,

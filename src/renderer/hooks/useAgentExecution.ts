@@ -314,6 +314,7 @@ export function useAgentExecution(
           sessionCustomArgs: session.customArgs,
           sessionCustomEnvVars: session.customEnvVars,
           sessionCustomModel: session.customModel,
+          sessionCustomContextWindow: session.customContextWindow,
         }).catch(() => {
           cleanup();
           resolve({ success: false });

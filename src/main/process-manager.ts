@@ -565,7 +565,8 @@ export class ProcessManager extends EventEmitter {
                     const usage = outputParser.extractUsage(event);
                     if (usage) {
                       // Map parser's usage format to UsageStats
-                      // For contextWindow: prefer parser-reported value, then configured value, then 0 (means not available)
+                      // For contextWindow: prefer user-configured value (from Maestro settings), then parser-reported value, then 0
+                      // User configuration takes priority because they may be using a different model than detected
                       // A value of 0 signals the UI to hide context usage display
                       const usageStats = {
                         inputTokens: usage.inputTokens,
@@ -573,7 +574,7 @@ export class ProcessManager extends EventEmitter {
                         cacheReadInputTokens: usage.cacheReadTokens || 0,
                         cacheCreationInputTokens: usage.cacheCreationTokens || 0,
                         totalCostUsd: usage.costUsd || 0,
-                        contextWindow: usage.contextWindow || managedProcess.contextWindow || 0,
+                        contextWindow: managedProcess.contextWindow || usage.contextWindow || 0,
                         reasoningTokens: usage.reasoningTokens,
                       };
                       this.emit('usage', sessionId, usageStats);
