@@ -6,7 +6,7 @@
  * Replaces direct use of GroupChatParticipants when group chat is active.
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { PanelRightClose } from 'lucide-react';
 import type { Theme, GroupChatParticipant, SessionState, Shortcut } from '../types';
 import type { GroupChatHistoryEntry } from '../../shared/group-chat-types';
@@ -81,37 +81,57 @@ export function GroupChatRightPanel({
     loadColorPreferences().then(setColorPreferences);
   }, []);
 
-  // Generate consistent colors for all participants with preference support
-  const participantColors = useMemo(() => {
-    // Build participant info with session paths for preference lookup
-    const participantInfo: ParticipantColorInfo[] = [
-      { name: 'Moderator' }, // Moderator doesn't have a persistent color preference
-      ...participants.map(p => ({
-        name: p.name,
-        sessionPath: participantSessionPaths?.get(p.sessionId),
-      })),
-    ];
+  // Build participant info for color generation
+  const participantInfo: ParticipantColorInfo[] = useMemo(() => [
+    { name: 'Moderator' }, // Moderator doesn't have a persistent color preference
+    ...participants.map(p => ({
+      name: p.name,
+      sessionPath: participantSessionPaths?.get(p.sessionId),
+    })),
+  ], [participants, participantSessionPaths]);
 
-    const { colors, newPreferences } = buildParticipantColorMapWithPreferences(
+  // Generate consistent colors for all participants with preference support
+  const colorResult = useMemo(() => {
+    return buildParticipantColorMapWithPreferences(
       participantInfo,
       theme,
       colorPreferences
     );
+  }, [participantInfo, theme, colorPreferences]);
 
-    // Save any new preferences
-    if (Object.keys(newPreferences).length > 0) {
-      const updatedPrefs = { ...colorPreferences, ...newPreferences };
-      setColorPreferences(updatedPrefs);
-      saveColorPreferences(updatedPrefs);
+  const participantColors = colorResult.colors;
+
+  // Save any new preferences in a separate effect to avoid infinite loops
+  // Use a ref to track which preferences we've already saved
+  const savedPreferencesRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    const { newPreferences } = colorResult;
+    // Filter out preferences we've already saved this session
+    const unsavedPreferences = Object.entries(newPreferences).filter(
+      ([key]) => !savedPreferencesRef.current.has(key)
+    );
+
+    if (unsavedPreferences.length > 0) {
+      const prefsToSave = Object.fromEntries(unsavedPreferences);
+      // Mark these as saved
+      unsavedPreferences.forEach(([key]) => savedPreferencesRef.current.add(key));
+      // Update state and persist
+      setColorPreferences(prev => ({ ...prev, ...prefsToSave }));
+      saveColorPreferences({ ...colorPreferences, ...prefsToSave });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [colorResult]);
 
-    return colors;
-  }, [participants, participantSessionPaths, theme, colorPreferences]);
-
-  // Notify parent when colors are computed
+  // Notify parent when colors are computed (use ref to prevent infinite loops)
+  const prevColorsRef = useRef<string>('');
   useEffect(() => {
     if (onColorsComputed && Object.keys(participantColors).length > 0) {
-      onColorsComputed(participantColors);
+      const colorsJson = JSON.stringify(participantColors);
+      if (colorsJson !== prevColorsRef.current) {
+        prevColorsRef.current = colorsJson;
+        onColorsComputed(participantColors);
+      }
     }
   }, [participantColors, onColorsComputed]);
 

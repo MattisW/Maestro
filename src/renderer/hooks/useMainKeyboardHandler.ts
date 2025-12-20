@@ -242,11 +242,11 @@ export function useMainKeyboardHandler(): UseMainKeyboardHandlerReturn {
         ctx.setActiveFocus('sidebar');
         setTimeout(() => ctx.sidebarContainerRef?.current?.focus(), 0);
       }
-      else if (ctx.isShortcut(e, 'viewGitDiff')) {
+      else if (ctx.isShortcut(e, 'viewGitDiff') && !ctx.activeGroupChatId) {
         e.preventDefault();
         ctx.handleViewGitDiff();
       }
-      else if (ctx.isShortcut(e, 'viewGitLog')) {
+      else if (ctx.isShortcut(e, 'viewGitLog') && !ctx.activeGroupChatId) {
         e.preventDefault();
         if (ctx.activeSession?.isGitRepo) {
           ctx.setGitLogOpen(true);
@@ -310,8 +310,8 @@ export function useMainKeyboardHandler(): UseMainKeyboardHandlerReturn {
         }
       }
 
-      // Tab shortcuts (AI mode only, requires an explicitly selected session)
-      if (ctx.activeSessionId && ctx.activeSession?.inputMode === 'ai' && ctx.activeSession?.aiTabs) {
+      // Tab shortcuts (AI mode only, requires an explicitly selected session, disabled in group chat view)
+      if (ctx.activeSessionId && ctx.activeSession?.inputMode === 'ai' && ctx.activeSession?.aiTabs && !ctx.activeGroupChatId) {
         if (ctx.isTabShortcut(e, 'tabSwitcher')) {
           e.preventDefault();
           ctx.setTabSwitcherOpen(true);

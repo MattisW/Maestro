@@ -47,7 +47,7 @@ export function GroupChatHeader({
           onClick={onRename}
           title="Click to rename"
         >
-          {name}
+          Group Chat: {name}
         </h1>
         <button
           onClick={onRename}

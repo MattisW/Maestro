@@ -19,6 +19,7 @@ import { MainPanel, type MainPanelHandle } from './components/MainPanel';
 import { ProcessMonitor } from './components/ProcessMonitor';
 import { GitDiffViewer } from './components/GitDiffViewer';
 import { GitLogViewer } from './components/GitLogViewer';
+import { LogViewer } from './components/LogViewer';
 import { BatchRunnerModal, DEFAULT_BATCH_PROMPT } from './components/BatchRunnerModal';
 import { TabSwitcherModal } from './components/TabSwitcherModal';
 import { FileSearchModal, type FlatFileItem } from './components/FileSearchModal';
@@ -226,6 +227,8 @@ export default function MaestroConsole() {
   const [moderatorUsage, setModeratorUsage] = useState<{ contextUsage: number; totalCost: number; tokenCount: number } | null>(null);
   // Track per-participant working state (participantName -> 'idle' | 'working')
   const [participantStates, setParticipantStates] = useState<Map<string, 'idle' | 'working'>>(new Map());
+  // Group chat agent error state
+  const [groupChatError, setGroupChatError] = useState<{ groupChatId: string; error: AgentError; participantName?: string } | null>(null);
 
   // --- BATCHED SESSION UPDATES (reduces React re-renders during AI streaming) ---
   const batchedUpdater = useBatchedSessionUpdates(setSessions);
@@ -1467,6 +1470,58 @@ export default function MaestroConsole() {
 
     // Handle agent errors (auth expired, token exhaustion, rate limits, crashes)
     const unsubscribeAgentError = window.maestro.process.onAgentError((sessionId: string, error) => {
+      // Cast error to AgentError type (IPC uses plain object)
+      const agentError: AgentError = {
+        type: error.type as AgentError['type'],
+        message: error.message,
+        recoverable: error.recoverable,
+        agentId: error.agentId,
+        sessionId: error.sessionId,
+        timestamp: error.timestamp,
+        raw: error.raw,
+        parsedJson: error.parsedJson,
+      };
+
+      // Check if this is a group chat error (moderator or participant)
+      // Pattern: group-chat-{UUID}-moderator-{timestamp} or group-chat-{UUID}-{participantName}-{timestamp}
+      // UUIDs look like: 533fad24-3915-4fc6-9edb-ba2292a5b903
+      const groupChatModeratorMatch = sessionId.match(/^group-chat-([0-9a-f-]{36})-moderator-(\d+)$/);
+      const groupChatParticipantMatch = sessionId.match(/^group-chat-([0-9a-f-]{36})-(.+?)-(\d+)$/);
+      const groupChatMatch = groupChatModeratorMatch || groupChatParticipantMatch;
+      if (groupChatMatch) {
+        const groupChatId = groupChatMatch[1];
+        const isModeratorError = groupChatModeratorMatch !== null;
+        const participantOrModerator = isModeratorError ? 'moderator' : groupChatMatch[2];
+
+        console.log('[onAgentError] Group chat error received:', {
+          rawSessionId: sessionId,
+          groupChatId,
+          participantName: isModeratorError ? 'Moderator' : participantOrModerator,
+          errorType: error.type,
+          message: error.message,
+          recoverable: error.recoverable,
+        });
+
+        // Set the group chat error state - this will show in the group chat UI
+        setGroupChatError({
+          groupChatId,
+          error: agentError,
+          participantName: isModeratorError ? 'Moderator' : participantOrModerator,
+        });
+
+        // Also add an error message to the group chat messages
+        const errorMessage: GroupChatMessage = {
+          timestamp: new Date(agentError.timestamp).toISOString(),
+          from: 'system',
+          content: `⚠️ ${isModeratorError ? 'Moderator' : participantOrModerator} error: ${agentError.message}`,
+        };
+        setGroupChatMessages(prev => [...prev, errorMessage]);
+
+        // Reset group chat state to idle so user can try again
+        setGroupChatState('idle');
+        return;
+      }
+
       // Parse sessionId to get actual session ID (strip -ai-tabId or -ai suffix)
       let actualSessionId: string;
       const aiTabMatch = sessionId.match(/^(.+)-ai(?:-(.+))?$/);
@@ -1486,18 +1541,6 @@ export default function MaestroConsole() {
         message: error.message,
         recoverable: error.recoverable,
       });
-
-      // Cast error to AgentError type (IPC uses plain object)
-      const agentError: AgentError = {
-        type: error.type as AgentError['type'],
-        message: error.message,
-        recoverable: error.recoverable,
-        agentId: error.agentId,
-        sessionId: error.sessionId,
-        timestamp: error.timestamp,
-        raw: error.raw,
-        parsedJson: error.parsedJson,
-      };
 
       // Create an error log entry to show in the chat
       const errorLogEntry: LogEntry = {
@@ -1838,6 +1881,22 @@ export default function MaestroConsole() {
     onRestartAgent: errorSession ? () => handleRestartAgentAfterError(errorSession.id) : undefined,
     // Note: onAuthenticate is handled by the default action in useAgentErrorRecovery which
     // adds a "Use Terminal" option that guides users to run "claude login"
+  });
+
+  // Handler to clear group chat error and resume operations
+  const handleClearGroupChatError = useCallback(() => {
+    setGroupChatError(null);
+    // Focus the input for retry
+    setTimeout(() => groupChatInputRef.current?.focus(), 0);
+  }, []);
+
+  // Use the agent error recovery hook for group chat errors
+  const { recoveryActions: groupChatRecoveryActions } = useAgentErrorRecovery({
+    error: groupChatError?.error,
+    agentId: 'claude-code', // Group chat moderator is always claude-code for now
+    sessionId: groupChatError?.groupChatId || '',
+    onRetry: handleClearGroupChatError,
+    onClearError: handleClearGroupChatError,
   });
 
   // Tab completion hook for terminal mode
@@ -2747,6 +2806,7 @@ export default function MaestroConsole() {
     setGroupChatMessages([]);
     setGroupChatState('idle');
     setParticipantStates(new Map());
+    setGroupChatError(null);
   }, []);
 
   // Handle right panel tab change with persistence
@@ -5271,7 +5331,14 @@ export default function MaestroConsole() {
           WebkitAppRegion: 'drag',
         } as React.CSSProperties}
       >
-        {activeSession && (
+        {activeGroupChatId ? (
+          <span
+            className="text-xs select-none opacity-50"
+            style={{ color: theme.colors.textDim }}
+          >
+            Maestro Group Chat: {groupChats.find(c => c.id === activeGroupChatId)?.name || 'Unknown'}
+          </span>
+        ) : activeSession && (
           <span
             className="text-xs select-none opacity-50"
             style={{ color: theme.colors.textDim }}
@@ -5441,8 +5508,13 @@ export default function MaestroConsole() {
           }}
           onNavigate={(img) => setLightboxImage(img)}
           // Only allow delete when viewing staged images (source='staged'), not history
+          // Use the correct setter based on whether we're in group chat mode
           onDelete={lightboxSource === 'staged' ? (img) => {
-            setStagedImages(prev => prev.filter(i => i !== img));
+            if (activeGroupChatId) {
+              setGroupChatStagedImages(prev => prev.filter(i => i !== img));
+            } else {
+              setStagedImages(prev => prev.filter(i => i !== img));
+            }
           } : undefined}
           theme={theme}
         />
@@ -5526,6 +5598,19 @@ export default function MaestroConsole() {
           recoveryActions={recoveryActions}
           onDismiss={() => handleClearAgentError(errorSession.id)}
           dismissible={errorSession.agentError.recoverable}
+        />
+      )}
+
+      {/* --- GROUP CHAT ERROR MODAL --- */}
+      {groupChatError && (
+        <AgentErrorModal
+          theme={theme}
+          error={groupChatError.error}
+          agentName={groupChatError.participantName || 'Group Chat'}
+          sessionName={groupChats.find(c => c.id === groupChatError.groupChatId)?.name || 'Unknown'}
+          recoveryActions={groupChatRecoveryActions}
+          onDismiss={handleClearGroupChatError}
+          dismissible={groupChatError.error.recoverable}
         />
       )}
 
@@ -5838,8 +5923,21 @@ export default function MaestroConsole() {
         </ErrorBoundary>
       )}
 
-      {/* --- GROUP CHAT VIEW (shown when a group chat is active) --- */}
-      {activeGroupChatId && groupChats.find(c => c.id === activeGroupChatId) && (
+      {/* --- SYSTEM LOG VIEWER (replaces center content when open) --- */}
+      {logViewerOpen && (
+        <div className="flex-1 flex flex-col min-w-0" style={{ backgroundColor: theme.colors.bgMain }}>
+          <LogViewer
+            theme={theme}
+            onClose={() => setLogViewerOpen(false)}
+            logLevel={logLevel}
+            savedSelectedLevels={logViewerSelectedLevels}
+            onSelectedLevelsChange={setLogViewerSelectedLevels}
+          />
+        </div>
+      )}
+
+      {/* --- GROUP CHAT VIEW (shown when a group chat is active, hidden when log viewer open) --- */}
+      {!logViewerOpen && activeGroupChatId && groupChats.find(c => c.id === activeGroupChatId) && (
         <>
           <div className="flex-1 flex flex-col min-w-0">
             <GroupChatPanel
@@ -5907,8 +6005,8 @@ export default function MaestroConsole() {
         </>
       )}
 
-      {/* --- CENTER WORKSPACE (hidden when no sessions or group chat is active) --- */}
-      {sessions.length > 0 && !activeGroupChatId && (
+      {/* --- CENTER WORKSPACE (hidden when no sessions, group chat is active, or log viewer is open) --- */}
+      {sessions.length > 0 && !activeGroupChatId && !logViewerOpen && (
       <MainPanel
         ref={mainPanelRef}
         logViewerOpen={logViewerOpen}
@@ -6436,8 +6534,8 @@ export default function MaestroConsole() {
       />
       )}
 
-      {/* --- RIGHT PANEL (hidden in mobile landscape, when no sessions, or when group chat is active) --- */}
-      {!isMobileLandscape && sessions.length > 0 && !activeGroupChatId && (
+      {/* --- RIGHT PANEL (hidden in mobile landscape, when no sessions, group chat is active, or log viewer is open) --- */}
+      {!isMobileLandscape && sessions.length > 0 && !activeGroupChatId && !logViewerOpen && (
         <ErrorBoundary>
           <RightPanel
             ref={rightPanelRef}

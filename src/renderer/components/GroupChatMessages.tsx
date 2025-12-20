@@ -162,21 +162,25 @@ export function GroupChatMessages({
       ) : (
         messages.map((msg, index) => {
           const isUser = msg.from === 'user';
+          const isSystem = msg.from === 'system';
           const msgKey = `${msg.timestamp}-${index}`;
           const isExpanded = expandedMessages.has(msgKey);
 
           // Calculate if content should be collapsed
           const lineCount = msg.content.split('\n').length;
-          const shouldCollapse = !isUser && lineCount > maxOutputLines && maxOutputLines !== Infinity;
+          const shouldCollapse = !isUser && !isSystem && lineCount > maxOutputLines && maxOutputLines !== Infinity;
           const displayContent = shouldCollapse && !isExpanded
             ? msg.content.split('\n').slice(0, maxOutputLines).join('\n')
             : msg.content;
 
           // Get sender color for non-user messages
           // Use 'Moderator' (capitalized) to match the color map key
-          const senderColor = msg.from === 'moderator'
-            ? getParticipantColor('Moderator')
-            : getParticipantColor(msg.from);
+          // System messages use error color
+          const senderColor = isSystem
+            ? theme.colors.error
+            : msg.from === 'moderator'
+              ? getParticipantColor('Moderator')
+              : getParticipantColor(msg.from);
 
           return (
             <div
@@ -231,7 +235,7 @@ export function GroupChatMessages({
                     className="text-xs font-medium mb-2"
                     style={{ color: senderColor }}
                   >
-                    {msg.from === 'moderator' ? 'Moderator' : msg.from}
+                    {msg.from === 'moderator' ? 'Moderator' : msg.from === 'system' ? 'System' : msg.from}
                   </div>
                 )}
 
