@@ -4,10 +4,10 @@
  * This module provides:
  * - generateProseStyles: Creates theme-aware CSS for markdown prose content
  * - createMarkdownComponents: Factory for ReactMarkdown component overrides
+ * - generateAutoRunProseStyles: Pre-configured styles for AutoRun panel
  *
  * Used by:
  * - AutoRun.tsx: Document editing/preview with image attachments and mermaid diagrams
- * - TerminalOutput.tsx: AI terminal output (uses its own variant with colored headings)
  */
 
 import type { Components } from 'react-markdown';
@@ -397,18 +397,5 @@ export function generateAutoRunProseStyles(theme: Theme): string {
     compactSpacing: false,
     includeCheckboxStyles: true,
     scopeSelector: '.autorun-panel',
-  });
-}
-
-/**
- * Generates prose styles for terminal/AI output.
- * Uses colored headings and compact spacing for log display.
- */
-export function generateTerminalProseStyles(theme: Theme): string {
-  return generateProseStyles({
-    theme,
-    coloredHeadings: true,
-    compactSpacing: true,
-    includeCheckboxStyles: false,
   });
 }
