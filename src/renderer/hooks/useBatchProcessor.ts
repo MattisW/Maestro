@@ -259,6 +259,22 @@ export function useBatchProcessor({
   // Debounce timer refs for batch state updates (Quick Win 1)
   const debounceTimerRefs = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const pendingUpdatesRef = useRef<Record<string, (prev: Record<string, BatchRunState>) => Record<string, BatchRunState>>>({});
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      Object.values(debounceTimerRefs.current).forEach(timer => {
+        clearTimeout(timer);
+      });
+      Object.keys(debounceTimerRefs.current).forEach(sessionId => {
+        delete debounceTimerRefs.current[sessionId];
+      });
+      Object.keys(pendingUpdatesRef.current).forEach(sessionId => {
+        delete pendingUpdatesRef.current[sessionId];
+      });
+    };
+  }, []);
 
   // Error resolution promises to pause batch processing until user action (per session)
   const errorResolutionRefs = useRef<Record<string, ErrorResolutionEntry>>({});
@@ -343,12 +359,14 @@ export function useBatchProcessor({
       const composedUpdater = pendingUpdatesRef.current[sessionId];
       if (composedUpdater) {
         let newStateForSession: BatchRunState | null = null;
-        setBatchRunStates(prev => {
-          const newStates = composedUpdater(prev);
-          newStateForSession = newStates[sessionId] || null;
-          return newStates;
-        });
-        broadcastAutoRunState(sessionId, newStateForSession);
+        if (isMountedRef.current) {
+          setBatchRunStates(prev => {
+            const newStates = composedUpdater(prev);
+            newStateForSession = newStates[sessionId] || null;
+            return newStates;
+          });
+          broadcastAutoRunState(sessionId, newStateForSession);
+        }
         delete pendingUpdatesRef.current[sessionId];
       }
       delete debounceTimerRefs.current[sessionId];
