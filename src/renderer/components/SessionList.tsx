@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import type { Session, Group, Theme, Shortcut, AutoRunStats, GroupChat, GroupChatState } from '../types';
-import { CONDUCTOR_BADGES, getBadgeForTime } from '../constants/conductorBadges';
+import { getBadgeForTime } from '../constants/conductorBadges';
 import { getStatusColor, getContextColor, formatActiveTime } from '../utils/theme';
 import { formatShortcutKeys } from '../utils/shortcutFormatter';
 import { SessionItem } from './SessionItem';
@@ -234,6 +234,255 @@ function SessionContextMenu({
         Remove Agent
       </button>
     </div>
+  );
+}
+
+// ============================================================================
+// HamburgerMenuContent - Shared menu content for expanded/collapsed sidebar
+// ============================================================================
+
+interface HamburgerMenuContentProps {
+  theme: Theme;
+  shortcuts: Record<string, Shortcut>;
+  openWizard?: () => void;
+  startTour?: () => void;
+  setShortcutsHelpOpen: (open: boolean) => void;
+  setSettingsModalOpen: (open: boolean) => void;
+  setSettingsTab: (tab: string) => void;
+  setLogViewerOpen: (open: boolean) => void;
+  setProcessMonitorOpen: (open: boolean) => void;
+  setUpdateCheckModalOpen: (open: boolean) => void;
+  setAboutModalOpen: (open: boolean) => void;
+  setMenuOpen: (open: boolean) => void;
+}
+
+function HamburgerMenuContent({
+  theme,
+  shortcuts,
+  openWizard,
+  startTour,
+  setShortcutsHelpOpen,
+  setSettingsModalOpen,
+  setSettingsTab,
+  setLogViewerOpen,
+  setProcessMonitorOpen,
+  setUpdateCheckModalOpen,
+  setAboutModalOpen,
+  setMenuOpen,
+}: HamburgerMenuContentProps) {
+  return (
+    <div className="p-1">
+      {openWizard && (
+        <button
+          onClick={() => { openWizard(); setMenuOpen(false); }}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-white/10 transition-colors text-left"
+        >
+          <Wand2 className="w-5 h-5" style={{ color: theme.colors.accent }} />
+          <div className="flex-1">
+            <div className="text-sm font-medium" style={{ color: theme.colors.textMain }}>New Agent Wizard</div>
+            <div className="text-xs" style={{ color: theme.colors.textDim }}>Get started with AI</div>
+          </div>
+          <span className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ backgroundColor: theme.colors.bgActivity, color: theme.colors.textDim }}>
+            {shortcuts.openWizard ? formatShortcutKeys(shortcuts.openWizard.keys) : '⇧⌘N'}
+          </span>
+        </button>
+      )}
+      {startTour && (
+        <button
+          onClick={() => { startTour(); setMenuOpen(false); }}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-white/10 transition-colors text-left"
+        >
+          <Compass className="w-5 h-5" style={{ color: theme.colors.accent }} />
+          <div className="flex-1">
+            <div className="text-sm font-medium" style={{ color: theme.colors.textMain }}>Introductory Tour</div>
+            <div className="text-xs" style={{ color: theme.colors.textDim }}>Learn how to use Maestro</div>
+          </div>
+        </button>
+      )}
+      <div className="my-1 border-t" style={{ borderColor: theme.colors.border }} />
+      <button
+        onClick={() => { setShortcutsHelpOpen(true); setMenuOpen(false); }}
+        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-white/10 transition-colors text-left"
+      >
+        <Keyboard className="w-5 h-5" style={{ color: theme.colors.accent }} />
+        <div className="flex-1">
+          <div className="text-sm font-medium" style={{ color: theme.colors.textMain }}>Keyboard Shortcuts</div>
+          <div className="text-xs" style={{ color: theme.colors.textDim }}>View all available shortcuts</div>
+        </div>
+        <span className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ backgroundColor: theme.colors.bgActivity, color: theme.colors.textDim }}>
+          {formatShortcutKeys(shortcuts.help.keys)}
+        </span>
+      </button>
+      <button
+        onClick={() => { setSettingsModalOpen(true); setSettingsTab('general'); setMenuOpen(false); }}
+        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-white/10 transition-colors text-left"
+      >
+        <Settings className="w-5 h-5" style={{ color: theme.colors.accent }} />
+        <div className="flex-1">
+          <div className="text-sm font-medium" style={{ color: theme.colors.textMain }}>Settings</div>
+          <div className="text-xs" style={{ color: theme.colors.textDim }}>Configure preferences</div>
+        </div>
+        <span className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ backgroundColor: theme.colors.bgActivity, color: theme.colors.textDim }}>
+          {formatShortcutKeys(shortcuts.settings.keys)}
+        </span>
+      </button>
+      <button
+        onClick={() => { setLogViewerOpen(true); setMenuOpen(false); }}
+        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-white/10 transition-colors text-left"
+      >
+        <ScrollText className="w-5 h-5" style={{ color: theme.colors.accent }} />
+        <div className="flex-1">
+          <div className="text-sm font-medium" style={{ color: theme.colors.textMain }}>System Logs</div>
+          <div className="text-xs" style={{ color: theme.colors.textDim }}>View application logs</div>
+        </div>
+        <span className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ backgroundColor: theme.colors.bgActivity, color: theme.colors.textDim }}>
+          {formatShortcutKeys(shortcuts.systemLogs.keys)}
+        </span>
+      </button>
+      <button
+        onClick={() => { setProcessMonitorOpen(true); setMenuOpen(false); }}
+        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-white/10 transition-colors text-left"
+      >
+        <Cpu className="w-5 h-5" style={{ color: theme.colors.accent }} />
+        <div className="flex-1">
+          <div className="text-sm font-medium" style={{ color: theme.colors.textMain }}>Process Monitor</div>
+          <div className="text-xs" style={{ color: theme.colors.textDim }}>View running processes</div>
+        </div>
+        <span className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ backgroundColor: theme.colors.bgActivity, color: theme.colors.textDim }}>
+          {formatShortcutKeys(shortcuts.processMonitor.keys)}
+        </span>
+      </button>
+      <div className="my-1 border-t" style={{ borderColor: theme.colors.border }} />
+      <button
+        onClick={() => { setUpdateCheckModalOpen(true); setMenuOpen(false); }}
+        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-white/10 transition-colors text-left"
+      >
+        <Download className="w-5 h-5" style={{ color: theme.colors.accent }} />
+        <div className="flex-1">
+          <div className="text-sm font-medium" style={{ color: theme.colors.textMain }}>Check for Updates</div>
+          <div className="text-xs" style={{ color: theme.colors.textDim }}>Get the latest version</div>
+        </div>
+      </button>
+      <button
+        onClick={() => { window.maestro.shell.openExternal('https://runmaestro.ai'); setMenuOpen(false); }}
+        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-white/10 transition-colors text-left"
+      >
+        <Globe className="w-5 h-5" style={{ color: theme.colors.accent }} />
+        <div className="flex-1">
+          <div className="text-sm font-medium" style={{ color: theme.colors.textMain }}>Maestro Website</div>
+          <div className="text-xs" style={{ color: theme.colors.textDim }}>Visit runmaestro.ai</div>
+        </div>
+        <ExternalLink className="w-4 h-4" style={{ color: theme.colors.textDim }} />
+      </button>
+      <button
+        onClick={() => { setAboutModalOpen(true); setMenuOpen(false); }}
+        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-white/10 transition-colors text-left"
+      >
+        <Info className="w-5 h-5" style={{ color: theme.colors.accent }} />
+        <div className="flex-1">
+          <div className="text-sm font-medium" style={{ color: theme.colors.textMain }}>About Maestro</div>
+          <div className="text-xs" style={{ color: theme.colors.textDim }}>Version, Credits, Stats</div>
+        </div>
+      </button>
+    </div>
+  );
+}
+
+// ============================================================================
+// SessionTooltipContent - Shared tooltip content for session hover previews
+// ============================================================================
+
+interface SessionTooltipContentProps {
+  session: Session;
+  theme: Theme;
+  gitFileCount?: number;
+  groupName?: string; // Optional group name (for skinny mode)
+}
+
+function SessionTooltipContent({
+  session,
+  theme,
+  gitFileCount,
+  groupName,
+}: SessionTooltipContentProps) {
+  return (
+    <>
+      {groupName && (
+        <div className="text-[10px] font-bold uppercase mb-1" style={{ color: theme.colors.textDim }}>
+          {groupName}
+        </div>
+      )}
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-xs font-bold" style={{ color: theme.colors.textMain }}>{session.name}</span>
+        {session.toolType !== 'terminal' && (
+          <span
+            className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase"
+            style={{
+              backgroundColor: session.isGitRepo ? theme.colors.accent + '30' : theme.colors.textDim + '20',
+              color: session.isGitRepo ? theme.colors.accent : theme.colors.textDim
+            }}
+          >
+            {session.isGitRepo ? 'GIT' : 'LOCAL'}
+          </span>
+        )}
+      </div>
+      <div className="text-[10px] capitalize mb-2" style={{ color: theme.colors.textDim }}>{session.state} • {session.toolType}</div>
+
+      <div className="pt-2 mt-2 space-y-1.5" style={{ borderTop: `1px solid ${theme.colors.border}` }}>
+        <div className="flex items-center justify-between text-[10px]">
+          <span style={{ color: theme.colors.textDim }}>Context Window</span>
+          <span style={{ color: theme.colors.textMain }}>{session.contextUsage}%</span>
+        </div>
+        <div className="w-full h-1 rounded-full overflow-hidden" style={{ backgroundColor: theme.colors.border }}>
+          <div
+            className="h-full transition-all"
+            style={{
+              width: `${session.contextUsage}%`,
+              backgroundColor: getContextColor(session.contextUsage, theme)
+            }}
+          />
+        </div>
+
+        {/* Git Status */}
+        {session.isGitRepo && gitFileCount !== undefined && gitFileCount > 0 && (
+          <div className="flex items-center justify-between text-[10px] pt-1">
+            <span className="flex items-center gap-1" style={{ color: theme.colors.textDim }}>
+              <GitBranch className="w-3 h-3" />
+              Git Changes
+            </span>
+            <span style={{ color: theme.colors.warning }}>{gitFileCount} files</span>
+          </div>
+        )}
+
+        {/* Session Cost */}
+        {session.usageStats && session.usageStats.totalCostUsd > 0 && (
+          <div className="flex items-center justify-between text-[10px] pt-1">
+            <span style={{ color: theme.colors.textDim }}>Session Cost</span>
+            <span className="font-mono font-bold" style={{ color: theme.colors.success }}>
+              ${session.usageStats.totalCostUsd.toFixed(2)}
+            </span>
+          </div>
+        )}
+
+        {/* Active Time */}
+        {session.activeTimeMs > 0 && (
+          <div className="flex items-center justify-between text-[10px] pt-1">
+            <span className="flex items-center gap-1" style={{ color: theme.colors.textDim }}>
+              <Clock className="w-3 h-3" />
+              Active Time
+            </span>
+            <span className="font-mono font-bold" style={{ color: theme.colors.accent }}>
+              {formatActiveTime(session.activeTimeMs)}
+            </span>
+          </div>
+        )}
+
+        <div className="flex items-center gap-1.5 text-[10px] font-mono pt-1" style={{ color: theme.colors.textDim }}>
+          <Folder className="w-3 h-3 shrink-0" />
+          <span className="truncate">{session.cwd}</span>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -1135,120 +1384,20 @@ export function SessionList(props: SessionListProps) {
                     border: `1px solid ${theme.colors.border}`,
                   }}
                 >
-                  <div className="p-1">
-                    {openWizard && (
-                      <button
-                        onClick={() => { openWizard(); setMenuOpen(false); }}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-white/10 transition-colors text-left"
-                      >
-                        <Wand2 className="w-5 h-5" style={{ color: theme.colors.accent }} />
-                        <div className="flex-1">
-                          <div className="text-sm font-medium" style={{ color: theme.colors.textMain }}>New Agent Wizard</div>
-                          <div className="text-xs" style={{ color: theme.colors.textDim }}>Get started with AI</div>
-                        </div>
-                        <span className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ backgroundColor: theme.colors.bgActivity, color: theme.colors.textDim }}>
-                          {shortcuts.openWizard ? formatShortcutKeys(shortcuts.openWizard.keys) : '⇧⌘N'}
-                        </span>
-                      </button>
-                    )}
-                    {startTour && (
-                      <button
-                        onClick={() => { startTour(); setMenuOpen(false); }}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-white/10 transition-colors text-left"
-                      >
-                        <Compass className="w-5 h-5" style={{ color: theme.colors.accent }} />
-                        <div className="flex-1">
-                          <div className="text-sm font-medium" style={{ color: theme.colors.textMain }}>Introductory Tour</div>
-                          <div className="text-xs" style={{ color: theme.colors.textDim }}>Learn how to use Maestro</div>
-                        </div>
-                      </button>
-                    )}
-                    <div className="my-1 border-t" style={{ borderColor: theme.colors.border }} />
-                    <button
-                      onClick={() => { setShortcutsHelpOpen(true); setMenuOpen(false); }}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-white/10 transition-colors text-left"
-                    >
-                      <Keyboard className="w-5 h-5" style={{ color: theme.colors.accent }} />
-                      <div className="flex-1">
-                        <div className="text-sm font-medium" style={{ color: theme.colors.textMain }}>Keyboard Shortcuts</div>
-                        <div className="text-xs" style={{ color: theme.colors.textDim }}>View all available shortcuts</div>
-                      </div>
-                      <span className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ backgroundColor: theme.colors.bgActivity, color: theme.colors.textDim }}>
-                        {formatShortcutKeys(shortcuts.help.keys)}
-                      </span>
-                    </button>
-                    <button
-                      onClick={() => { setSettingsModalOpen(true); setSettingsTab('general'); setMenuOpen(false); }}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-white/10 transition-colors text-left"
-                    >
-                      <Settings className="w-5 h-5" style={{ color: theme.colors.accent }} />
-                      <div className="flex-1">
-                        <div className="text-sm font-medium" style={{ color: theme.colors.textMain }}>Settings</div>
-                        <div className="text-xs" style={{ color: theme.colors.textDim }}>Configure preferences</div>
-                      </div>
-                      <span className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ backgroundColor: theme.colors.bgActivity, color: theme.colors.textDim }}>
-                        {formatShortcutKeys(shortcuts.settings.keys)}
-                      </span>
-                    </button>
-                    <button
-                      onClick={() => { setLogViewerOpen(true); setMenuOpen(false); }}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-white/10 transition-colors text-left"
-                    >
-                      <ScrollText className="w-5 h-5" style={{ color: theme.colors.accent }} />
-                      <div className="flex-1">
-                        <div className="text-sm font-medium" style={{ color: theme.colors.textMain }}>System Logs</div>
-                        <div className="text-xs" style={{ color: theme.colors.textDim }}>View application logs</div>
-                      </div>
-                      <span className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ backgroundColor: theme.colors.bgActivity, color: theme.colors.textDim }}>
-                        {formatShortcutKeys(shortcuts.systemLogs.keys)}
-                      </span>
-                    </button>
-                    <button
-                      onClick={() => { setProcessMonitorOpen(true); setMenuOpen(false); }}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-white/10 transition-colors text-left"
-                    >
-                      <Cpu className="w-5 h-5" style={{ color: theme.colors.accent }} />
-                      <div className="flex-1">
-                        <div className="text-sm font-medium" style={{ color: theme.colors.textMain }}>Process Monitor</div>
-                        <div className="text-xs" style={{ color: theme.colors.textDim }}>View running processes</div>
-                      </div>
-                      <span className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ backgroundColor: theme.colors.bgActivity, color: theme.colors.textDim }}>
-                        {formatShortcutKeys(shortcuts.processMonitor.keys)}
-                      </span>
-                    </button>
-                    <div className="my-1 border-t" style={{ borderColor: theme.colors.border }} />
-                    <button
-                      onClick={() => { setUpdateCheckModalOpen(true); setMenuOpen(false); }}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-white/10 transition-colors text-left"
-                    >
-                      <Download className="w-5 h-5" style={{ color: theme.colors.accent }} />
-                      <div className="flex-1">
-                        <div className="text-sm font-medium" style={{ color: theme.colors.textMain }}>Check for Updates</div>
-                        <div className="text-xs" style={{ color: theme.colors.textDim }}>Get the latest version</div>
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => { window.maestro.shell.openExternal('https://runmaestro.ai'); setMenuOpen(false); }}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-white/10 transition-colors text-left"
-                    >
-                      <Globe className="w-5 h-5" style={{ color: theme.colors.accent }} />
-                      <div className="flex-1">
-                        <div className="text-sm font-medium" style={{ color: theme.colors.textMain }}>Maestro Website</div>
-                        <div className="text-xs" style={{ color: theme.colors.textDim }}>Visit runmaestro.ai</div>
-                      </div>
-                      <ExternalLink className="w-4 h-4" style={{ color: theme.colors.textDim }} />
-                    </button>
-                    <button
-                      onClick={() => { setAboutModalOpen(true); setMenuOpen(false); }}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-white/10 transition-colors text-left"
-                    >
-                      <Info className="w-5 h-5" style={{ color: theme.colors.accent }} />
-                      <div className="flex-1">
-                        <div className="text-sm font-medium" style={{ color: theme.colors.textMain }}>About Maestro</div>
-                        <div className="text-xs" style={{ color: theme.colors.textDim }}>Version, Credits, Stats</div>
-                      </div>
-                    </button>
-                  </div>
+                  <HamburgerMenuContent
+                    theme={theme}
+                    shortcuts={shortcuts}
+                    openWizard={openWizard}
+                    startTour={startTour}
+                    setShortcutsHelpOpen={setShortcutsHelpOpen}
+                    setSettingsModalOpen={setSettingsModalOpen}
+                    setSettingsTab={setSettingsTab}
+                    setLogViewerOpen={setLogViewerOpen}
+                    setProcessMonitorOpen={setProcessMonitorOpen}
+                    setUpdateCheckModalOpen={setUpdateCheckModalOpen}
+                    setAboutModalOpen={setAboutModalOpen}
+                    setMenuOpen={setMenuOpen}
+                  />
                 </div>
               )}
             </div>
@@ -1271,120 +1420,20 @@ export function SessionList(props: SessionListProps) {
                   border: `1px solid ${theme.colors.border}`
                 }}
               >
-                <div className="p-1">
-                  {openWizard && (
-                    <button
-                      onClick={() => { openWizard(); setMenuOpen(false); }}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-white/10 transition-colors text-left"
-                    >
-                      <Wand2 className="w-5 h-5" style={{ color: theme.colors.accent }} />
-                      <div className="flex-1">
-                        <div className="text-sm font-medium" style={{ color: theme.colors.textMain }}>New Agent Wizard</div>
-                        <div className="text-xs" style={{ color: theme.colors.textDim }}>Get started with AI</div>
-                      </div>
-                      <span className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ backgroundColor: theme.colors.bgActivity, color: theme.colors.textDim }}>
-                        {shortcuts.openWizard ? formatShortcutKeys(shortcuts.openWizard.keys) : '⇧⌘N'}
-                      </span>
-                    </button>
-                  )}
-                  {startTour && (
-                    <button
-                      onClick={() => { startTour(); setMenuOpen(false); }}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-white/10 transition-colors text-left"
-                    >
-                      <Compass className="w-5 h-5" style={{ color: theme.colors.accent }} />
-                      <div className="flex-1">
-                        <div className="text-sm font-medium" style={{ color: theme.colors.textMain }}>Introductory Tour</div>
-                        <div className="text-xs" style={{ color: theme.colors.textDim }}>Learn how to use Maestro</div>
-                      </div>
-                    </button>
-                  )}
-                  <div className="my-1 border-t" style={{ borderColor: theme.colors.border }} />
-                  <button
-                    onClick={() => { setShortcutsHelpOpen(true); setMenuOpen(false); }}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-white/10 transition-colors text-left"
-                  >
-                    <Keyboard className="w-5 h-5" style={{ color: theme.colors.accent }} />
-                    <div className="flex-1">
-                      <div className="text-sm font-medium" style={{ color: theme.colors.textMain }}>Keyboard Shortcuts</div>
-                      <div className="text-xs" style={{ color: theme.colors.textDim }}>View all available shortcuts</div>
-                    </div>
-                    <span className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ backgroundColor: theme.colors.bgActivity, color: theme.colors.textDim }}>
-                      {formatShortcutKeys(shortcuts.help.keys)}
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => { setSettingsModalOpen(true); setSettingsTab('general'); setMenuOpen(false); }}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-white/10 transition-colors text-left"
-                  >
-                    <Settings className="w-5 h-5" style={{ color: theme.colors.accent }} />
-                    <div className="flex-1">
-                      <div className="text-sm font-medium" style={{ color: theme.colors.textMain }}>Settings</div>
-                      <div className="text-xs" style={{ color: theme.colors.textDim }}>Configure preferences</div>
-                    </div>
-                    <span className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ backgroundColor: theme.colors.bgActivity, color: theme.colors.textDim }}>
-                      {formatShortcutKeys(shortcuts.settings.keys)}
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => { setLogViewerOpen(true); setMenuOpen(false); }}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-white/10 transition-colors text-left"
-                  >
-                    <ScrollText className="w-5 h-5" style={{ color: theme.colors.accent }} />
-                    <div className="flex-1">
-                      <div className="text-sm font-medium" style={{ color: theme.colors.textMain }}>System Logs</div>
-                      <div className="text-xs" style={{ color: theme.colors.textDim }}>View application logs</div>
-                    </div>
-                    <span className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ backgroundColor: theme.colors.bgActivity, color: theme.colors.textDim }}>
-                      {formatShortcutKeys(shortcuts.systemLogs.keys)}
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => { setProcessMonitorOpen(true); setMenuOpen(false); }}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-white/10 transition-colors text-left"
-                  >
-                    <Cpu className="w-5 h-5" style={{ color: theme.colors.accent }} />
-                    <div className="flex-1">
-                      <div className="text-sm font-medium" style={{ color: theme.colors.textMain }}>Process Monitor</div>
-                      <div className="text-xs" style={{ color: theme.colors.textDim }}>View running processes</div>
-                    </div>
-                    <span className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ backgroundColor: theme.colors.bgActivity, color: theme.colors.textDim }}>
-                      {formatShortcutKeys(shortcuts.processMonitor.keys)}
-                    </span>
-                  </button>
-                  <div className="my-1 border-t" style={{ borderColor: theme.colors.border }} />
-                  <button
-                    onClick={() => { setUpdateCheckModalOpen(true); setMenuOpen(false); }}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-white/10 transition-colors text-left"
-                  >
-                    <Download className="w-5 h-5" style={{ color: theme.colors.accent }} />
-                    <div className="flex-1">
-                      <div className="text-sm font-medium" style={{ color: theme.colors.textMain }}>Check for Updates</div>
-                      <div className="text-xs" style={{ color: theme.colors.textDim }}>Get the latest version</div>
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => { window.maestro.shell.openExternal('https://runmaestro.ai'); setMenuOpen(false); }}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-white/10 transition-colors text-left"
-                  >
-                    <Globe className="w-5 h-5" style={{ color: theme.colors.accent }} />
-                    <div className="flex-1">
-                      <div className="text-sm font-medium" style={{ color: theme.colors.textMain }}>Maestro Website</div>
-                      <div className="text-xs" style={{ color: theme.colors.textDim }}>Visit runmaestro.ai</div>
-                    </div>
-                    <ExternalLink className="w-4 h-4" style={{ color: theme.colors.textDim }} />
-                  </button>
-                  <button
-                    onClick={() => { setAboutModalOpen(true); setMenuOpen(false); }}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-white/10 transition-colors text-left"
-                  >
-                    <Info className="w-5 h-5" style={{ color: theme.colors.accent }} />
-                    <div className="flex-1">
-                      <div className="text-sm font-medium" style={{ color: theme.colors.textMain }}>About Maestro</div>
-                      <div className="text-xs" style={{ color: theme.colors.textDim }}>Version, Credits, Stats</div>
-                    </div>
-                  </button>
-                </div>
+                <HamburgerMenuContent
+                  theme={theme}
+                  shortcuts={shortcuts}
+                  openWizard={openWizard}
+                  startTour={startTour}
+                  setShortcutsHelpOpen={setShortcutsHelpOpen}
+                  setSettingsModalOpen={setSettingsModalOpen}
+                  setSettingsTab={setSettingsTab}
+                  setLogViewerOpen={setLogViewerOpen}
+                  setProcessMonitorOpen={setProcessMonitorOpen}
+                  setUpdateCheckModalOpen={setUpdateCheckModalOpen}
+                  setAboutModalOpen={setAboutModalOpen}
+                  setMenuOpen={setMenuOpen}
+                />
               </div>
             )}
           </div>
@@ -1503,76 +1552,11 @@ export function SessionList(props: SessionListProps) {
                           border: `1px solid ${theme.colors.border}`
                         }}
                       >
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-xs font-bold" style={{ color: theme.colors.textMain }}>{s.name}</span>
-                          {s.toolType !== 'terminal' && (
-                            <span
-                              className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase"
-                              style={{
-                                backgroundColor: s.isGitRepo ? theme.colors.accent + '30' : theme.colors.textDim + '20',
-                                color: s.isGitRepo ? theme.colors.accent : theme.colors.textDim
-                              }}
-                            >
-                              {s.isGitRepo ? 'GIT' : 'LOCAL'}
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[10px] capitalize mb-2" style={{ color: theme.colors.textDim }}>{s.state} • {s.toolType}</div>
-
-                        <div className="pt-2 mt-2 space-y-1.5" style={{ borderTop: `1px solid ${theme.colors.border}` }}>
-                          <div className="flex items-center justify-between text-[10px]">
-                            <span style={{ color: theme.colors.textDim }}>Context Window</span>
-                            <span style={{ color: theme.colors.textMain }}>{s.contextUsage}%</span>
-                          </div>
-                          <div className="w-full h-1 rounded-full overflow-hidden" style={{ backgroundColor: theme.colors.border }}>
-                            <div
-                              className="h-full transition-all"
-                              style={{
-                                width: `${s.contextUsage}%`,
-                                backgroundColor: getContextColor(s.contextUsage, theme)
-                              }}
-                            />
-                          </div>
-
-                          {/* Git Status */}
-                          {s.isGitRepo && gitFileCounts.has(s.id) && gitFileCounts.get(s.id)! > 0 && (
-                            <div className="flex items-center justify-between text-[10px] pt-1">
-                              <span className="flex items-center gap-1" style={{ color: theme.colors.textDim }}>
-                                <GitBranch className="w-3 h-3" />
-                                Git Changes
-                              </span>
-                              <span style={{ color: theme.colors.warning }}>{gitFileCounts.get(s.id)} files</span>
-                            </div>
-                          )}
-
-                          {/* Session Cost */}
-                          {s.usageStats && s.usageStats.totalCostUsd > 0 && (
-                            <div className="flex items-center justify-between text-[10px] pt-1">
-                              <span style={{ color: theme.colors.textDim }}>Session Cost</span>
-                              <span className="font-mono font-bold" style={{ color: theme.colors.success }}>
-                                ${s.usageStats.totalCostUsd.toFixed(2)}
-                              </span>
-                            </div>
-                          )}
-
-                          {/* Active Time */}
-                          {s.activeTimeMs > 0 && (
-                            <div className="flex items-center justify-between text-[10px] pt-1">
-                              <span className="flex items-center gap-1" style={{ color: theme.colors.textDim }}>
-                                <Clock className="w-3 h-3" />
-                                Active Time
-                              </span>
-                              <span className="font-mono font-bold" style={{ color: theme.colors.accent }}>
-                                {formatActiveTime(s.activeTimeMs)}
-                              </span>
-                            </div>
-                          )}
-
-                          <div className="flex items-center gap-1.5 text-[10px] font-mono pt-1" style={{ color: theme.colors.textDim }}>
-                            <Folder className="w-3 h-3 shrink-0" />
-                            <span className="truncate">{s.cwd}</span>
-                          </div>
-                        </div>
+                        <SessionTooltipContent
+                          session={s}
+                          theme={theme}
+                          gitFileCount={gitFileCounts.get(s.id)}
+                        />
                       </div>
                     </div>
                   );})}
@@ -1706,76 +1690,11 @@ export function SessionList(props: SessionListProps) {
                             border: `1px solid ${theme.colors.border}`
                           }}
                         >
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="text-xs font-bold" style={{ color: theme.colors.textMain }}>{s.name}</span>
-                            {s.toolType !== 'terminal' && (
-                              <span
-                                className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase"
-                                style={{
-                                  backgroundColor: s.isGitRepo ? theme.colors.accent + '30' : theme.colors.textDim + '20',
-                                  color: s.isGitRepo ? theme.colors.accent : theme.colors.textDim
-                                }}
-                              >
-                                {s.isGitRepo ? 'GIT' : 'LOCAL'}
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-[10px] capitalize mb-2" style={{ color: theme.colors.textDim }}>{s.state} • {s.toolType}</div>
-
-                          <div className="pt-2 mt-2 space-y-1.5" style={{ borderTop: `1px solid ${theme.colors.border}` }}>
-                            <div className="flex items-center justify-between text-[10px]">
-                              <span style={{ color: theme.colors.textDim }}>Context Window</span>
-                              <span style={{ color: theme.colors.textMain }}>{s.contextUsage}%</span>
-                            </div>
-                            <div className="w-full h-1 rounded-full overflow-hidden" style={{ backgroundColor: theme.colors.border }}>
-                              <div
-                                className="h-full transition-all"
-                                style={{
-                                  width: `${s.contextUsage}%`,
-                                  backgroundColor: getContextColor(s.contextUsage, theme)
-                                }}
-                              />
-                            </div>
-
-                            {/* Git Status */}
-                            {s.isGitRepo && gitFileCounts.has(s.id) && gitFileCounts.get(s.id)! > 0 && (
-                              <div className="flex items-center justify-between text-[10px] pt-1">
-                                <span className="flex items-center gap-1" style={{ color: theme.colors.textDim }}>
-                                  <GitBranch className="w-3 h-3" />
-                                  Git Changes
-                                </span>
-                                <span style={{ color: theme.colors.warning }}>{gitFileCounts.get(s.id)} files</span>
-                              </div>
-                            )}
-
-                            {/* Session Cost */}
-                            {s.usageStats && s.usageStats.totalCostUsd > 0 && (
-                              <div className="flex items-center justify-between text-[10px] pt-1">
-                                <span style={{ color: theme.colors.textDim }}>Session Cost</span>
-                                <span className="font-mono font-bold" style={{ color: theme.colors.success }}>
-                                  ${s.usageStats.totalCostUsd.toFixed(2)}
-                                </span>
-                              </div>
-                            )}
-
-                            {/* Active Time */}
-                            {s.activeTimeMs > 0 && (
-                              <div className="flex items-center justify-between text-[10px] pt-1">
-                                <span className="flex items-center gap-1" style={{ color: theme.colors.textDim }}>
-                                  <Clock className="w-3 h-3" />
-                                  Active Time
-                                </span>
-                                <span className="font-mono font-bold" style={{ color: theme.colors.accent }}>
-                                  {formatActiveTime(s.activeTimeMs)}
-                                </span>
-                              </div>
-                            )}
-
-                            <div className="flex items-center gap-1.5 text-[10px] font-mono pt-1" style={{ color: theme.colors.textDim }}>
-                              <Folder className="w-3 h-3 shrink-0" />
-                              <span className="truncate">{s.cwd}</span>
-                            </div>
-                          </div>
+                          <SessionTooltipContent
+                            session={s}
+                            theme={theme}
+                            gitFileCount={gitFileCounts.get(s.id)}
+                          />
                         </div>
                       </div>
                     );})}
@@ -1924,76 +1843,11 @@ export function SessionList(props: SessionListProps) {
                         border: `1px solid ${theme.colors.border}`
                       }}
                     >
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xs font-bold" style={{ color: theme.colors.textMain }}>{s.name}</span>
-                        {s.toolType !== 'terminal' && (
-                          <span
-                            className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase"
-                            style={{
-                              backgroundColor: s.isGitRepo ? theme.colors.accent + '30' : theme.colors.textDim + '20',
-                              color: s.isGitRepo ? theme.colors.accent : theme.colors.textDim
-                            }}
-                          >
-                            {s.isGitRepo ? 'GIT' : 'LOCAL'}
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[10px] capitalize mb-2" style={{ color: theme.colors.textDim }}>{s.state} • {s.toolType}</div>
-
-                      <div className="pt-2 mt-2 space-y-1.5" style={{ borderTop: `1px solid ${theme.colors.border}` }}>
-                        <div className="flex items-center justify-between text-[10px]">
-                          <span style={{ color: theme.colors.textDim }}>Context Window</span>
-                          <span style={{ color: theme.colors.textMain }}>{s.contextUsage}%</span>
-                        </div>
-                        <div className="w-full h-1 rounded-full overflow-hidden" style={{ backgroundColor: theme.colors.border }}>
-                          <div
-                            className="h-full transition-all"
-                            style={{
-                              width: `${s.contextUsage}%`,
-                              backgroundColor: getContextColor(s.contextUsage, theme)
-                            }}
-                          />
-                        </div>
-
-                        {/* Git Status */}
-                        {s.isGitRepo && gitFileCounts.has(s.id) && gitFileCounts.get(s.id)! > 0 && (
-                          <div className="flex items-center justify-between text-[10px] pt-1">
-                            <span className="flex items-center gap-1" style={{ color: theme.colors.textDim }}>
-                              <GitBranch className="w-3 h-3" />
-                              Git Changes
-                            </span>
-                            <span style={{ color: theme.colors.warning }}>{gitFileCounts.get(s.id)} files</span>
-                          </div>
-                        )}
-
-                        {/* Session Cost */}
-                        {s.usageStats && s.usageStats.totalCostUsd > 0 && (
-                          <div className="flex items-center justify-between text-[10px] pt-1">
-                            <span style={{ color: theme.colors.textDim }}>Session Cost</span>
-                            <span className="font-mono font-bold" style={{ color: theme.colors.success }}>
-                              ${s.usageStats.totalCostUsd.toFixed(2)}
-                            </span>
-                          </div>
-                        )}
-
-                        {/* Active Time */}
-                        {s.activeTimeMs > 0 && (
-                          <div className="flex items-center justify-between text-[10px] pt-1">
-                            <span className="flex items-center gap-1" style={{ color: theme.colors.textDim }}>
-                              <Clock className="w-3 h-3" />
-                              Active Time
-                            </span>
-                            <span className="font-mono font-bold" style={{ color: theme.colors.accent }}>
-                              {formatActiveTime(s.activeTimeMs)}
-                            </span>
-                          </div>
-                        )}
-
-                        <div className="flex items-center gap-1.5 text-[10px] font-mono pt-1" style={{ color: theme.colors.textDim }}>
-                          <Folder className="w-3 h-3 shrink-0" />
-                          <span className="truncate">{s.cwd}</span>
-                        </div>
-                      </div>
+                      <SessionTooltipContent
+                        session={s}
+                        theme={theme}
+                        gitFileCount={gitFileCounts.get(s.id)}
+                      />
                     </div>
                   </div>
                 );})}
@@ -2078,81 +1932,12 @@ export function SessionList(props: SessionListProps) {
                   border: `1px solid ${theme.colors.border}`
                 }}
               >
-                {session.groupId && (
-                  <div className="text-[10px] font-bold uppercase mb-1" style={{ color: theme.colors.textDim }}>
-                    {groups.find(g => g.id === session.groupId)?.name}
-                  </div>
-                )}
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-bold" style={{ color: theme.colors.textMain }}>{session.name}</span>
-                  {session.toolType !== 'terminal' && (
-                    <span
-                      className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase"
-                      style={{
-                        backgroundColor: session.isGitRepo ? theme.colors.accent + '30' : theme.colors.textDim + '20',
-                        color: session.isGitRepo ? theme.colors.accent : theme.colors.textDim
-                      }}
-                    >
-                      {session.isGitRepo ? 'GIT' : 'LOCAL'}
-                    </span>
-                  )}
-                </div>
-                <div className="text-[10px] capitalize mb-2" style={{ color: theme.colors.textDim }}>{session.state} • {session.toolType}</div>
-
-                <div className="pt-2 mt-2 space-y-1.5" style={{ borderTop: `1px solid ${theme.colors.border}` }}>
-                  <div className="flex items-center justify-between text-[10px]">
-                    <span style={{ color: theme.colors.textDim }}>Context Window</span>
-                    <span style={{ color: theme.colors.textMain }}>{session.contextUsage}%</span>
-                  </div>
-                  <div className="w-full h-1 rounded-full overflow-hidden" style={{ backgroundColor: theme.colors.border }}>
-                    <div
-                      className="h-full transition-all"
-                      style={{
-                        width: `${session.contextUsage}%`,
-                        backgroundColor: getContextColor(session.contextUsage, theme)
-                      }}
-                    />
-                  </div>
-
-                  {/* Git Status */}
-                  {session.isGitRepo && gitFileCounts.has(session.id) && gitFileCounts.get(session.id)! > 0 && (
-                    <div className="flex items-center justify-between text-[10px] pt-1">
-                      <span className="flex items-center gap-1" style={{ color: theme.colors.textDim }}>
-                        <GitBranch className="w-3 h-3" />
-                        Git Changes
-                      </span>
-                      <span style={{ color: theme.colors.warning }}>{gitFileCounts.get(session.id)} files</span>
-                    </div>
-                  )}
-
-                  {/* Session Cost */}
-                  {session.usageStats && session.usageStats.totalCostUsd > 0 && (
-                    <div className="flex items-center justify-between text-[10px] pt-1">
-                      <span style={{ color: theme.colors.textDim }}>Session Cost</span>
-                      <span className="font-mono font-bold" style={{ color: theme.colors.success }}>
-                        ${session.usageStats.totalCostUsd.toFixed(2)}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Active Time */}
-                  {session.activeTimeMs > 0 && (
-                    <div className="flex items-center justify-between text-[10px] pt-1">
-                      <span className="flex items-center gap-1" style={{ color: theme.colors.textDim }}>
-                        <Clock className="w-3 h-3" />
-                        Active Time
-                      </span>
-                      <span className="font-mono font-bold" style={{ color: theme.colors.accent }}>
-                        {formatActiveTime(session.activeTimeMs)}
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-1.5 text-[10px] font-mono pt-1" style={{ color: theme.colors.textDim }}>
-                    <Folder className="w-3 h-3 shrink-0" />
-                    <span className="truncate">{session.cwd}</span>
-                  </div>
-                </div>
+                <SessionTooltipContent
+                  session={session}
+                  theme={theme}
+                  gitFileCount={gitFileCounts.get(session.id)}
+                  groupName={groups.find(g => g.id === session.groupId)?.name}
+                />
               </div>
             </div>
           );
