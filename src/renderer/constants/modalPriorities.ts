@@ -74,6 +74,9 @@ export const MODAL_PRIORITIES = {
   /** Create PR modal (from worktree) */
   CREATE_PR: 755,
 
+  /** Create worktree modal (quick create from context menu) */
+  CREATE_WORKTREE: 753,
+
   /** Worktree configuration modal */
   WORKTREE_CONFIG: 752,
 

@@ -38,6 +38,7 @@ import { CONDUCTOR_BADGES, getBadgeForTime } from './constants/conductorBadges';
 import { EmptyStateView } from './components/EmptyStateView';
 import { AgentErrorModal } from './components/AgentErrorModal';
 import { WorktreeConfigModal } from './components/WorktreeConfigModal';
+import { CreateWorktreeModal } from './components/CreateWorktreeModal';
 import { CreatePRModal } from './components/CreatePRModal';
 
 // Group Chat Components
@@ -394,6 +395,8 @@ export default function MaestroConsole() {
 
   // Worktree Modal State
   const [worktreeConfigModalOpen, setWorktreeConfigModalOpen] = useState(false);
+  const [createWorktreeModalOpen, setCreateWorktreeModalOpen] = useState(false);
+  const [createWorktreeSession, setCreateWorktreeSession] = useState<Session | null>(null);
   const [createPRModalOpen, setCreatePRModalOpen] = useState(false);
   const [createPRSession, setCreatePRSession] = useState<Session | null>(null);
 
@@ -6934,6 +6937,137 @@ export default function MaestroConsole() {
         />
       )}
 
+      {/* --- CREATE WORKTREE MODAL (quick create from context menu) --- */}
+      {createWorktreeModalOpen && createWorktreeSession && (
+        <CreateWorktreeModal
+          isOpen={createWorktreeModalOpen}
+          onClose={() => {
+            setCreateWorktreeModalOpen(false);
+            setCreateWorktreeSession(null);
+          }}
+          theme={theme}
+          session={createWorktreeSession}
+          onCreateWorktree={async (branchName) => {
+            // Determine base path: use configured path or default to parent directory
+            const basePath = createWorktreeSession.worktreeConfig?.basePath ||
+              createWorktreeSession.cwd.replace(/\/[^/]+$/, '') + '/worktrees';
+
+            const worktreePath = `${basePath}/${branchName}`;
+            console.log('[CreateWorktree] Create worktree:', branchName, 'at', worktreePath);
+
+            // Create the worktree via git
+            const result = await window.maestro.git.worktreeSetup(
+              createWorktreeSession.cwd,
+              worktreePath,
+              branchName
+            );
+
+            if (!result.success) {
+              throw new Error(result.error || 'Failed to create worktree');
+            }
+
+            // Create a new session for the worktree, inheriting all config from parent
+            const newId = generateId();
+            const initialTabId = generateId();
+            const initialTab: AITab = {
+              id: initialTabId,
+              agentSessionId: null,
+              name: null,
+              starred: false,
+              logs: [],
+              inputValue: '',
+              stagedImages: [],
+              createdAt: Date.now(),
+              state: 'idle',
+              saveToHistory: defaultSaveToHistory
+            };
+
+            // Fetch git info for the worktree
+            let gitBranches: string[] | undefined;
+            let gitTags: string[] | undefined;
+            let gitRefsCacheTime: number | undefined;
+
+            try {
+              [gitBranches, gitTags] = await Promise.all([
+                gitService.getBranches(worktreePath),
+                gitService.getTags(worktreePath)
+              ]);
+              gitRefsCacheTime = Date.now();
+            } catch {
+              // Ignore errors
+            }
+
+            const worktreeSession: Session = {
+              id: newId,
+              name: branchName,
+              toolType: createWorktreeSession.toolType,
+              state: 'idle',
+              cwd: worktreePath,
+              fullPath: worktreePath,
+              projectRoot: worktreePath,
+              isGitRepo: true,
+              gitBranches,
+              gitTags,
+              gitRefsCacheTime,
+              parentSessionId: createWorktreeSession.id,
+              worktreeBranch: branchName,
+              aiLogs: [],
+              shellLogs: [{ id: generateId(), timestamp: Date.now(), source: 'system', text: 'Worktree Session Ready.' }],
+              workLog: [],
+              contextUsage: 0,
+              inputMode: createWorktreeSession.toolType === 'terminal' ? 'terminal' : 'ai',
+              aiPid: 0,
+              terminalPid: 0,
+              port: 3000 + Math.floor(Math.random() * 100),
+              isLive: false,
+              changedFiles: [],
+              fileTree: [],
+              fileExplorerExpanded: [],
+              fileExplorerScrollPos: 0,
+              fileTreeAutoRefreshInterval: 180,
+              shellCwd: worktreePath,
+              aiCommandHistory: [],
+              shellCommandHistory: [],
+              executionQueue: [],
+              activeTimeMs: 0,
+              aiTabs: [initialTab],
+              activeTabId: initialTabId,
+              closedTabHistory: [],
+              // Inherit all agent configuration from parent
+              customPath: createWorktreeSession.customPath,
+              customArgs: createWorktreeSession.customArgs,
+              customEnvVars: createWorktreeSession.customEnvVars,
+              customModel: createWorktreeSession.customModel,
+              customContextWindow: createWorktreeSession.customContextWindow,
+              nudgeMessage: createWorktreeSession.nudgeMessage,
+              autoRunFolderPath: createWorktreeSession.autoRunFolderPath
+            };
+
+            setSessions(prev => [...prev, worktreeSession]);
+
+            // Expand parent's worktrees
+            setSessions(prev => prev.map(s =>
+              s.id === createWorktreeSession.id ? { ...s, worktreesExpanded: true } : s
+            ));
+
+            // Save worktree config if not already configured
+            if (!createWorktreeSession.worktreeConfig?.basePath) {
+              setSessions(prev => prev.map(s =>
+                s.id === createWorktreeSession.id
+                  ? { ...s, worktreeConfig: { basePath, watchEnabled: true } }
+                  : s
+              ));
+            }
+
+            addToast({
+              type: 'success',
+              title: 'Worktree Created',
+              message: branchName,
+            });
+          }}
+        />
+      )}
+
       {/* --- CREATE PR MODAL --- */}
       {createPRModalOpen && (createPRSession || activeSession) && (
         <CreatePRModal
@@ -7270,6 +7404,10 @@ export default function MaestroConsole() {
             onOpenCreatePR={(session) => {
               setCreatePRSession(session);
               setCreatePRModalOpen(true);
+            }}
+            onQuickCreateWorktree={(session) => {
+              setCreateWorktreeSession(session);
+              setCreateWorktreeModalOpen(true);
             }}
             onOpenWorktreeConfig={(session) => {
               // Set the active session to the one we're configuring, then open the modal

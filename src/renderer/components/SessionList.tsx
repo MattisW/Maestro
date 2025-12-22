@@ -33,7 +33,8 @@ interface SessionContextMenuProps {
   onDelete: () => void;
   onDismiss: () => void;
   onCreatePR?: () => void; // For worktree child sessions
-  onCreateWorktree?: () => void; // For parent sessions to create new worktree
+  onQuickCreateWorktree?: () => void; // Opens small modal for quick worktree creation
+  onConfigureWorktrees?: () => void; // Opens full worktree config modal
   onDeleteWorktree?: () => void; // For worktree child sessions to delete
 }
 
@@ -51,7 +52,8 @@ function SessionContextMenu({
   onDelete,
   onDismiss,
   onCreatePR,
-  onCreateWorktree,
+  onQuickCreateWorktree,
+  onConfigureWorktrees,
   onDeleteWorktree,
 }: SessionContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
@@ -242,20 +244,35 @@ function SessionContextMenu({
       )}
 
       {/* Worktree section - for parent sessions */}
-      {((hasWorktreeChildren || session.isGitRepo) && !session.parentSessionId && onCreateWorktree) && (
+      {((hasWorktreeChildren || session.isGitRepo) && !session.parentSessionId && (onQuickCreateWorktree || onConfigureWorktrees)) && (
         <>
           <div className="my-1 border-t" style={{ borderColor: theme.colors.border }} />
-          <button
-            onClick={() => {
-              onCreateWorktree();
-              onDismiss();
-            }}
-            className="w-full text-left px-3 py-1.5 text-xs hover:bg-white/5 transition-colors flex items-center gap-2"
-            style={{ color: theme.colors.accent }}
-          >
-            <GitBranch className="w-3.5 h-3.5" />
-            {session.worktreeConfig?.basePath ? 'Create Worktree' : 'Configure Worktrees'}
-          </button>
+          {onQuickCreateWorktree && (
+            <button
+              onClick={() => {
+                onQuickCreateWorktree();
+                onDismiss();
+              }}
+              className="w-full text-left px-3 py-1.5 text-xs hover:bg-white/5 transition-colors flex items-center gap-2"
+              style={{ color: theme.colors.accent }}
+            >
+              <GitBranch className="w-3.5 h-3.5" />
+              Create Worktree
+            </button>
+          )}
+          {onConfigureWorktrees && (
+            <button
+              onClick={() => {
+                onConfigureWorktrees();
+                onDismiss();
+              }}
+              className="w-full text-left px-3 py-1.5 text-xs hover:bg-white/5 transition-colors flex items-center gap-2"
+              style={{ color: theme.colors.accent }}
+            >
+              <Settings className="w-3.5 h-3.5" />
+              Configure Worktrees
+            </button>
+          )}
         </>
       )}
 
@@ -658,6 +675,7 @@ interface SessionListProps {
   // Worktree handlers
   onToggleWorktreeExpanded?: (sessionId: string) => void;
   onOpenCreatePR?: (session: Session) => void;
+  onQuickCreateWorktree?: (session: Session) => void;
   onOpenWorktreeConfig?: (session: Session) => void;
   onDeleteWorktree?: (session: Session) => void;
 
@@ -723,6 +741,7 @@ export function SessionList(props: SessionListProps) {
     onEditAgent,
     onToggleWorktreeExpanded,
     onOpenCreatePR,
+    onQuickCreateWorktree,
     onOpenWorktreeConfig,
     onDeleteWorktree,
     activeBatchSessionIds = [],
@@ -2106,7 +2125,8 @@ export function SessionList(props: SessionListProps) {
           onDelete={() => handleDeleteSession(contextMenuSession.id)}
           onDismiss={() => setContextMenu(null)}
           onCreatePR={onOpenCreatePR && contextMenuSession.parentSessionId ? () => onOpenCreatePR(contextMenuSession) : undefined}
-          onCreateWorktree={onOpenWorktreeConfig && !contextMenuSession.parentSessionId ? () => onOpenWorktreeConfig(contextMenuSession) : undefined}
+          onQuickCreateWorktree={onQuickCreateWorktree && !contextMenuSession.parentSessionId ? () => onQuickCreateWorktree(contextMenuSession) : undefined}
+          onConfigureWorktrees={onOpenWorktreeConfig && !contextMenuSession.parentSessionId ? () => onOpenWorktreeConfig(contextMenuSession) : undefined}
           onDeleteWorktree={onDeleteWorktree && contextMenuSession.parentSessionId ? () => onDeleteWorktree(contextMenuSession) : undefined}
         />
       )}
