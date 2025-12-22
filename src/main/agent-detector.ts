@@ -274,27 +274,57 @@ export class AgentDetector {
 
   /**
    * Check if a custom path points to a valid executable
+   * On Windows, also tries .cmd and .exe extensions if the path doesn't exist as-is
    */
   private async checkCustomPath(customPath: string): Promise<{ exists: boolean; path?: string }> {
+    const isWindows = process.platform === 'win32';
+
+    // Helper to check if a specific path exists and is a file
+    const checkPath = async (pathToCheck: string): Promise<boolean> => {
+      try {
+        const stats = await fs.promises.stat(pathToCheck);
+        return stats.isFile();
+      } catch {
+        return false;
+      }
+    };
+
     try {
-      // Check if file exists
-      const stats = await fs.promises.stat(customPath);
-      if (!stats.isFile()) {
-        return { exists: false };
+      // First, try the exact path provided
+      if (await checkPath(customPath)) {
+        // Check if file is executable (on Unix systems)
+        if (!isWindows) {
+          try {
+            await fs.promises.access(customPath, fs.constants.X_OK);
+          } catch {
+            logger.warn(`Custom path exists but is not executable: ${customPath}`, 'AgentDetector');
+            return { exists: false };
+          }
+        }
+        return { exists: true, path: customPath };
       }
 
-      // Check if file is executable (on Unix systems)
-      if (process.platform !== 'win32') {
-        try {
-          await fs.promises.access(customPath, fs.constants.X_OK);
-        } catch {
-          // File exists but is not executable
-          logger.warn(`Custom path exists but is not executable: ${customPath}`, 'AgentDetector');
-          return { exists: false };
+      // On Windows, if the exact path doesn't exist, try with .cmd and .exe extensions
+      if (isWindows) {
+        const lowerPath = customPath.toLowerCase();
+        // Only try extensions if the path doesn't already have one
+        if (!lowerPath.endsWith('.cmd') && !lowerPath.endsWith('.exe')) {
+          // Try .exe first (preferred), then .cmd
+          const exePath = customPath + '.exe';
+          if (await checkPath(exePath)) {
+            logger.debug(`Custom path resolved with .exe extension`, 'AgentDetector', { original: customPath, resolved: exePath });
+            return { exists: true, path: exePath };
+          }
+
+          const cmdPath = customPath + '.cmd';
+          if (await checkPath(cmdPath)) {
+            logger.debug(`Custom path resolved with .cmd extension`, 'AgentDetector', { original: customPath, resolved: cmdPath });
+            return { exists: true, path: cmdPath };
+          }
         }
       }
 
-      return { exists: true, path: customPath };
+      return { exists: false };
     } catch {
       return { exists: false };
     }
@@ -405,7 +435,8 @@ export class AgentDetector {
 
       if (result.exitCode === 0 && result.stdout.trim()) {
         // Get all matches (Windows 'where' can return multiple)
-        const matches = result.stdout.trim().split('\n').map(p => p.trim()).filter(p => p);
+        // Handle both Unix (\n) and Windows (\r\n) line endings
+        const matches = result.stdout.trim().split(/\r?\n/).map(p => p.trim()).filter(p => p);
 
         if (process.platform === 'win32' && matches.length > 0) {
           // On Windows, prefer .exe over .cmd over extensionless
