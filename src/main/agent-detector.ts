@@ -350,20 +350,27 @@ export class AgentDetector {
       const programFilesX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
 
       additionalPaths = [
-        // npm global installs (Claude Code, Codex CLI)
+        // Claude Code PowerShell installer (irm https://claude.ai/install.ps1 | iex)
+        // This is the primary installation method - installs claude.exe to ~/.local/bin
+        path.join(home, '.local', 'bin'),
+        // Claude Code winget install (winget install --id Anthropic.ClaudeCode)
+        path.join(localAppData, 'Microsoft', 'WinGet', 'Links'),
+        path.join(programFiles, 'WinGet', 'Links'),
+        path.join(localAppData, 'Microsoft', 'WinGet', 'Packages'),
+        path.join(programFiles, 'WinGet', 'Packages'),
+        // npm global installs (Claude Code, Codex CLI, Gemini CLI)
         path.join(appData, 'npm'),
         path.join(localAppData, 'npm'),
         // Claude Code CLI install location (npm global)
         path.join(appData, 'npm', 'node_modules', '@anthropic-ai', 'claude-code', 'cli'),
         // Codex CLI install location (npm global)
         path.join(appData, 'npm', 'node_modules', '@openai', 'codex', 'bin'),
-        // User local bin (Claude Code standalone installer)
-        path.join(home, '.local', 'bin'),
         // User local programs
         path.join(localAppData, 'Programs'),
         path.join(localAppData, 'Microsoft', 'WindowsApps'),
-        // Python/pip user installs
+        // Python/pip user installs (for Aider)
         path.join(appData, 'Python', 'Scripts'),
+        path.join(localAppData, 'Programs', 'Python', 'Python312', 'Scripts'),
         path.join(localAppData, 'Programs', 'Python', 'Python311', 'Scripts'),
         path.join(localAppData, 'Programs', 'Python', 'Python310', 'Scripts'),
         // Git for Windows (provides bash, common tools)
@@ -420,13 +427,98 @@ export class AgentDetector {
   }
 
   /**
+   * On Windows, directly probe known installation paths for a binary.
+   * This is more reliable than `where` command which may fail in packaged Electron apps.
+   * Returns the first existing path found, preferring .exe over .cmd.
+   */
+  private async probeWindowsPaths(binaryName: string): Promise<string | null> {
+    const home = os.homedir();
+    const appData = process.env.APPDATA || path.join(home, 'AppData', 'Roaming');
+    const localAppData = process.env.LOCALAPPDATA || path.join(home, 'AppData', 'Local');
+    const programFiles = process.env.ProgramFiles || 'C:\\Program Files';
+
+    // Define known installation paths for each binary, in priority order
+    // Prefer .exe (standalone installers) over .cmd (npm wrappers)
+    const knownPaths: Record<string, string[]> = {
+      claude: [
+        // PowerShell installer (primary method) - installs claude.exe
+        path.join(home, '.local', 'bin', 'claude.exe'),
+        // Winget installation
+        path.join(localAppData, 'Microsoft', 'WinGet', 'Links', 'claude.exe'),
+        path.join(programFiles, 'WinGet', 'Links', 'claude.exe'),
+        // npm global installation - creates .cmd wrapper
+        path.join(appData, 'npm', 'claude.cmd'),
+        path.join(localAppData, 'npm', 'claude.cmd'),
+        // WindowsApps (Microsoft Store style)
+        path.join(localAppData, 'Microsoft', 'WindowsApps', 'claude.exe'),
+      ],
+      codex: [
+        // npm global installation (primary method for Codex)
+        path.join(appData, 'npm', 'codex.cmd'),
+        path.join(localAppData, 'npm', 'codex.cmd'),
+        // Possible standalone in future
+        path.join(home, '.local', 'bin', 'codex.exe'),
+      ],
+      opencode: [
+        // Scoop installation (recommended for OpenCode)
+        path.join(home, 'scoop', 'shims', 'opencode.exe'),
+        path.join(home, 'scoop', 'apps', 'opencode', 'current', 'opencode.exe'),
+        // Chocolatey installation
+        path.join(process.env.ChocolateyInstall || 'C:\\ProgramData\\chocolatey', 'bin', 'opencode.exe'),
+        // Go install
+        path.join(home, 'go', 'bin', 'opencode.exe'),
+        // npm (has known issues on Windows, but check anyway)
+        path.join(appData, 'npm', 'opencode.cmd'),
+      ],
+      gemini: [
+        // npm global installation
+        path.join(appData, 'npm', 'gemini.cmd'),
+        path.join(localAppData, 'npm', 'gemini.cmd'),
+      ],
+      aider: [
+        // pip installation
+        path.join(appData, 'Python', 'Scripts', 'aider.exe'),
+        path.join(localAppData, 'Programs', 'Python', 'Python312', 'Scripts', 'aider.exe'),
+        path.join(localAppData, 'Programs', 'Python', 'Python311', 'Scripts', 'aider.exe'),
+        path.join(localAppData, 'Programs', 'Python', 'Python310', 'Scripts', 'aider.exe'),
+      ],
+    };
+
+    const pathsToCheck = knownPaths[binaryName] || [];
+
+    for (const probePath of pathsToCheck) {
+      try {
+        await fs.promises.access(probePath, fs.constants.F_OK);
+        logger.debug(`Direct probe found ${binaryName}`, 'AgentDetector', { path: probePath });
+        return probePath;
+      } catch {
+        // Path doesn't exist, continue to next
+      }
+    }
+
+    return null;
+  }
+
+  /**
    * Check if a binary exists in PATH
    * On Windows, this also handles .cmd and .exe extensions properly
    */
   private async checkBinaryExists(binaryName: string): Promise<{ exists: boolean; path?: string }> {
+    const isWindows = process.platform === 'win32';
+
+    // On Windows, first try direct file probing of known installation paths
+    // This is more reliable than `where` command in packaged Electron apps
+    if (isWindows) {
+      const probedPath = await this.probeWindowsPaths(binaryName);
+      if (probedPath) {
+        return { exists: true, path: probedPath };
+      }
+      logger.debug(`Direct probe failed for ${binaryName}, falling back to where`, 'AgentDetector');
+    }
+
     try {
       // Use 'which' on Unix-like systems, 'where' on Windows
-      const command = process.platform === 'win32' ? 'where' : 'which';
+      const command = isWindows ? 'where' : 'which';
 
       // Use expanded PATH to find binaries in common installation locations
       // This is critical for packaged Electron apps which don't inherit shell env

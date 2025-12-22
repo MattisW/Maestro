@@ -537,20 +537,35 @@ export class ProcessManager extends EventEmitter {
           hasStdio: 'default (pipe)'
         });
 
-        // On Windows, .cmd files (npm-installed CLIs) need special handling
-        // They must be executed through cmd.exe since spawn() with shell:false
-        // cannot execute batch scripts directly
+        // On Windows, batch files (.cmd, .bat) and commands without executable extensions
+        // need to be executed through the shell. This is because:
+        // 1. spawn() with shell:false cannot execute batch scripts directly
+        // 2. Commands without extensions need PATHEXT resolution
         let spawnCommand = command;
         let spawnArgs = finalArgs;
         let useShell = false;
 
-        if (isWindows && command.toLowerCase().endsWith('.cmd')) {
-          // For .cmd files, we need to use shell:true to execute them properly
-          // This is safe because we're executing a specific file path, not user input
-          useShell = true;
-          logger.debug('[ProcessManager] Using shell=true for Windows .cmd file', 'ProcessManager', {
-            command,
-          });
+        if (isWindows) {
+          const lowerCommand = command.toLowerCase();
+          // Use shell for batch files
+          if (lowerCommand.endsWith('.cmd') || lowerCommand.endsWith('.bat')) {
+            useShell = true;
+            logger.debug('[ProcessManager] Using shell=true for Windows batch file', 'ProcessManager', {
+              command,
+            });
+          }
+          // Also use shell if command has no extension (needs PATHEXT resolution)
+          // But NOT if it's a known executable (.exe, .com)
+          else if (!lowerCommand.endsWith('.exe') && !lowerCommand.endsWith('.com')) {
+            // Check if the command has any extension at all
+            const hasExtension = path.extname(command).length > 0;
+            if (!hasExtension) {
+              useShell = true;
+              logger.debug('[ProcessManager] Using shell=true for Windows command without extension', 'ProcessManager', {
+                command,
+              });
+            }
+          }
         }
 
         const childProcess = spawn(spawnCommand, spawnArgs, {

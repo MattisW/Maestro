@@ -1,5 +1,6 @@
 import { execFile } from 'child_process';
 import { promisify } from 'util';
+import * as path from 'path';
 
 const execFileAsync = promisify(execFile);
 
@@ -13,11 +14,35 @@ export interface ExecResult {
 }
 
 /**
+ * Determine if a command needs shell execution on Windows
+ * - Batch files (.cmd, .bat) always need shell
+ * - Commands without extensions need PATHEXT resolution via shell
+ * - Executables (.exe, .com) can run directly
+ */
+function needsWindowsShell(command: string): boolean {
+  const lowerCommand = command.toLowerCase();
+
+  // Batch files always need shell
+  if (lowerCommand.endsWith('.cmd') || lowerCommand.endsWith('.bat')) {
+    return true;
+  }
+
+  // Known executables don't need shell
+  if (lowerCommand.endsWith('.exe') || lowerCommand.endsWith('.com')) {
+    return false;
+  }
+
+  // Commands without extension need shell for PATHEXT resolution
+  const hasExtension = path.extname(command).length > 0;
+  return !hasExtension;
+}
+
+/**
  * Safely execute a command without shell injection vulnerabilities
  * Uses execFile instead of exec to prevent shell interpretation
  *
- * On Windows, .cmd files (npm-installed CLIs) are handled by enabling shell mode,
- * since execFile cannot directly execute batch scripts without the shell.
+ * On Windows, batch files and commands without extensions are handled
+ * by enabling shell mode, since execFile cannot directly execute them.
  */
 export async function execFileNoThrow(
   command: string,
@@ -26,17 +51,17 @@ export async function execFileNoThrow(
   env?: NodeJS.ProcessEnv
 ): Promise<ExecResult> {
   try {
-    // On Windows, .cmd files need shell execution
+    // On Windows, some commands need shell execution
     // This is safe because we're executing a specific file path, not user input
     const isWindows = process.platform === 'win32';
-    const needsShell = isWindows && command.toLowerCase().endsWith('.cmd');
+    const useShell = isWindows && needsWindowsShell(command);
 
     const { stdout, stderr } = await execFileAsync(command, args, {
       cwd,
       env,
       encoding: 'utf8',
       maxBuffer: EXEC_MAX_BUFFER,
-      shell: needsShell,
+      shell: useShell,
     });
 
     return {
