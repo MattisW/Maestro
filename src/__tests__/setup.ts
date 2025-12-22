@@ -243,6 +243,8 @@ const mockMaestro = {
     // Session management methods (for TabSwitcherModal and RenameSessionModal)
     getAllNamedSessions: vi.fn().mockResolvedValue([]),
     getSessionOrigins: vi.fn().mockResolvedValue({}),
+    getOrigins: vi.fn().mockResolvedValue({}),
+    setSessionName: vi.fn().mockResolvedValue(undefined),
     updateSessionName: vi.fn().mockResolvedValue(undefined),
     updateSessionStarred: vi.fn().mockResolvedValue(undefined),
     registerSessionOrigin: vi.fn().mockResolvedValue(undefined),

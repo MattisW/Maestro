@@ -195,7 +195,9 @@ describe('AgentSessionsBrowser', () => {
       };
     });
     vi.mocked(window.maestro.claude.updateSessionStarred).mockResolvedValue(undefined);
+    vi.mocked(window.maestro.claude.updateSessionName).mockResolvedValue(undefined);
     vi.mocked(window.maestro.agentSessions.updateSessionName).mockResolvedValue(undefined);
+    vi.mocked(window.maestro.agentSessions.setSessionName).mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -1412,7 +1414,8 @@ describe('AgentSessionsBrowser', () => {
         await vi.runAllTimersAsync();
       });
 
-      expect(window.maestro.agentSessions.updateSessionName).toHaveBeenCalledWith(
+      // For claude-code sessions, it uses window.maestro.claude.updateSessionName
+      expect(window.maestro.claude.updateSessionName).toHaveBeenCalledWith(
         '/path/to/project',
         'session-1',
         'New Name'
@@ -1460,7 +1463,8 @@ describe('AgentSessionsBrowser', () => {
 
       // Verify that "New Name" was NOT saved - if updateSessionName was called,
       // it should NOT have been called with 'New Name'
-      const calls = vi.mocked(window.maestro.agentSessions.updateSessionName).mock.calls;
+      // For claude-code sessions, it uses window.maestro.claude.updateSessionName
+      const calls = vi.mocked(window.maestro.claude.updateSessionName).mock.calls;
       const savedWithNewName = calls.some(call => call[2] === 'New Name');
       expect(savedWithNewName).toBe(false);
     });
@@ -1494,7 +1498,8 @@ describe('AgentSessionsBrowser', () => {
         await vi.runAllTimersAsync();
       });
 
-      expect(window.maestro.agentSessions.updateSessionName).toHaveBeenCalledWith(
+      // For claude-code sessions, it uses window.maestro.claude.updateSessionName
+      expect(window.maestro.claude.updateSessionName).toHaveBeenCalledWith(
         '/path/to/project',
         'session-1',
         'Blur Name'
@@ -1533,7 +1538,8 @@ describe('AgentSessionsBrowser', () => {
         await vi.runAllTimersAsync();
       });
 
-      expect(window.maestro.agentSessions.updateSessionName).toHaveBeenCalledWith(
+      // For claude-code sessions, it uses window.maestro.claude.updateSessionName
+      expect(window.maestro.claude.updateSessionName).toHaveBeenCalledWith(
         '/path/to/project',
         'session-1',
         ''
@@ -1582,7 +1588,8 @@ describe('AgentSessionsBrowser', () => {
       });
 
       // Should use projectRoot, NOT cwd
-      expect(window.maestro.agentSessions.updateSessionName).toHaveBeenCalledWith(
+      // For claude-code sessions, it uses window.maestro.claude.updateSessionName
+      expect(window.maestro.claude.updateSessionName).toHaveBeenCalledWith(
         '/path/to/project',  // projectRoot, not '/path/to/project/some/subdir'
         'session-1',
         'New Name'
@@ -2655,7 +2662,8 @@ describe('AgentSessionsBrowser', () => {
         await vi.runAllTimersAsync();
       });
 
-      expect(window.maestro.agentSessions.updateSessionName).toHaveBeenCalledWith(
+      // For claude-code sessions, it uses window.maestro.claude.updateSessionName
+      expect(window.maestro.claude.updateSessionName).toHaveBeenCalledWith(
         '/path/to/project',
         'session-1',
         'Detail View Name'

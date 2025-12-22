@@ -1,4 +1,5 @@
 import React, { useState, useCallback, memo, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X, ChevronLeft, ChevronRight, Copy, Check, Trash2, FileText } from 'lucide-react';
 import type { Theme } from '../types';
 import { useLayerStack } from '../contexts/LayerStackContext';
@@ -201,9 +202,9 @@ export const AutoRunLightbox = memo(({
     return null;
   }
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90"
       onClick={onClose}
       onKeyDown={handleKeyDown}
       tabIndex={-1}
@@ -301,7 +302,8 @@ export const AutoRunLightbox = memo(({
           onClose={() => setShowDeleteConfirm(false)}
         />
       )}
-    </div>
+    </div>,
+    document.body
   );
 });
 

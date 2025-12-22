@@ -281,7 +281,7 @@ export function AICommandsPanel({ theme, customAICommands, setCustomAICommands }
               className="flex items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-all disabled:opacity-50"
               style={{
                 backgroundColor: theme.colors.success,
-                color: 'white'
+                color: '#000000'
               }}
             >
               <Save className="w-3 h-3" />
@@ -377,7 +377,7 @@ export function AICommandsPanel({ theme, customAICommands, setCustomAICommands }
                     className="flex items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-all"
                     style={{
                       backgroundColor: theme.colors.success,
-                      color: 'white'
+                      color: '#000000'
                     }}
                   >
                     <Save className="w-3 h-3" />

@@ -111,9 +111,15 @@ describe('useRemoteIntegration', () => {
     broadcastTabsChange: vi.fn(),
   };
 
+  const mockClaude = {
+    ...window.maestro.claude,
+    updateSessionName: vi.fn().mockResolvedValue(undefined),
+  };
+
   const mockAgentSessions = {
     ...window.maestro.agentSessions,
     updateSessionName: vi.fn().mockResolvedValue(true),
+    setSessionName: vi.fn().mockResolvedValue(undefined),
   };
 
   const mockHistory = {
@@ -137,6 +143,7 @@ describe('useRemoteIntegration', () => {
       process: mockProcess as typeof window.maestro.process,
       live: mockLive as typeof window.maestro.live,
       web: mockWeb as typeof window.maestro.web,
+      claude: mockClaude as typeof window.maestro.claude,
       agentSessions: mockAgentSessions as typeof window.maestro.agentSessions,
       history: mockHistory as typeof window.maestro.history,
     };
@@ -468,12 +475,13 @@ describe('useRemoteIntegration', () => {
   });
 
   describe('remote rename tab', () => {
-    it('renames tab and persists to agent session', () => {
+    it('renames tab and persists to agent session (claude-code)', () => {
       const tab = createMockTab({ id: 'tab-1', agentSessionId: 'agent-session-1' });
       const session = createMockSession({
         id: 'session-1',
         aiTabs: [tab],
         projectRoot: '/test/project',
+        toolType: 'claude-code',
       });
       const deps = createDeps({ sessions: [session] });
 
@@ -484,7 +492,8 @@ describe('useRemoteIntegration', () => {
       });
 
       expect(deps.setSessions).toHaveBeenCalled();
-      expect(mockAgentSessions.updateSessionName).toHaveBeenCalledWith(
+      // For claude-code sessions, it uses window.maestro.claude.updateSessionName
+      expect(mockClaude.updateSessionName).toHaveBeenCalledWith(
         '/test/project',
         'agent-session-1',
         'New Tab Name'
@@ -505,7 +514,8 @@ describe('useRemoteIntegration', () => {
         onRemoteRenameTabHandler?.('session-1', 'nonexistent', 'New Name');
       });
 
-      expect(mockAgentSessions.updateSessionName).not.toHaveBeenCalled();
+      expect(mockClaude.updateSessionName).not.toHaveBeenCalled();
+      expect(mockAgentSessions.setSessionName).not.toHaveBeenCalled();
     });
   });
 

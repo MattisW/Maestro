@@ -1641,7 +1641,8 @@ describe('TabSwitcherModal', () => {
 
       await waitFor(() => {
         // Should sync only the named tab
-        expect(window.maestro.agentSessions.updateSessionName).toHaveBeenCalledWith(
+        // For claude-code sessions (default), it uses window.maestro.claude.updateSessionName
+        expect(window.maestro.claude.updateSessionName).toHaveBeenCalledWith(
           '/test/project',
           'session-123',
           'Named Tab'
@@ -1649,13 +1650,14 @@ describe('TabSwitcherModal', () => {
       });
 
       // Should NOT sync the unnamed tab (only 1 call total)
-      expect(window.maestro.agentSessions.updateSessionName).toHaveBeenCalledTimes(1);
+      expect(window.maestro.claude.updateSessionName).toHaveBeenCalledTimes(1);
     });
 
     it('handles sync errors gracefully', async () => {
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-      vi.mocked(window.maestro.agentSessions.updateSessionName).mockRejectedValue(
+      // For claude-code sessions (default), it uses window.maestro.claude.updateSessionName
+      vi.mocked(window.maestro.claude.updateSessionName).mockRejectedValue(
         new Error('Sync failed')
       );
 

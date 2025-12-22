@@ -17,6 +17,7 @@ import { useSessionPagination } from '../../../renderer/hooks/useSessionPaginati
 const mockListPaginated = vi.fn();
 const mockGetSessionOrigins = vi.fn();
 const mockGetProjectStats = vi.fn();
+const mockGetOrigins = vi.fn();
 
 vi.mock('../../../renderer/types', () => ({}));
 
@@ -27,6 +28,7 @@ beforeEach(() => {
   (window as unknown as { maestro: unknown }).maestro = {
     agentSessions: {
       listPaginated: mockListPaginated,
+      getOrigins: mockGetOrigins,
     },
     claude: {
       getSessionOrigins: mockGetSessionOrigins,
@@ -43,6 +45,7 @@ beforeEach(() => {
   });
   mockGetSessionOrigins.mockResolvedValue({});
   mockGetProjectStats.mockResolvedValue({});
+  mockGetOrigins.mockResolvedValue({});
 });
 
 afterEach(() => {

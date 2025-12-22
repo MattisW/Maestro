@@ -235,9 +235,7 @@ describe('cliDetection.ts', () => {
   });
 
   describe('getCloudflaredPath', () => {
-    // Note: The path cache is separate from the installed cache.
-    // clearCloudflaredCache() only clears the installed cache, NOT the path cache.
-    // This means once a path is found, it persists until the module is reloaded.
+    // Note: clearCloudflaredCache() clears both the installed cache AND the path cache.
 
     it('should return the path after successful detection', async () => {
       mockedExecFileNoThrow.mockResolvedValue({
@@ -251,7 +249,7 @@ describe('cliDetection.ts', () => {
       expect(getCloudflaredPath()).toBe('/usr/bin/cloudflared');
     });
 
-    it('should NOT update path cache when detection fails after previous success', async () => {
+    it('should clear path when clearCloudflaredCache is called', async () => {
       // First, ensure we have a successful detection
       mockedExecFileNoThrow.mockResolvedValueOnce({
         stdout: '/first/path/cloudflared\n',
@@ -260,10 +258,13 @@ describe('cliDetection.ts', () => {
       });
       clearCloudflaredCache();
       await isCloudflaredInstalled();
-      const firstPath = getCloudflaredPath();
+      expect(getCloudflaredPath()).toBe('/first/path/cloudflared');
 
-      // Clear the installed cache (not path cache)
+      // Clear the cache - this should clear both installed and path caches
       clearCloudflaredCache();
+
+      // Path should be null after cache clear
+      expect(getCloudflaredPath()).toBeNull();
 
       // Now a failed detection
       mockedExecFileNoThrow.mockResolvedValueOnce({
@@ -273,9 +274,8 @@ describe('cliDetection.ts', () => {
       });
       await isCloudflaredInstalled();
 
-      // Path should still be the old value since the code doesn't clear it on failure
-      // This tests the ACTUAL behavior of the code
-      expect(getCloudflaredPath()).toBe(firstPath);
+      // Path should still be null since detection failed
+      expect(getCloudflaredPath()).toBeNull();
     });
 
     it('should update path when detection succeeds again with new path', async () => {

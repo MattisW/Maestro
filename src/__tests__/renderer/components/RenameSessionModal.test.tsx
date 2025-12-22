@@ -101,7 +101,11 @@ describe('RenameSessionModal', () => {
 
     // Setup window.maestro mock
     (window as unknown as { maestro: Record<string, unknown> }).maestro = {
+      claude: {
+        updateSessionName: vi.fn().mockResolvedValue(undefined),
+      },
       agentSessions: {
+        setSessionName: vi.fn().mockResolvedValue(undefined),
         updateSessionName: vi.fn().mockResolvedValue(undefined),
       },
     };
@@ -538,7 +542,7 @@ describe('RenameSessionModal', () => {
   });
 
   describe('Agent Session Name Update', () => {
-    it('updates agent session name when session has agentSessionId and cwd', () => {
+    it('updates agent session name when session has agentSessionId and projectRoot (claude-code)', () => {
       render(
         <TestWrapper>
           <RenameSessionModal
@@ -555,7 +559,8 @@ describe('RenameSessionModal', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'Rename' }));
 
-      expect((window as any).maestro.agentSessions.updateSessionName).toHaveBeenCalledWith(
+      // For claude-code sessions, it uses window.maestro.claude.updateSessionName
+      expect((window as any).maestro.claude.updateSessionName).toHaveBeenCalledWith(
         '/home/user/project',
         'claude-123',
         'New Name'
@@ -579,7 +584,8 @@ describe('RenameSessionModal', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'Rename' }));
 
-      expect((window as any).maestro.agentSessions.updateSessionName).not.toHaveBeenCalled();
+      expect((window as any).maestro.claude.updateSessionName).not.toHaveBeenCalled();
+      expect((window as any).maestro.agentSessions.setSessionName).not.toHaveBeenCalled();
     });
   });
 
