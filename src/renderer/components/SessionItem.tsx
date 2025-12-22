@@ -174,6 +174,14 @@ export function SessionItem({
 
       {/* Right side: Indicators and actions */}
       <div className="flex items-center gap-2 ml-2">
+        {/* Git Dirty Indicator (only in wide mode) - placed before GIT/LOCAL for vertical alignment */}
+        {leftSidebarOpen && session.isGitRepo && gitFileCount !== undefined && gitFileCount > 0 && (
+          <div className="flex items-center gap-0.5 text-[10px]" style={{ color: theme.colors.warning }}>
+            <GitBranch className="w-2.5 h-2.5" />
+            <span>{gitFileCount}</span>
+          </div>
+        )}
+
         {/* Git vs Local Indicator */}
         {showGitLocalBadge && (
           <div
@@ -209,14 +217,6 @@ export function SessionItem({
           >
             <AlertCircle className="w-2.5 h-2.5" />
             ERR
-          </div>
-        )}
-
-        {/* Git Dirty Indicator (only in wide mode) */}
-        {leftSidebarOpen && session.isGitRepo && gitFileCount !== undefined && gitFileCount > 0 && (
-          <div className="flex items-center gap-0.5 text-[10px]" style={{ color: theme.colors.warning }}>
-            <GitBranch className="w-2.5 h-2.5" />
-            <span>{gitFileCount}</span>
           </div>
         )}
 
