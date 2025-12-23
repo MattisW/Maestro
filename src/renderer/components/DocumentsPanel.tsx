@@ -652,83 +652,58 @@ export function DocumentsPanel({
   // Cleanup happens in handleDrop or handleDragEnd.
   const handleDragLeave = useCallback(() => {}, []);
 
+  // Shared logic for performing the drop operation (copy or move)
+  const performDropOperation = useCallback(() => {
+    const currentDraggedId = draggedIdRef.current;
+    const currentDropTargetIndex = dropTargetIndexRef.current;
+    const currentIsCopyDrag = isCopyDragRef.current;
+
+    if (currentDraggedId && currentDropTargetIndex !== null && !dropPerformedRef.current) {
+      dropPerformedRef.current = true;
+      setDocuments(prev => {
+        const draggedIndex = prev.findIndex(d => d.id === currentDraggedId);
+        if (draggedIndex === -1) return prev;
+
+        const items = [...prev];
+        if (currentIsCopyDrag) {
+          const original = items[draggedIndex];
+          items.splice(currentDropTargetIndex, 0, {
+            id: generateId(),
+            filename: original.filename,
+            resetOnCompletion: true,
+            isDuplicate: true
+          });
+        } else {
+          const [removed] = items.splice(draggedIndex, 1);
+          const adjustedIndex = draggedIndex < currentDropTargetIndex
+            ? currentDropTargetIndex - 1
+            : currentDropTargetIndex;
+          items.splice(adjustedIndex, 0, removed);
+        }
+        return items;
+      });
+    }
+  }, [setDocuments]);
+
+  const resetDragState = useCallback(() => {
+    setDraggedId(null);
+    setDropTargetIndex(null);
+    setIsCopyDrag(false);
+    setCursorPosition(null);
+  }, []);
+
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-
-    const currentDraggedId = draggedIdRef.current;
-    const currentDropTargetIndex = dropTargetIndexRef.current;
-    const currentIsCopyDrag = isCopyDragRef.current;
-
-    if (currentDraggedId && currentDropTargetIndex !== null && !dropPerformedRef.current) {
-      dropPerformedRef.current = true;
-      setDocuments(prev => {
-        const draggedIndex = prev.findIndex(d => d.id === currentDraggedId);
-        if (draggedIndex === -1) return prev;
-
-        const items = [...prev];
-        if (currentIsCopyDrag) {
-          const original = items[draggedIndex];
-          items.splice(currentDropTargetIndex, 0, {
-            id: generateId(),
-            filename: original.filename,
-            resetOnCompletion: true,
-            isDuplicate: true
-          });
-        } else {
-          const [removed] = items.splice(draggedIndex, 1);
-          const adjustedIndex = draggedIndex < currentDropTargetIndex
-            ? currentDropTargetIndex - 1
-            : currentDropTargetIndex;
-          items.splice(adjustedIndex, 0, removed);
-        }
-        return items;
-      });
-    }
-
-    setDraggedId(null);
-    setDropTargetIndex(null);
-    setIsCopyDrag(false);
-    setCursorPosition(null);
-  }, [setDocuments]);
+    performDropOperation();
+    resetDragState();
+  }, [performDropOperation, resetDragState]);
 
   const handleDragEnd = useCallback(() => {
-    const currentDraggedId = draggedIdRef.current;
-    const currentDropTargetIndex = dropTargetIndexRef.current;
-    const currentIsCopyDrag = isCopyDragRef.current;
-
     // Fallback: perform operation if handleDrop didn't fire (browser quirk)
-    if (currentDraggedId && currentDropTargetIndex !== null && !dropPerformedRef.current) {
-      dropPerformedRef.current = true;
-      setDocuments(prev => {
-        const draggedIndex = prev.findIndex(d => d.id === currentDraggedId);
-        if (draggedIndex === -1) return prev;
-
-        const items = [...prev];
-        if (currentIsCopyDrag) {
-          const original = items[draggedIndex];
-          items.splice(currentDropTargetIndex, 0, {
-            id: generateId(),
-            filename: original.filename,
-            resetOnCompletion: true,
-            isDuplicate: true
-          });
-        } else {
-          const [removed] = items.splice(draggedIndex, 1);
-          const adjustedIndex = draggedIndex < currentDropTargetIndex
-            ? currentDropTargetIndex - 1
-            : currentDropTargetIndex;
-          items.splice(adjustedIndex, 0, removed);
-        }
-        return items;
-      });
-    }
-
-    setDraggedId(null);
-    setDropTargetIndex(null);
-    setIsCopyDrag(false);
-    setCursorPosition(null);
-  }, [setDocuments]);
+    performDropOperation();
+    resetDragState();
+  }, [performDropOperation, resetDragState]);
 
   // Sync showMaxLoopsSlider when maxLoops prop changes externally
   useEffect(() => {
