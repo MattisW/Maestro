@@ -303,12 +303,20 @@ const PROVIDERS: ProviderConfig[] = [
       // 1. batchModePrefix: ['run']
       // 2. base args: [] (empty for OpenCode)
       // 3. jsonOutputArgs: ['--format', 'json']
-      // 4. prompt via '--' separator (process-manager.ts)
+      // 4. Optional: --model provider/model (from OPENCODE_MODEL env var)
+      // 5. prompt via '--' separator (process-manager.ts)
 
       const args = [
         'run',
         '--format', 'json',
       ];
+
+      // Allow overriding model via OPENCODE_MODEL env var
+      // e.g., OPENCODE_MODEL=google/gemini-2.5-flash
+      const model = process.env.OPENCODE_MODEL;
+      if (model) {
+        args.push('--model', model);
+      }
 
       // IMPORTANT: This mirrors process-manager.ts logic
       // OpenCode does NOT support --input-format stream-json (supportsStreamJsonInput: false)
@@ -324,13 +332,21 @@ const PROVIDERS: ProviderConfig[] = [
       // Regular batch mode - prompt as CLI arg
       return [...args, '--', prompt];
     },
-    buildResumeArgs: (sessionId: string, prompt: string) => [
-      'run',
-      '--format', 'json',
-      '--session', sessionId,
-      '--',
-      prompt,
-    ],
+    buildResumeArgs: (sessionId: string, prompt: string) => {
+      const args = [
+        'run',
+        '--format', 'json',
+      ];
+
+      // Allow overriding model via OPENCODE_MODEL env var
+      const model = process.env.OPENCODE_MODEL;
+      if (model) {
+        args.push('--model', model);
+      }
+
+      args.push('--session', sessionId, '--', prompt);
+      return args;
+    },
     parseSessionId: (output: string) => {
       // OpenCode outputs sessionID in events (step_start, text, step_finish)
       for (const line of output.split('\n')) {
