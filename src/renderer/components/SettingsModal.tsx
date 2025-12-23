@@ -1150,140 +1150,123 @@ export const SettingsModal = memo(function SettingsModal(props: SettingsModalPro
               />
 
               {/* Context Window Warnings */}
-              <div
-                className="flex items-start gap-3 p-4 rounded-xl border"
-                style={{ backgroundColor: theme.colors.bgMain, borderColor: theme.colors.border }}
-              >
-                <div
-                  className="p-2 rounded-lg flex-shrink-0"
-                  style={{ backgroundColor: 'rgba(234, 179, 8, 0.2)' }}
+              <div>
+                <label className="block text-xs font-bold opacity-70 uppercase mb-2 flex items-center gap-2">
+                  <AlertTriangle className="w-3 h-3" />
+                  Context Window Warnings
+                </label>
+                <label
+                  className="flex items-center gap-3 p-3 rounded border cursor-pointer hover:bg-opacity-10"
+                  style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.bgMain }}
                 >
-                  <AlertTriangle className="w-5 h-5" style={{ color: '#eab308' }} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[10px] uppercase font-bold opacity-50 mb-1">Context Management</p>
-                  <p className="font-semibold mb-1">Context Window Warnings</p>
-                  <p className="text-xs opacity-60 mb-3">
-                    Show warning banners when context window usage reaches configurable thresholds. Helps you avoid running out of context mid-conversation.
-                  </p>
+                  <input
+                    type="checkbox"
+                    checked={contextManagementSettings.contextWarningsEnabled}
+                    onChange={(e) => updateContextManagementSettings({
+                      contextWarningsEnabled: e.target.checked
+                    })}
+                    className="w-4 h-4"
+                    style={{ accentColor: theme.colors.accent }}
+                  />
+                  <div className="flex-1">
+                    <div className="font-medium" style={{ color: theme.colors.textMain }}>
+                      Show context consumption warnings
+                    </div>
+                    <div className="text-xs opacity-50 mt-0.5" style={{ color: theme.colors.textDim }}>
+                      Display warning banners when context window usage reaches configurable thresholds
+                    </div>
+                  </div>
+                </label>
 
-                  {/* Enable/Disable Toggle */}
-                  <div className="flex items-center justify-between mb-4">
-                    <label className="text-sm" style={{ color: theme.colors.textMain }}>
-                      Enable context consumption warnings
-                    </label>
-                    <button
-                      onClick={() => updateContextManagementSettings({
-                        contextWarningsEnabled: !contextManagementSettings.contextWarningsEnabled
-                      })}
-                      className="relative w-11 h-6 rounded-full transition-colors"
-                      style={{
-                        backgroundColor: contextManagementSettings.contextWarningsEnabled
-                          ? theme.colors.accent
-                          : theme.colors.bgActivity,
+                {/* Threshold Sliders (ghosted when disabled) */}
+                <div
+                  className="mt-3 p-3 rounded border space-y-4"
+                  style={{
+                    borderColor: theme.colors.border,
+                    backgroundColor: theme.colors.bgMain,
+                    opacity: contextManagementSettings.contextWarningsEnabled ? 1 : 0.4,
+                    pointerEvents: contextManagementSettings.contextWarningsEnabled ? 'auto' : 'none',
+                  }}
+                >
+                  {/* Yellow Warning Threshold */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-medium flex items-center gap-2" style={{ color: theme.colors.textMain }}>
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#eab308' }} />
+                        Yellow warning threshold
+                      </label>
+                      <span
+                        className="text-xs font-mono px-2 py-0.5 rounded"
+                        style={{ backgroundColor: 'rgba(234, 179, 8, 0.2)', color: '#fde047' }}
+                      >
+                        {contextManagementSettings.contextWarningYellowThreshold}%
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={30}
+                      max={90}
+                      step={5}
+                      value={contextManagementSettings.contextWarningYellowThreshold}
+                      onChange={(e) => {
+                        const newYellow = Number(e.target.value);
+                        // Validation: ensure yellow < red by at least 10%
+                        if (newYellow >= contextManagementSettings.contextWarningRedThreshold) {
+                          // Bump red threshold up
+                          updateContextManagementSettings({
+                            contextWarningYellowThreshold: newYellow,
+                            contextWarningRedThreshold: Math.min(95, newYellow + 10),
+                          });
+                        } else {
+                          updateContextManagementSettings({ contextWarningYellowThreshold: newYellow });
+                        }
                       }}
-                    >
-                      <div
-                        className="absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform"
-                        style={{
-                          transform: contextManagementSettings.contextWarningsEnabled
-                            ? 'translateX(22px)'
-                            : 'translateX(4px)',
-                        }}
-                      />
-                    </button>
+                      className="w-full h-2 rounded-lg appearance-none cursor-pointer"
+                      style={{
+                        background: `linear-gradient(to right, #eab308 0%, #eab308 ${((contextManagementSettings.contextWarningYellowThreshold - 30) / 60) * 100}%, ${theme.colors.bgActivity} ${((contextManagementSettings.contextWarningYellowThreshold - 30) / 60) * 100}%, ${theme.colors.bgActivity} 100%)`,
+                      }}
+                    />
                   </div>
 
-                  {/* Threshold Sliders (only shown when enabled) */}
-                  {contextManagementSettings.contextWarningsEnabled && (
-                    <div className="space-y-4 pt-2 border-t" style={{ borderColor: theme.colors.border }}>
-                      {/* Yellow Warning Threshold */}
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <label className="text-xs font-medium flex items-center gap-2" style={{ color: theme.colors.textMain }}>
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#eab308' }} />
-                            Yellow warning threshold
-                          </label>
-                          <span
-                            className="text-xs font-mono px-2 py-0.5 rounded"
-                            style={{ backgroundColor: 'rgba(234, 179, 8, 0.2)', color: '#fde047' }}
-                          >
-                            {contextManagementSettings.contextWarningYellowThreshold}%
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min={30}
-                          max={90}
-                          step={5}
-                          value={contextManagementSettings.contextWarningYellowThreshold}
-                          onChange={(e) => {
-                            const newYellow = Number(e.target.value);
-                            // Validation: ensure yellow < red by at least 10%
-                            if (newYellow >= contextManagementSettings.contextWarningRedThreshold) {
-                              // Bump red threshold up
-                              updateContextManagementSettings({
-                                contextWarningYellowThreshold: newYellow,
-                                contextWarningRedThreshold: Math.min(95, newYellow + 10),
-                              });
-                            } else {
-                              updateContextManagementSettings({ contextWarningYellowThreshold: newYellow });
-                            }
-                          }}
-                          className="w-full h-2 rounded-lg appearance-none cursor-pointer"
-                          style={{
-                            background: `linear-gradient(to right, #eab308 0%, #eab308 ${((contextManagementSettings.contextWarningYellowThreshold - 30) / 60) * 100}%, ${theme.colors.bgActivity} ${((contextManagementSettings.contextWarningYellowThreshold - 30) / 60) * 100}%, ${theme.colors.bgActivity} 100%)`,
-                          }}
-                        />
-                        <p className="text-xs opacity-40 mt-1">
-                          Show yellow warning when context reaches this percentage (30-90%)
-                        </p>
-                      </div>
-
-                      {/* Red Warning Threshold */}
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <label className="text-xs font-medium flex items-center gap-2" style={{ color: theme.colors.textMain }}>
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#ef4444' }} />
-                            Red warning threshold
-                          </label>
-                          <span
-                            className="text-xs font-mono px-2 py-0.5 rounded"
-                            style={{ backgroundColor: 'rgba(239, 68, 68, 0.2)', color: '#fca5a5' }}
-                          >
-                            {contextManagementSettings.contextWarningRedThreshold}%
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min={50}
-                          max={95}
-                          step={5}
-                          value={contextManagementSettings.contextWarningRedThreshold}
-                          onChange={(e) => {
-                            const newRed = Number(e.target.value);
-                            // Validation: ensure red > yellow by at least 10%
-                            if (newRed <= contextManagementSettings.contextWarningYellowThreshold) {
-                              // Bump yellow threshold down
-                              updateContextManagementSettings({
-                                contextWarningRedThreshold: newRed,
-                                contextWarningYellowThreshold: Math.max(30, newRed - 10),
-                              });
-                            } else {
-                              updateContextManagementSettings({ contextWarningRedThreshold: newRed });
-                            }
-                          }}
-                          className="w-full h-2 rounded-lg appearance-none cursor-pointer"
-                          style={{
-                            background: `linear-gradient(to right, #ef4444 0%, #ef4444 ${((contextManagementSettings.contextWarningRedThreshold - 50) / 45) * 100}%, ${theme.colors.bgActivity} ${((contextManagementSettings.contextWarningRedThreshold - 50) / 45) * 100}%, ${theme.colors.bgActivity} 100%)`,
-                          }}
-                        />
-                        <p className="text-xs opacity-40 mt-1">
-                          Show red warning when context reaches this percentage (50-95%)
-                        </p>
-                      </div>
+                  {/* Red Warning Threshold */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-medium flex items-center gap-2" style={{ color: theme.colors.textMain }}>
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#ef4444' }} />
+                        Red warning threshold
+                      </label>
+                      <span
+                        className="text-xs font-mono px-2 py-0.5 rounded"
+                        style={{ backgroundColor: 'rgba(239, 68, 68, 0.2)', color: '#fca5a5' }}
+                      >
+                        {contextManagementSettings.contextWarningRedThreshold}%
+                      </span>
                     </div>
-                  )}
+                    <input
+                      type="range"
+                      min={50}
+                      max={95}
+                      step={5}
+                      value={contextManagementSettings.contextWarningRedThreshold}
+                      onChange={(e) => {
+                        const newRed = Number(e.target.value);
+                        // Validation: ensure red > yellow by at least 10%
+                        if (newRed <= contextManagementSettings.contextWarningYellowThreshold) {
+                          // Bump yellow threshold down
+                          updateContextManagementSettings({
+                            contextWarningRedThreshold: newRed,
+                            contextWarningYellowThreshold: Math.max(30, newRed - 10),
+                          });
+                        } else {
+                          updateContextManagementSettings({ contextWarningRedThreshold: newRed });
+                        }
+                      }}
+                      className="w-full h-2 rounded-lg appearance-none cursor-pointer"
+                      style={{
+                        background: `linear-gradient(to right, #ef4444 0%, #ef4444 ${((contextManagementSettings.contextWarningRedThreshold - 50) / 45) * 100}%, ${theme.colors.bgActivity} ${((contextManagementSettings.contextWarningRedThreshold - 50) / 45) * 100}%, ${theme.colors.bgActivity} 100%)`,
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
 

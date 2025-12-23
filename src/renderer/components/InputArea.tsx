@@ -561,27 +561,15 @@ export const InputArea = React.memo(function InputArea(props: InputAreaProps) {
         </div>
       )}
 
-      {/* Context Warning Sash - AI mode only, appears above input when context usage is high */}
-      {session.inputMode === 'ai' && onSummarizeAndContinue && (
-        <ContextWarningSash
-          theme={theme}
-          contextUsage={contextUsage}
-          yellowThreshold={contextWarningYellowThreshold}
-          redThreshold={contextWarningRedThreshold}
-          enabled={contextWarningsEnabled}
-          onSummarizeClick={onSummarizeAndContinue}
-          tabId={session.activeTabId}
-        />
-      )}
-
       <div className="flex gap-3">
-        <div
-          className="flex-1 relative border rounded-lg bg-opacity-50 flex flex-col"
-          style={{
-            borderColor: showQueueingBorder ? theme.colors.warning : theme.colors.border,
-            backgroundColor: showQueueingBorder ? `${theme.colors.warning}15` : theme.colors.bgMain
-          }}
-        >
+        <div className="flex-1 flex flex-col">
+          <div
+            className="flex-1 relative border rounded-lg bg-opacity-50 flex flex-col"
+            style={{
+              borderColor: showQueueingBorder ? theme.colors.warning : theme.colors.border,
+              backgroundColor: showQueueingBorder ? `${theme.colors.warning}15` : theme.colors.bgMain
+            }}
+          >
           <div className="flex items-start">
             {/* Terminal mode prefix */}
             {isTerminalMode && (
@@ -789,6 +777,19 @@ export const InputArea = React.memo(function InputArea(props: InputAreaProps) {
               </button>
             </div>
           </div>
+        </div>
+          {/* Context Warning Sash - AI mode only, appears below input when context usage is high */}
+          {session.inputMode === 'ai' && onSummarizeAndContinue && (
+            <ContextWarningSash
+              theme={theme}
+              contextUsage={contextUsage}
+              yellowThreshold={contextWarningYellowThreshold}
+              redThreshold={contextWarningRedThreshold}
+              enabled={contextWarningsEnabled}
+              onSummarizeClick={onSummarizeAndContinue}
+              tabId={session.activeTabId}
+            />
+          )}
         </div>
 
         {/* Mode Toggle & Send/Interrupt Button - Right Side */}

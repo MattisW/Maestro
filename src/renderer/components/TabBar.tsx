@@ -435,42 +435,6 @@ function Tab({
               Rename Tab
             </button>
 
-            {/* Merge With button - only show for tabs with established session */}
-            {tab.agentSessionId && onMergeWith && (
-              <button
-                onClick={handleMergeWithClick}
-                className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs hover:bg-white/10 transition-colors"
-                style={{ color: theme.colors.textMain }}
-              >
-                <GitMerge className="w-3.5 h-3.5" style={{ color: theme.colors.textDim }} />
-                Merge With...
-              </button>
-            )}
-
-            {/* Send to Agent button - only show for tabs with established session */}
-            {tab.agentSessionId && onSendToAgent && (
-              <button
-                onClick={handleSendToAgentClick}
-                className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs hover:bg-white/10 transition-colors"
-                style={{ color: theme.colors.textMain }}
-              >
-                <ArrowRightCircle className="w-3.5 h-3.5" style={{ color: theme.colors.textDim }} />
-                Send to Agent...
-              </button>
-            )}
-
-            {/* Summarize & Continue button - only show for tabs with substantial content */}
-            {(tab.logs?.length ?? 0) >= 5 && onSummarizeAndContinue && (
-              <button
-                onClick={handleSummarizeAndContinueClick}
-                className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs hover:bg-white/10 transition-colors"
-                style={{ color: theme.colors.textMain }}
-              >
-                <Minimize2 className="w-3.5 h-3.5" style={{ color: theme.colors.textDim }} />
-                Summarize & Continue
-              </button>
-            )}
-
             <button
               onClick={handleMarkUnreadClick}
               className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs hover:bg-white/10 transition-colors"
@@ -479,6 +443,47 @@ function Tab({
               <Mail className="w-3.5 h-3.5" style={{ color: theme.colors.textDim }} />
               Mark as Unread
             </button>
+
+            {/* Context Management Section - divider and grouped options */}
+            {(tab.agentSessionId || (tab.logs?.length ?? 0) >= 5) && (onMergeWith || onSendToAgent || onSummarizeAndContinue) && (
+              <div className="my-1 border-t" style={{ borderColor: theme.colors.border }} />
+            )}
+
+            {/* Summarize Context */}
+            {(tab.logs?.length ?? 0) >= 5 && onSummarizeAndContinue && (
+              <button
+                onClick={handleSummarizeAndContinueClick}
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs hover:bg-white/10 transition-colors"
+                style={{ color: theme.colors.textMain }}
+              >
+                <Minimize2 className="w-3.5 h-3.5" style={{ color: theme.colors.textDim }} />
+                Summarize Context
+              </button>
+            )}
+
+            {/* Merge Contexts */}
+            {tab.agentSessionId && onMergeWith && (
+              <button
+                onClick={handleMergeWithClick}
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs hover:bg-white/10 transition-colors"
+                style={{ color: theme.colors.textMain }}
+              >
+                <GitMerge className="w-3.5 h-3.5" style={{ color: theme.colors.textDim }} />
+                Merge Contexts
+              </button>
+            )}
+
+            {/* Send Context to Agent */}
+            {tab.agentSessionId && onSendToAgent && (
+              <button
+                onClick={handleSendToAgentClick}
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs hover:bg-white/10 transition-colors"
+                style={{ color: theme.colors.textMain }}
+              >
+                <ArrowRightCircle className="w-3.5 h-3.5" style={{ color: theme.colors.textDim }} />
+                Send Context to Agent
+              </button>
+            )}
           </div>
         </div>,
         document.body

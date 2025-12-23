@@ -1050,8 +1050,8 @@ export const MainPanel = forwardRef<MainPanelHandle, MainPanelProps>(function Ma
                 supportsThinking={hasCapability('supportsThinkingDisplay')}
                 onOpenPromptComposer={props.onOpenPromptComposer}
                 showFlashNotification={showFlashNotification}
-                // Context warning sash props (Phase 6)
-                contextUsage={activeSession.contextUsage ?? 0}
+                // Context warning sash props (Phase 6) - use tab-level context usage
+                contextUsage={activeTabContextUsage}
                 contextWarningsEnabled={contextWarningsEnabled}
                 contextWarningYellowThreshold={contextWarningYellowThreshold}
                 contextWarningRedThreshold={contextWarningRedThreshold}

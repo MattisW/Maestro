@@ -17,7 +17,7 @@
  */
 
 import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
-import { X, Check, Loader2, AlertTriangle, TrendingDown } from 'lucide-react';
+import { X, Check, Loader2, AlertTriangle, TrendingDown, Wand2 } from 'lucide-react';
 import type { Theme } from '../types';
 import type { SummarizeProgress, SummarizeResult } from '../types/contextMerge';
 import { useLayerStack } from '../contexts/LayerStackContext';
@@ -106,12 +106,9 @@ function Spinner({ theme }: { theme: Theme }) {
           borderTopColor: theme.colors.accent,
         }}
       />
-      {/* Inner pulsing circle */}
+      {/* Wand icon in center */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <div
-          className="w-6 h-6 rounded-full animate-pulse"
-          style={{ backgroundColor: `${theme.colors.accent}30` }}
-        />
+        <Wand2 className="w-5 h-5" style={{ color: theme.colors.accent }} />
       </div>
     </div>
   );

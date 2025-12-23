@@ -98,22 +98,21 @@ export function ContextWarningSash({
       role="alert"
       aria-live="polite"
       aria-label={`Context window at ${contextUsage}% capacity`}
-      className="context-warning-sash flex items-center justify-between px-3 py-2 text-sm"
+      className="context-warning-sash flex items-center justify-between px-2 py-1 text-xs rounded-lg"
       style={{
         backgroundColor,
-        borderTop: `1px solid ${borderColor}`,
-        borderBottom: `1px solid ${borderColor}`,
-        animation: 'slideDown 0.2s ease-out',
+        border: `1px solid ${borderColor}`,
+        marginTop: '8px',
       }}
     >
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         {/* Warning icon with pulse animation for red level */}
         <div
           className={isRed ? 'warning-icon-pulse' : ''}
           style={{ display: 'flex', alignItems: 'center' }}
         >
           <AlertTriangle
-            className="w-4 h-4"
+            className="w-3 h-3"
             style={{ color: iconColor }}
           />
         </div>
@@ -128,13 +127,13 @@ export function ContextWarningSash({
         </span>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         {/* Summarize button */}
         <button
           onClick={onSummarizeClick}
           onKeyDown={(e) => e.key === 'Enter' && onSummarizeClick()}
           tabIndex={0}
-          className="px-2 py-1 text-xs font-medium rounded transition-colors hover:opacity-90"
+          className="px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors hover:opacity-90"
           style={{
             backgroundColor: buttonBgColor,
             color: '#000',
@@ -148,12 +147,12 @@ export function ContextWarningSash({
           onClick={handleDismiss}
           onKeyDown={(e) => e.key === 'Enter' && handleDismiss()}
           tabIndex={0}
-          className="p-1 rounded hover:bg-white/10 transition-colors"
+          className="p-0.5 rounded hover:bg-white/10 transition-colors"
           style={{ color: textColor }}
           title="Dismiss"
           aria-label="Dismiss warning"
         >
-          <X className="w-4 h-4" />
+          <X className="w-3 h-3" />
         </button>
       </div>
 
