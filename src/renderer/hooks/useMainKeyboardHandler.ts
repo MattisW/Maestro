@@ -284,6 +284,13 @@ export function useMainKeyboardHandler(): UseMainKeyboardHandlerReturn {
           ctx.setAgentSessionsOpen(true);
         }
       }
+      else if (ctx.isShortcut(e, 'mergeSession')) {
+        e.preventDefault();
+        // Only show merge modal if agent supports context merge
+        if (ctx.hasActiveSessionCapability('supportsContextMerge') && ctx.activeSession?.activeTabId) {
+          ctx.setMergeSessionModalOpen(true);
+        }
+      }
       else if (ctx.isShortcut(e, 'systemLogs')) {
         e.preventDefault();
         ctx.setLogViewerOpen(true);

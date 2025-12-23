@@ -26,6 +26,7 @@ export const DEFAULT_SHORTCUTS: Record<string, Shortcut> = {
   viewGitDiff: { id: 'viewGitDiff', label: 'View Git Diff', keys: ['Meta', 'Shift', 'd'] },
   viewGitLog: { id: 'viewGitLog', label: 'View Git Log', keys: ['Meta', 'Shift', 'g'] },
   agentSessions: { id: 'agentSessions', label: 'View Agent Sessions', keys: ['Meta', 'Shift', 'l'] },
+  mergeSession: { id: 'mergeSession', label: 'Merge with another session', keys: ['Meta', 'Shift', 'M'] },
   systemLogs: { id: 'systemLogs', label: 'System Log Viewer', keys: ['Alt', 'Meta', 'l'] },
   processMonitor: { id: 'processMonitor', label: 'System Process Monitor', keys: ['Alt', 'Meta', 'p'] },
   jumpToBottom: { id: 'jumpToBottom', label: 'Jump to Bottom', keys: ['Meta', 'Shift', 'j'] },

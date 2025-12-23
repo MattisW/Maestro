@@ -41,6 +41,7 @@ import { WorktreeConfigModal } from './components/WorktreeConfigModal';
 import { CreateWorktreeModal } from './components/CreateWorktreeModal';
 import { CreatePRModal, PRDetails } from './components/CreatePRModal';
 import { DeleteWorktreeModal } from './components/DeleteWorktreeModal';
+import { MergeSessionModal } from './components/MergeSessionModal';
 
 // Group Chat Components
 import { GroupChatPanel } from './components/GroupChatPanel';
@@ -471,6 +472,9 @@ export default function MaestroConsole() {
 
   // Prompt Composer Modal State
   const [promptComposerOpen, setPromptComposerOpen] = useState(false);
+
+  // Merge Session Modal State
+  const [mergeSessionModalOpen, setMergeSessionModalOpen] = useState(false);
 
   // Group Chat Modal State
   const [showNewGroupChatModal, setShowNewGroupChatModal] = useState(false);
@@ -6416,7 +6420,9 @@ export default function MaestroConsole() {
     // Navigation handlers from useKeyboardNavigation hook
     handleSidebarNavigation, handleTabNavigation, handleEnterToActivate, handleEscapeInMain,
     // Agent capabilities
-    hasActiveSessionCapability
+    hasActiveSessionCapability,
+    // Merge session modal
+    setMergeSessionModalOpen
   };
 
   // Update flat file list when active session's tree, expanded folders, filter, or hidden files setting changes
@@ -6813,6 +6819,7 @@ export default function MaestroConsole() {
           onDeleteGroupChat={deleteGroupChatWithConfirmation}
           activeGroupChatId={activeGroupChatId}
           hasActiveSessionCapability={hasActiveSessionCapability}
+          onOpenMergeSession={() => setMergeSessionModalOpen(true)}
           onOpenCreatePR={(session) => {
             setCreatePRSession(session);
             setCreatePRModalOpen(true);
@@ -7352,6 +7359,29 @@ export default function MaestroConsole() {
               title: 'Worktree Created',
               message: branchName,
             });
+          }}
+        />
+      )}
+
+      {/* --- MERGE SESSION MODAL --- */}
+      {mergeSessionModalOpen && activeSession && activeSession.activeTabId && (
+        <MergeSessionModal
+          theme={theme}
+          isOpen={mergeSessionModalOpen}
+          sourceSession={activeSession}
+          sourceTabId={activeSession.activeTabId}
+          allSessions={sessions}
+          onClose={() => setMergeSessionModalOpen(false)}
+          onMerge={async (targetSessionId, targetTabId, options) => {
+            // TODO: Implement actual merge logic in Task 6
+            console.log('[MergeSession] Merge requested:', { targetSessionId, targetTabId, options });
+            setMergeSessionModalOpen(false);
+            addToast({
+              type: 'info',
+              title: 'Merge Session',
+              message: 'Context merge functionality coming soon',
+            });
+            return { success: false, error: 'Not yet implemented' };
           }}
         />
       )}

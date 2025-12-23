@@ -62,6 +62,12 @@ export interface AgentCapabilities {
 
   /** Agent emits streaming thinking/reasoning content that can be displayed */
   supportsThinkingDisplay: boolean;
+
+  /** Agent can receive merged context from other sessions/tabs */
+  supportsContextMerge: boolean;
+
+  /** Agent can export its context for transfer to other sessions/agents */
+  supportsContextExport: boolean;
 }
 
 /**
@@ -86,6 +92,8 @@ export const DEFAULT_CAPABILITIES: AgentCapabilities = {
   supportsModelSelection: false,
   supportsStreamJsonInput: false,
   supportsThinkingDisplay: false,
+  supportsContextMerge: false,
+  supportsContextExport: false,
 };
 
 /**
