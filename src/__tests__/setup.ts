@@ -185,6 +185,8 @@ const mockMaestro = {
       supportsResultMessages: true,
       supportsModelSelection: false,
       supportsStreamJsonInput: true,
+      supportsContextMerge: false,
+      supportsContextExport: false,
     }),
   },
   fonts: {

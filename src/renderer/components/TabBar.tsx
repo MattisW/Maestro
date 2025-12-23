@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Plus, Star, Copy, Edit2, Mail, Pencil, Search, GitMerge } from 'lucide-react';
+import { X, Plus, Star, Copy, Edit2, Mail, Pencil, Search, GitMerge, ArrowRightCircle } from 'lucide-react';
 import type { AITab, Theme } from '../types';
 import { hasDraft } from '../utils/tabHelpers';
 
@@ -17,6 +17,8 @@ interface TabBarProps {
   onTabMarkUnread?: (tabId: string) => void;
   /** Handler to open merge session modal with this tab as source */
   onMergeWith?: (tabId: string) => void;
+  /** Handler to open send to agent modal with this tab as source */
+  onSendToAgent?: (tabId: string) => void;
   showUnreadOnly?: boolean;
   onToggleUnreadFilter?: () => void;
   onOpenTabSearch?: () => void;
@@ -41,6 +43,8 @@ interface TabProps {
   onMarkUnread?: () => void;
   /** Handler to open merge session modal with this tab as source */
   onMergeWith?: () => void;
+  /** Handler to open send to agent modal with this tab as source */
+  onSendToAgent?: () => void;
   shortcutHint?: number | null;
   registerRef?: (el: HTMLDivElement | null) => void;
   hasDraft?: boolean;
@@ -108,6 +112,7 @@ function Tab({
   onStar,
   onMarkUnread,
   onMergeWith,
+  onSendToAgent,
   shortcutHint,
   registerRef,
   hasDraft
@@ -203,6 +208,12 @@ function Tab({
   const handleMergeWithClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     onMergeWith?.();
+    setOverlayOpen(false);
+  };
+
+  const handleSendToAgentClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onSendToAgent?.();
     setOverlayOpen(false);
   };
 
@@ -425,6 +436,18 @@ function Tab({
               </button>
             )}
 
+            {/* Send to Agent button - only show for tabs with established session */}
+            {tab.agentSessionId && onSendToAgent && (
+              <button
+                onClick={handleSendToAgentClick}
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs hover:bg-white/10 transition-colors"
+                style={{ color: theme.colors.textMain }}
+              >
+                <ArrowRightCircle className="w-3.5 h-3.5" style={{ color: theme.colors.textDim }} />
+                Send to Agent...
+              </button>
+            )}
+
             <button
               onClick={handleMarkUnreadClick}
               className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs hover:bg-white/10 transition-colors"
@@ -458,6 +481,7 @@ export function TabBar({
   onTabStar,
   onTabMarkUnread,
   onMergeWith,
+  onSendToAgent,
   showUnreadOnly: showUnreadOnlyProp,
   onToggleUnreadFilter,
   onOpenTabSearch
@@ -653,6 +677,7 @@ export function TabBar({
               onStar={onTabStar && tab.agentSessionId ? (starred) => onTabStar(tab.id, starred) : undefined}
               onMarkUnread={onTabMarkUnread ? () => onTabMarkUnread(tab.id) : undefined}
               onMergeWith={onMergeWith && tab.agentSessionId ? () => onMergeWith(tab.id) : undefined}
+              onSendToAgent={onSendToAgent && tab.agentSessionId ? () => onSendToAgent(tab.id) : undefined}
               shortcutHint={!showUnreadOnly && originalIndex < 9 ? originalIndex + 1 : null}
               hasDraft={hasDraft(tab)}
               registerRef={(el) => {

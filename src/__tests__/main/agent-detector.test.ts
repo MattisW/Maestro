@@ -482,12 +482,13 @@ describe('agent-detector', () => {
       }
     });
 
-    it('should skip executable check on Windows', async () => {
+    it('should skip X_OK permission check on Windows for custom paths', async () => {
       const originalPlatform = process.platform;
       Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
 
       try {
-        const accessMock = vi.spyOn(fs.promises, 'access');
+        // Mock fs.promises.access to reject (so probeWindowsPaths returns null for unknown paths)
+        const accessMock = vi.spyOn(fs.promises, 'access').mockRejectedValue(new Error('ENOENT'));
         vi.spyOn(fs.promises, 'stat').mockResolvedValue({
           isFile: () => true,
         } as fs.Stats);
@@ -512,6 +513,10 @@ describe('agent-detector', () => {
     });
 
     it('should fall back to PATH when custom path is invalid', async () => {
+      // Ensure we're in Unix mode for this test
+      const originalPlatform = process.platform;
+      Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true });
+
       vi.spyOn(fs.promises, 'stat').mockRejectedValue(new Error('ENOENT'));
       // Ensure access mock is active for path probing fallback to use 'which' instead of finding real binary
       vi.spyOn(fs.promises, 'access').mockRejectedValue(new Error('ENOENT'));
@@ -522,8 +527,10 @@ describe('agent-detector', () => {
         return { stdout: '', stderr: '', exitCode: 1 };
       });
 
-      detector.setCustomPaths({ 'claude-code': '/invalid/path' });
-      const agents = await detector.detectAgents();
+      // Create a new detector to pick up the platform
+      const unixDetector = new AgentDetector();
+      unixDetector.setCustomPaths({ 'claude-code': '/invalid/path' });
+      const agents = await unixDetector.detectAgents();
 
       const claude = agents.find(a => a.id === 'claude-code');
       expect(claude?.available).toBe(true);
@@ -533,6 +540,8 @@ describe('agent-detector', () => {
         expect.stringContaining('custom path not valid'),
         'AgentDetector'
       );
+
+      Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
     });
 
     it('should log when found at custom path', async () => {
@@ -665,10 +674,16 @@ describe('agent-detector', () => {
     });
 
     it('should include user-specific paths based on actual homedir', async () => {
+      // Ensure we're in Unix mode for this test
+      const originalPlatform = process.platform;
+      Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true });
+
       // Since we can't mock os.homedir in ESM, verify paths include actual home directory
       const actualHome = os.homedir();
 
-      await detector.detectAgents();
+      // Create a new detector to pick up the platform
+      const unixDetector = new AgentDetector();
+      await unixDetector.detectAgents();
 
       expect(mockExecFileNoThrow).toHaveBeenCalledWith(
         expect.any(String),
@@ -687,6 +702,8 @@ describe('agent-detector', () => {
           PATH: expect.stringContaining(`${actualHome}/.claude/local`),
         })
       );
+
+      Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
     });
 
     it('should preserve existing PATH', async () => {
@@ -727,6 +744,10 @@ describe('agent-detector', () => {
     });
 
     it('should handle empty PATH', async () => {
+      // Ensure we're in Unix mode for this test
+      const originalPlatform = process.platform;
+      Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true });
+
       const originalPath = process.env.PATH;
       process.env.PATH = '';
 
@@ -743,6 +764,7 @@ describe('agent-detector', () => {
       );
 
       process.env.PATH = originalPath;
+      Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
     });
   });
 
@@ -859,8 +881,15 @@ describe('agent-detector', () => {
     });
 
     it('should include all system paths in expanded environment', async () => {
+      // Ensure we're in Unix mode for this test
+      const originalPlatform = process.platform;
+      Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true });
+
+      // Create a new detector to pick up the platform
+      const unixDetector = new AgentDetector();
+
       // Test that system paths are properly included
-      await detector.detectAgents();
+      await unixDetector.detectAgents();
 
       const call = mockExecFileNoThrow.mock.calls[0];
       const env = call[3] as NodeJS.ProcessEnv;
@@ -871,6 +900,8 @@ describe('agent-detector', () => {
       expect(path).toContain('/bin');
       expect(path).toContain('/usr/local/bin');
       expect(path).toContain('/opt/homebrew/bin');
+
+      Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
     });
 
     it('should handle undefined PATH', async () => {

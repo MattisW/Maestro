@@ -30,6 +30,12 @@ vi.mock('lucide-react', () => ({
   Search: ({ className, style }: { className?: string; style?: React.CSSProperties }) => (
     <span data-testid="search-icon" className={className} style={style}>🔍</span>
   ),
+  GitMerge: ({ className, style }: { className?: string; style?: React.CSSProperties }) => (
+    <span data-testid="git-merge-icon" className={className} style={style}>⎇</span>
+  ),
+  ArrowRightCircle: ({ className, style }: { className?: string; style?: React.CSSProperties }) => (
+    <span data-testid="arrow-right-circle-icon" className={className} style={style}>→</span>
+  ),
 }));
 
 // Mock react-dom createPortal
@@ -1777,6 +1783,201 @@ describe('TabBar', () => {
       });
 
       vi.restoreAllMocks();
+    });
+  });
+
+  describe('Send to Agent', () => {
+    const mockOnSendToAgent = vi.fn();
+
+    beforeEach(() => {
+      mockOnSendToAgent.mockClear();
+    });
+
+    it('shows Send to Agent button in hover overlay when onSendToAgent is provided', async () => {
+      const tabs = [createTab({
+        id: 'tab-1',
+        name: 'Tab 1',
+        agentSessionId: 'abc123-def456'
+      })];
+
+      render(
+        <TabBar
+          tabs={tabs}
+          activeTabId="tab-1"
+          theme={mockTheme}
+          onTabSelect={mockOnTabSelect}
+          onTabClose={mockOnTabClose}
+          onNewTab={mockOnNewTab}
+          onSendToAgent={mockOnSendToAgent}
+        />
+      );
+
+      const tab = screen.getByText('Tab 1').closest('[data-tab-id]')!;
+      fireEvent.mouseEnter(tab);
+
+      // Advance timers past the 400ms delay
+      act(() => {
+        vi.advanceTimersByTime(450);
+      });
+
+      // Send to Agent button should be visible
+      expect(screen.getByText('Send to Agent...')).toBeInTheDocument();
+    });
+
+    it('does not show Send to Agent button when onSendToAgent is not provided', async () => {
+      const tabs = [createTab({
+        id: 'tab-1',
+        name: 'Tab 1',
+        agentSessionId: 'abc123-def456'
+      })];
+
+      render(
+        <TabBar
+          tabs={tabs}
+          activeTabId="tab-1"
+          theme={mockTheme}
+          onTabSelect={mockOnTabSelect}
+          onTabClose={mockOnTabClose}
+          onNewTab={mockOnNewTab}
+        />
+      );
+
+      const tab = screen.getByText('Tab 1').closest('[data-tab-id]')!;
+      fireEvent.mouseEnter(tab);
+
+      act(() => {
+        vi.advanceTimersByTime(450);
+      });
+
+      // Send to Agent button should NOT be visible
+      expect(screen.queryByText('Send to Agent...')).not.toBeInTheDocument();
+    });
+
+    it('does not show Send to Agent button for tabs without agentSessionId', async () => {
+      const tabs = [createTab({
+        id: 'tab-1',
+        name: '',
+        agentSessionId: undefined
+      })];
+
+      render(
+        <TabBar
+          tabs={tabs}
+          activeTabId="tab-1"
+          theme={mockTheme}
+          onTabSelect={mockOnTabSelect}
+          onTabClose={mockOnTabClose}
+          onNewTab={mockOnNewTab}
+          onSendToAgent={mockOnSendToAgent}
+        />
+      );
+
+      const tab = screen.getByText('New Session').closest('[data-tab-id]')!;
+      fireEvent.mouseEnter(tab);
+
+      act(() => {
+        vi.advanceTimersByTime(500);
+      });
+
+      // Overlay shouldn't be shown for tabs without agentSessionId
+      expect(screen.queryByText('Send to Agent...')).not.toBeInTheDocument();
+    });
+
+    it('calls onSendToAgent with tab id when Send to Agent button is clicked', async () => {
+      const tabs = [createTab({
+        id: 'tab-1',
+        name: 'Tab 1',
+        agentSessionId: 'abc123-def456'
+      })];
+
+      render(
+        <TabBar
+          tabs={tabs}
+          activeTabId="tab-1"
+          theme={mockTheme}
+          onTabSelect={mockOnTabSelect}
+          onTabClose={mockOnTabClose}
+          onNewTab={mockOnNewTab}
+          onSendToAgent={mockOnSendToAgent}
+        />
+      );
+
+      const tab = screen.getByText('Tab 1').closest('[data-tab-id]')!;
+      fireEvent.mouseEnter(tab);
+
+      act(() => {
+        vi.advanceTimersByTime(450);
+      });
+
+      const sendToAgentButton = screen.getByText('Send to Agent...');
+      fireEvent.click(sendToAgentButton);
+
+      expect(mockOnSendToAgent).toHaveBeenCalledWith('tab-1');
+      expect(mockOnSendToAgent).toHaveBeenCalledTimes(1);
+    });
+
+    it('closes overlay after clicking Send to Agent', async () => {
+      const tabs = [createTab({
+        id: 'tab-1',
+        name: 'Tab 1',
+        agentSessionId: 'abc123-def456'
+      })];
+
+      render(
+        <TabBar
+          tabs={tabs}
+          activeTabId="tab-1"
+          theme={mockTheme}
+          onTabSelect={mockOnTabSelect}
+          onTabClose={mockOnTabClose}
+          onNewTab={mockOnNewTab}
+          onSendToAgent={mockOnSendToAgent}
+        />
+      );
+
+      const tab = screen.getByText('Tab 1').closest('[data-tab-id]')!;
+      fireEvent.mouseEnter(tab);
+
+      act(() => {
+        vi.advanceTimersByTime(450);
+      });
+
+      // Click Send to Agent
+      const sendToAgentButton = screen.getByText('Send to Agent...');
+      fireEvent.click(sendToAgentButton);
+
+      // Overlay should be closed
+      expect(screen.queryByText('Send to Agent...')).not.toBeInTheDocument();
+    });
+
+    it('renders ArrowRightCircle icon for Send to Agent button', async () => {
+      const tabs = [createTab({
+        id: 'tab-1',
+        name: 'Tab 1',
+        agentSessionId: 'abc123-def456'
+      })];
+
+      render(
+        <TabBar
+          tabs={tabs}
+          activeTabId="tab-1"
+          theme={mockTheme}
+          onTabSelect={mockOnTabSelect}
+          onTabClose={mockOnTabClose}
+          onNewTab={mockOnNewTab}
+          onSendToAgent={mockOnSendToAgent}
+        />
+      );
+
+      const tab = screen.getByText('Tab 1').closest('[data-tab-id]')!;
+      fireEvent.mouseEnter(tab);
+
+      act(() => {
+        vi.advanceTimersByTime(450);
+      });
+
+      // The ArrowRightCircle icon should be present
+      expect(screen.getByTestId('arrow-right-circle-icon')).toBeInTheDocument();
     });
   });
 });
