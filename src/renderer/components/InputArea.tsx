@@ -4,6 +4,7 @@ import type { Session, Theme, BatchRunState } from '../types';
 import type { TabCompletionSuggestion, TabCompletionFilter } from '../hooks/useTabCompletion';
 import { ThinkingStatusPill } from './ThinkingStatusPill';
 import { ExecutionQueueIndicator } from './ExecutionQueueIndicator';
+import { ContextWarningSash } from './ContextWarningSash';
 import { useAgentCapabilities } from '../hooks/useAgentCapabilities';
 import { useScrollIntoView } from '../hooks/useScrollIntoView';
 import { getProviderDisplayName } from '../utils/sessionValidation';
@@ -87,6 +88,12 @@ interface InputAreaProps {
   tabShowThinking?: boolean;
   onToggleTabShowThinking?: () => void;
   supportsThinking?: boolean; // From agent capabilities
+  // Context warning sash props (Phase 6)
+  contextUsage?: number;  // 0-100 percentage
+  contextWarningsEnabled?: boolean;
+  contextWarningYellowThreshold?: number;
+  contextWarningRedThreshold?: number;
+  onSummarizeAndContinue?: () => void;
 }
 
 export const InputArea = React.memo(function InputArea(props: InputAreaProps) {
@@ -115,7 +122,13 @@ export const InputArea = React.memo(function InputArea(props: InputAreaProps) {
     tabSaveToHistory = false, onToggleTabSaveToHistory,
     onOpenPromptComposer,
     showFlashNotification,
-    tabShowThinking = false, onToggleTabShowThinking, supportsThinking = false
+    tabShowThinking = false, onToggleTabShowThinking, supportsThinking = false,
+    // Context warning sash props (Phase 6)
+    contextUsage = 0,
+    contextWarningsEnabled = false,
+    contextWarningYellowThreshold = 60,
+    contextWarningRedThreshold = 80,
+    onSummarizeAndContinue
   } = props;
 
   // Get agent capabilities for conditional feature rendering
@@ -546,6 +559,19 @@ export const InputArea = React.memo(function InputArea(props: InputAreaProps) {
             })}
           </div>
         </div>
+      )}
+
+      {/* Context Warning Sash - AI mode only, appears above input when context usage is high */}
+      {session.inputMode === 'ai' && onSummarizeAndContinue && (
+        <ContextWarningSash
+          theme={theme}
+          contextUsage={contextUsage}
+          yellowThreshold={contextWarningYellowThreshold}
+          redThreshold={contextWarningRedThreshold}
+          enabled={contextWarningsEnabled}
+          onSummarizeClick={onSummarizeAndContinue}
+          tabId={session.activeTabId}
+        />
       )}
 
       <div className="flex gap-3">

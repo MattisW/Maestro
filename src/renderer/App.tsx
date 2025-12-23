@@ -278,6 +278,7 @@ export default function MaestroConsole() {
     recordWizardStart, recordWizardComplete, recordWizardAbandon, recordWizardResume,
     recordTourStart, recordTourComplete, recordTourSkip,
     leaderboardRegistration, setLeaderboardRegistration, isLeaderboardRegistered,
+    contextManagementSettings, updateContextManagementSettings,
   } = settings;
 
   // --- KEYBOARD SHORTCUT HELPERS ---
@@ -8722,6 +8723,10 @@ export default function MaestroConsole() {
         onOpenCreatePR={() => setCreatePRModalOpen(true)}
         isWorktreeChild={!!activeSession?.parentSessionId}
         onSummarizeAndContinue={handleSummarizeAndContinue}
+        // Context warning sash settings (Phase 6)
+        contextWarningsEnabled={contextManagementSettings.contextWarningsEnabled}
+        contextWarningYellowThreshold={contextManagementSettings.contextWarningYellowThreshold}
+        contextWarningRedThreshold={contextManagementSettings.contextWarningRedThreshold}
       />
       )}
 
