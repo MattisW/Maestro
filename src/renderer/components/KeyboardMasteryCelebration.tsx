@@ -6,18 +6,20 @@
  * and encouraging progression guidance.
  */
 
-import { useEffect, useRef, useCallback, useState } from 'react';
-import { Music, Trophy, Sparkles } from 'lucide-react';
+import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
+import { Keyboard, Trophy, Sparkles } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import type { Theme } from '../types';
+import type { Theme, Shortcut } from '../types';
 import { useLayerStack } from '../contexts/LayerStackContext';
 import { MODAL_PRIORITIES } from '../constants/modalPriorities';
 import { KEYBOARD_MASTERY_LEVELS } from '../constants/keyboardMastery';
+import { DEFAULT_SHORTCUTS } from '../constants/shortcuts';
 
 interface KeyboardMasteryCelebrationProps {
   theme: Theme;
   level: number; // 0-4 (Beginner, Student, Performer, Virtuoso, Maestro)
   onClose: () => void;
+  shortcuts?: Record<string, Shortcut>;
 }
 
 // Music-themed colors
@@ -39,10 +41,26 @@ const CONFETTI_Z_INDEX = 99998;
 /**
  * KeyboardMasteryCelebration - Modal celebrating the user reaching a new mastery level
  */
+/**
+ * Format shortcut keys for display (e.g., ['Meta', '/'] -> '⌘/')
+ */
+function formatShortcutKeys(keys: string[], isMac: boolean): string {
+  return keys
+    .map((key) => {
+      if (key === 'Meta') return isMac ? '⌘' : 'Ctrl';
+      if (key === 'Alt') return isMac ? '⌥' : 'Alt';
+      if (key === 'Shift') return '⇧';
+      if (key === 'Control') return isMac ? '⌃' : 'Ctrl';
+      return key;
+    })
+    .join('');
+}
+
 export function KeyboardMasteryCelebration({
   theme,
   level,
   onClose,
+  shortcuts,
 }: KeyboardMasteryCelebrationProps): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null);
   const { registerLayer, unregisterLayer, updateLayerHandler } = useLayerStack();
@@ -60,6 +78,14 @@ export function KeyboardMasteryCelebration({
   // Determine level info
   const levelInfo = KEYBOARD_MASTERY_LEVELS[level] || KEYBOARD_MASTERY_LEVELS[0];
   const isMaestro = level === 4;
+
+  // Get help shortcut for display
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  const helpShortcut = useMemo(() => {
+    const activeShortcuts = shortcuts || DEFAULT_SHORTCUTS;
+    const helpKeys = activeShortcuts.help?.keys || ['Meta', '/'];
+    return formatShortcutKeys(helpKeys, isMac);
+  }, [shortcuts, isMac]);
 
   // Fire confetti burst - returns timeout ID for cleanup
   const fireConfetti = useCallback(() => {
@@ -231,7 +257,7 @@ export function KeyboardMasteryCelebration({
                 {isMaestro ? (
                   <Trophy className="w-8 h-8 text-white" />
                 ) : (
-                  <Music className="w-8 h-8 text-white" />
+                  <Keyboard className="w-8 h-8 text-white" />
                 )}
               </div>
             </div>
@@ -287,10 +313,22 @@ export function KeyboardMasteryCelebration({
             </div>
 
             {/* Encouragement message */}
-            <p className="text-xs text-center mb-4" style={{ color: theme.colors.textDim }}>
+            <p className="text-xs text-center mb-2" style={{ color: theme.colors.textDim }}>
               {isMaestro
                 ? "You've mastered all keyboard shortcuts!"
                 : `Keep using shortcuts to reach ${nextLevel?.name || 'the next level'}!`}
+            </p>
+
+            {/* Shortcut hint */}
+            <p className="text-xs text-center mb-4" style={{ color: theme.colors.textDim }}>
+              Press{' '}
+              <span
+                className="font-mono px-1.5 py-0.5 rounded"
+                style={{ backgroundColor: theme.colors.bgActivity }}
+              >
+                {helpShortcut}
+              </span>{' '}
+              to see all shortcuts and your progress
             </p>
 
             {/* Close button */}

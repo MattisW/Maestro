@@ -7865,6 +7865,7 @@ export default function MaestroConsole() {
           theme={theme}
           level={pendingKeyboardMasteryLevel}
           onClose={handleKeyboardMasteryCelebrationClose}
+          shortcuts={shortcuts}
         />
       )}
 
