@@ -120,7 +120,7 @@ export function ContextWarningSash({
         {/* Warning message */}
         <span style={{ color: textColor }}>
           {isRed ? (
-            <>Context window at <strong>{contextUsage}%</strong> — consider summarizing to continue</>
+            <>Context window at <strong>{contextUsage}%</strong> — consider compacting to continue</>
           ) : (
             <>Context window reaching <strong>{contextUsage}%</strong> capacity</>
           )}
@@ -128,7 +128,7 @@ export function ContextWarningSash({
       </div>
 
       <div className="flex items-center gap-1.5">
-        {/* Summarize button */}
+        {/* Compact button */}
         <button
           onClick={onSummarizeClick}
           onKeyDown={(e) => e.key === 'Enter' && onSummarizeClick()}
@@ -139,7 +139,7 @@ export function ContextWarningSash({
             color: '#000',
           }}
         >
-          Summarize & Continue
+          Compact & Continue
         </button>
 
         {/* Dismiss button */}

@@ -581,6 +581,28 @@ confetti({
                     </div>
                   </div>
 
+                  <button
+                    onClick={resetMockData}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded font-medium transition-colors border"
+                    style={{
+                      borderColor: theme.colors.border,
+                      color: theme.colors.textDim,
+                    }}
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    Reset All Mock Data
+                  </button>
+                </div>
+
+                {/* Preview */}
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-sm font-bold mb-4" style={{ color: theme.colors.textMain }}>
+                      Achievement Card Preview
+                    </h3>
+                    <AchievementCard theme={theme} autoRunStats={mockAutoRunStats} />
+                  </div>
+
                   <div
                     className="p-4 rounded-lg border"
                     style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.bgActivity }}
@@ -623,26 +645,6 @@ confetti({
                       </button>
                     </div>
                   </div>
-
-                  <button
-                    onClick={resetMockData}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded font-medium transition-colors border"
-                    style={{
-                      borderColor: theme.colors.border,
-                      color: theme.colors.textDim,
-                    }}
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                    Reset All Mock Data
-                  </button>
-                </div>
-
-                {/* Preview */}
-                <div>
-                  <h3 className="text-sm font-bold mb-4" style={{ color: theme.colors.textMain }}>
-                    Achievement Card Preview
-                  </h3>
-                  <AchievementCard theme={theme} autoRunStats={mockAutoRunStats} />
                 </div>
               </div>
             )}

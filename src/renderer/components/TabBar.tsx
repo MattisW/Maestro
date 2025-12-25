@@ -449,7 +449,7 @@ function Tab({
               <div className="my-1 border-t" style={{ borderColor: theme.colors.border }} />
             )}
 
-            {/* Context: Summarize */}
+            {/* Context: Compact */}
             {(tab.logs?.length ?? 0) >= 5 && onSummarizeAndContinue && (
               <button
                 onClick={handleSummarizeAndContinueClick}
@@ -457,7 +457,7 @@ function Tab({
                 style={{ color: theme.colors.textMain }}
               >
                 <Minimize2 className="w-3.5 h-3.5" style={{ color: theme.colors.textDim }} />
-                Context: Summarize
+                Context: Compact
               </button>
             )}
 

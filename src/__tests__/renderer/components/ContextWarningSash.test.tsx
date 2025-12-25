@@ -179,7 +179,7 @@ describe('ContextWarningSash', () => {
   });
 
   describe('button interactions', () => {
-    it('should call onSummarizeClick when Summarize button is clicked', () => {
+    it('should call onSummarizeClick when Compact button is clicked', () => {
       render(
         <ContextWarningSash
           theme={theme}
@@ -190,7 +190,7 @@ describe('ContextWarningSash', () => {
           onSummarizeClick={mockOnSummarizeClick}
         />
       );
-      const button = screen.getByText('Summarize & Continue');
+      const button = screen.getByText('Compact & Continue');
       fireEvent.click(button);
       expect(mockOnSummarizeClick).toHaveBeenCalledTimes(1);
     });
@@ -420,11 +420,11 @@ describe('ContextWarningSash', () => {
           onSummarizeClick={mockOnSummarizeClick}
         />
       );
-      const button = screen.getByText('Summarize & Continue');
+      const button = screen.getByText('Compact & Continue');
       expect(button).toHaveAttribute('tabIndex', '0');
     });
 
-    it('should support keyboard activation of summarize button', () => {
+    it('should support keyboard activation of compact button', () => {
       render(
         <ContextWarningSash
           theme={theme}
@@ -435,7 +435,7 @@ describe('ContextWarningSash', () => {
           onSummarizeClick={mockOnSummarizeClick}
         />
       );
-      const button = screen.getByText('Summarize & Continue');
+      const button = screen.getByText('Compact & Continue');
       fireEvent.keyDown(button, { key: 'Enter' });
       expect(mockOnSummarizeClick).toHaveBeenCalledTimes(1);
     });

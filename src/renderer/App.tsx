@@ -2739,8 +2739,8 @@ export default function MaestroConsole() {
     if (!targetTab || !canSummarize(activeSession.contextUsage)) {
       addToast({
         type: 'warning',
-        title: 'Cannot Summarize',
-        message: `Context usage too low. Need at least ${minContextUsagePercent}% to summarize.`,
+        title: 'Cannot Compact',
+        message: `Context usage too low. Need at least ${minContextUsagePercent}% to compact.`,
       });
       return;
     }

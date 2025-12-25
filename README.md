@@ -638,16 +638,16 @@ The achievement panel shows your current rank, progress to the next level, and t
 
 Context management lets you combine or transfer conversation history between sessions and agents, enabling powerful workflows where you can:
 
-- **Summarize & continue** — Compress your context to stay within token limits while preserving key information
+- **Compact & continue** — Compress your context to stay within token limits while preserving key information
 - **Merge sessions** — Combine context from multiple conversations into one
 - **Transfer to other agents** — Send your context to a different AI agent (e.g., Claude Code → Codex)
 
-### Summarize & Continue
+### Compact & Continue
 
 When your conversation approaches context limits, you can compress it while preserving essential information:
 
-1. **Right-click** a tab → **"Summarize & Continue"**, or use **Command Palette** (`Cmd+K` / `Ctrl+K`) → "Summarize & Continue"
-2. The AI summarizes the conversation, extracting key decisions, code changes, and context
+1. **Right-click** a tab → **"Context: Compact"**, or use **Command Palette** (`Cmd+K` / `Ctrl+K`) → "Context: Compact"
+2. The AI compacts the conversation, extracting key decisions, code changes, and context
 3. A new tab opens with the compressed context, ready to continue working
 
 **When to use:**
