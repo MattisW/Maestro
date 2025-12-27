@@ -94,6 +94,38 @@ describe('fileExplorer utils', () => {
       });
     });
 
+    describe('image files (previewable inline)', () => {
+      it('returns false for PNG files (previewable)', () => {
+        expect(shouldOpenExternally('image.png')).toBe(false);
+        expect(shouldOpenExternally('screenshot.PNG')).toBe(false);
+      });
+
+      it('returns false for SVG files (previewable)', () => {
+        expect(shouldOpenExternally('icon.svg')).toBe(false);
+        expect(shouldOpenExternally('logo.SVG')).toBe(false);
+      });
+
+      it('returns false for JPEG files (previewable)', () => {
+        expect(shouldOpenExternally('photo.jpg')).toBe(false);
+        expect(shouldOpenExternally('photo.jpeg')).toBe(false);
+        expect(shouldOpenExternally('photo.JPEG')).toBe(false);
+      });
+
+      it('returns false for other previewable image formats', () => {
+        expect(shouldOpenExternally('image.gif')).toBe(false);
+        expect(shouldOpenExternally('image.webp')).toBe(false);
+        expect(shouldOpenExternally('image.bmp')).toBe(false);
+        expect(shouldOpenExternally('favicon.ico')).toBe(false);
+      });
+
+      it('returns true for non-previewable image formats', () => {
+        expect(shouldOpenExternally('photo.tiff')).toBe(true);
+        expect(shouldOpenExternally('photo.tif')).toBe(true);
+        expect(shouldOpenExternally('photo.heic')).toBe(true);
+        expect(shouldOpenExternally('photo.heif')).toBe(true);
+      });
+    });
+
     describe('code and text files', () => {
       it('returns false for TypeScript files', () => {
         expect(shouldOpenExternally('app.ts')).toBe(false);

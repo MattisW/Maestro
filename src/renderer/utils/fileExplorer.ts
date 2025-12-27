@@ -2,18 +2,24 @@ import {
   getAllFolderPaths as getAllFolderPathsShared,
   walkTreePartitioned,
 } from '../../shared/treeUtils';
+import { isImageFile } from '../../shared/gitUtils';
 
 /**
  * Check if a file should be opened in external app based on extension
  */
 export function shouldOpenExternally(filename: string): boolean {
+  // Images that can be previewed inline should NOT open externally
+  if (isImageFile(filename)) {
+    return false;
+  }
+
   const ext = filename.split('.').pop()?.toLowerCase();
   // File types that should open in default system app
   const externalExtensions = [
     // Documents
     'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
-    // Images (handled separately for preview, but open externally if double-clicked from file tree)
-    'png', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'webp', 'tiff', 'tif', 'heic', 'heif',
+    // Images that can't be previewed inline (raw formats, etc.)
+    'tiff', 'tif', 'heic', 'heif',
     // macOS/iOS specific
     'icns', 'car', 'actool',
     // Design files
