@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback, useDeferredValue } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { SettingsModal } from './components/SettingsModal';
 import { SessionList } from './components/SessionList';
 import { RightPanel, RightPanelHandle } from './components/RightPanel';
@@ -364,12 +364,6 @@ function MaestroConsoleInner() {
     commandHistorySelectedIndex, setCommandHistorySelectedIndex,
   } = useInputContext();
 
-  // PERFORMANCE: Defer filter values to allow typing to stay responsive
-  // The suggestions will trail slightly behind the input, but typing won't lag
-  const deferredAtMentionFilter = useDeferredValue(atMentionFilter);
-  const deferredTabCompletionFilter = useDeferredValue(tabCompletionFilter);
-  const deferredCommandHistoryFilter = useDeferredValue(commandHistoryFilter);
-
   // UI State
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
@@ -398,7 +392,6 @@ function MaestroConsoleInner() {
 
   // Note: All modal states are now managed by ModalContext
   // See useModalContext() destructuring above for modal states
-  const [closeAllTabsConfirmOpen, setCloseAllTabsConfirmOpen] = useState(false);
 
   // Stable callbacks for memoized modals (prevents re-renders from callback reference changes)
   // NOTE: These must be declared AFTER the state they reference
@@ -3328,22 +3321,21 @@ function MaestroConsoleInner() {
 
   // Tab completion suggestions (must be after inputValue is defined)
   // PERF: Depend on specific session properties, not the entire activeSession object
-  // PERFORMANCE: Use deferred filter values for suggestions to keep typing responsive
   const tabCompletionSuggestions = useMemo(() => {
     if (!tabCompletionOpen || !activeSessionId || activeSessionInputMode !== 'terminal') {
       return [];
     }
-    return getTabCompletionSuggestions(inputValue, deferredTabCompletionFilter);
-  }, [tabCompletionOpen, activeSessionId, activeSessionInputMode, inputValue, deferredTabCompletionFilter, getTabCompletionSuggestions]);
+    return getTabCompletionSuggestions(inputValue, tabCompletionFilter);
+  }, [tabCompletionOpen, activeSessionId, activeSessionInputMode, inputValue, tabCompletionFilter, getTabCompletionSuggestions]);
 
   // @ mention suggestions for AI mode
-  // PERF: Use deferred filter to allow typing to stay responsive
+  // PERF: Depend on specific session properties, not the entire activeSession object
   const atMentionSuggestions = useMemo(() => {
     if (!atMentionOpen || !activeSessionId || activeSessionInputMode !== 'ai') {
       return [];
     }
-    return getAtMentionSuggestions(deferredAtMentionFilter);
-  }, [atMentionOpen, activeSessionId, activeSessionInputMode, deferredAtMentionFilter, getAtMentionSuggestions]);
+    return getAtMentionSuggestions(atMentionFilter);
+  }, [atMentionOpen, activeSessionId, activeSessionInputMode, atMentionFilter, getAtMentionSuggestions]);
 
   // Sync file tree selection to match tab completion suggestion
   // This highlights the corresponding file/folder in the right panel when navigating tab completion
@@ -5695,119 +5687,6 @@ function MaestroConsoleInner() {
     }));
   }, [activeSession]);
 
-  // Close all tabs (creates one new empty tab after closing all)
-  const handleCloseAllTabs = useCallback(() => {
-    if (!activeSession) return;
-
-    // Show confirmation modal
-    setCloseAllTabsConfirmOpen(true);
-  }, [activeSession]);
-
-  // Close all tabs except the currently active one
-  const handleCloseOtherTabs = useCallback(() => {
-    if (!activeSession || activeSession.aiTabs.length <= 1) return;
-
-    const activeTab = getActiveTab(activeSession);
-    if (!activeTab) return;
-
-    const closedTabs = activeSession.aiTabs.filter(t => t.id !== activeTab.id);
-
-    setSessions(prev => prev.map(s => {
-      if (s.id !== activeSession.id) return s;
-      return {
-        ...s,
-        aiTabs: [activeTab],
-        closedTabHistory: [...(s.closedTabHistory || []), ...closedTabs.map((tab, index) => ({
-          tab,
-          index: activeSession.aiTabs.findIndex(t => t.id === tab.id),
-          closedAt: Date.now()
-        }))].slice(-25) // Keep last 25 closed tabs
-      };
-    }));
-  }, [activeSession]);
-
-  // Close all tabs to the left of the active tab
-  const handleCloseTabsLeft = useCallback(() => {
-    if (!activeSession) return;
-
-    const activeTabIndex = activeSession.aiTabs.findIndex(t => t.id === activeSession.activeTabId);
-    if (activeTabIndex <= 0) return; // No tabs to the left
-
-    const closedTabs = activeSession.aiTabs.slice(0, activeTabIndex);
-    const remainingTabs = activeSession.aiTabs.slice(activeTabIndex);
-
-    setSessions(prev => prev.map(s => {
-      if (s.id !== activeSession.id) return s;
-      return {
-        ...s,
-        aiTabs: remainingTabs,
-        closedTabHistory: [...(s.closedTabHistory || []), ...closedTabs.map((tab, index) => ({
-          tab,
-          index,
-          closedAt: Date.now()
-        }))].slice(-25) // Keep last 25 closed tabs
-      };
-    }));
-  }, [activeSession]);
-
-  // Close all tabs to the right of the active tab
-  const handleCloseTabsRight = useCallback(() => {
-    if (!activeSession) return;
-
-    const activeTabIndex = activeSession.aiTabs.findIndex(t => t.id === activeSession.activeTabId);
-    if (activeTabIndex < 0 || activeTabIndex >= activeSession.aiTabs.length - 1) return; // No tabs to the right
-
-    const remainingTabs = activeSession.aiTabs.slice(0, activeTabIndex + 1);
-    const closedTabs = activeSession.aiTabs.slice(activeTabIndex + 1);
-
-    setSessions(prev => prev.map(s => {
-      if (s.id !== activeSession.id) return s;
-      return {
-        ...s,
-        aiTabs: remainingTabs,
-        closedTabHistory: [...(s.closedTabHistory || []), ...closedTabs.map((tab, index) => ({
-          tab,
-          index: activeTabIndex + 1 + index,
-          closedAt: Date.now()
-        }))].slice(-25) // Keep last 25 closed tabs
-      };
-    }));
-  }, [activeSession]);
-
-  // Confirm and execute close all tabs
-  const confirmCloseAllTabs = useCallback(() => {
-    if (!activeSession) return;
-
-    const closedTabs = activeSession.aiTabs;
-    const newTab: AITab = {
-      id: generateId(),
-      agentSessionId: null,
-      name: null,
-      starred: false,
-      logs: [],
-      inputValue: '',
-      stagedImages: [],
-      createdAt: Date.now(),
-      state: 'idle'
-    };
-
-    setSessions(prev => prev.map(s => {
-      if (s.id !== activeSession.id) return s;
-      return {
-        ...s,
-        aiTabs: [newTab],
-        activeTabId: newTab.id,
-        closedTabHistory: [...(s.closedTabHistory || []), ...closedTabs.map((tab, index) => ({
-          tab,
-          index,
-          closedAt: Date.now()
-        }))].slice(-25) // Keep last 25 closed tabs
-      };
-    }));
-
-    setCloseAllTabsConfirmOpen(false);
-  }, [activeSession]);
-
   // Toggle global live mode (enables web interface for all sessions)
   const toggleGlobalLive = async () => {
     try {
@@ -6296,14 +6175,6 @@ function MaestroConsoleInner() {
           }
 
           // Substitute template variables in the system prompt
-          console.log('[processQueuedItem] Template substitution context:', {
-            sessionId: session.id,
-            sessionName: session.name,
-            autoRunFolderPath: session.autoRunFolderPath,
-            fullPath: session.fullPath,
-            cwd: session.cwd,
-            parentSessionId: session.parentSessionId,
-          });
           const substitutedSystemPrompt = substituteTemplateVariables(maestroSystemPrompt, {
             session,
             gitBranch,
@@ -7928,8 +7799,6 @@ function MaestroConsoleInner() {
     setTabSwitcherOpen, showUnreadOnly, stagedImages, handleSetLightboxImage, setMarkdownEditMode,
     toggleTabStar, toggleTabUnread, setPromptComposerOpen, openWizardModal, rightPanelRef, setFuzzyFileSearchOpen,
     setShowNewGroupChatModal, deleteGroupChatWithConfirmation,
-    // Tab close operations
-    handleCloseAllTabs, handleCloseOtherTabs, handleCloseTabsLeft, handleCloseTabsRight,
     // Group chat context
     activeGroupChatId, groupChatInputRef, groupChatStagedImages, setGroupChatRightTab,
     // Navigation handlers from useKeyboardNavigation hook
@@ -8213,104 +8082,255 @@ function MaestroConsoleInner() {
       </div>
       )}
 
-      {lightboxImage && (
-        <LightboxModal
-          image={lightboxImage}
-          stagedImages={lightboxImages.length > 0 ? lightboxImages : stagedImages}
-          onClose={() => {
-            setLightboxImage(null);
-            setLightboxImages([]);
-            setLightboxSource('history');
-            lightboxIsGroupChatRef.current = false;
-            lightboxAllowDeleteRef.current = false;
-            // Return focus to input after closing carousel
-            setTimeout(() => inputRef.current?.focus(), 0);
-          }}
-          onNavigate={(img) => setLightboxImage(img)}
-          // Use ref for delete permission - refs are set synchronously before React batches state updates
-          // This ensures Cmd+Y and click both correctly enable delete when source is 'staged'
-          onDelete={lightboxAllowDeleteRef.current ? (img: string) => {
-            // Use ref for group chat check too, for consistency
-            if (lightboxIsGroupChatRef.current) {
-              setGroupChatStagedImages(prev => prev.filter(i => i !== img));
-            } else {
-              setStagedImages(prev => prev.filter(i => i !== img));
-            }
-          } : undefined}
-          theme={theme}
-        />
-      )}
-
-      {/* --- GIT DIFF VIEWER --- */}
-      {gitDiffPreview && activeSession && (
-        <GitDiffViewer
-          diffText={gitDiffPreview}
-          cwd={gitViewerCwd}
-          theme={theme}
-          onClose={handleCloseGitDiff}
-        />
-      )}
-
-      {/* --- GIT LOG VIEWER --- */}
-      {gitLogOpen && activeSession && (
-        <GitLogViewer
-          cwd={gitViewerCwd}
-          theme={theme}
-          onClose={handleCloseGitLog}
-        />
-      )}
-
-      {/* --- SHORTCUTS HELP MODAL --- */}
-      {shortcutsHelpOpen && (
-        <ShortcutsHelpModal
-          theme={theme}
-          shortcuts={shortcuts}
-          tabShortcuts={tabShortcuts}
-          onClose={() => setShortcutsHelpOpen(false)}
-          hasNoAgents={hasNoAgents}
-          keyboardMasteryStats={keyboardMasteryStats}
-        />
-      )}
-
-      {/* --- ABOUT MODAL --- */}
-      {aboutModalOpen && (
-        <AboutModal
-          theme={theme}
-          sessions={sessions}
-          autoRunStats={autoRunStats}
-          onClose={() => setAboutModalOpen(false)}
-          onOpenLeaderboardRegistration={() => {
-            setAboutModalOpen(false);
-            setLeaderboardRegistrationOpen(true);
-          }}
-          isLeaderboardRegistered={isLeaderboardRegistered}
-        />
-      )}
-
-      {/* --- LEADERBOARD REGISTRATION MODAL --- */}
-      {leaderboardRegistrationOpen && (
-        <LeaderboardRegistrationModal
-          theme={theme}
-          autoRunStats={autoRunStats}
-          keyboardMasteryStats={keyboardMasteryStats}
-          existingRegistration={leaderboardRegistration}
-          onClose={() => setLeaderboardRegistrationOpen(false)}
-          onSave={(registration) => {
-            setLeaderboardRegistration(registration);
-          }}
-          onOptOut={() => {
-            setLeaderboardRegistration(null);
-          }}
-        />
-      )}
-
-      {/* --- UPDATE CHECK MODAL --- */}
-      {updateCheckModalOpen && (
-        <UpdateCheckModal
-          theme={theme}
-          onClose={() => setUpdateCheckModalOpen(false)}
-        />
-      )}
+      {/* --- UNIFIED MODALS (all modal groups consolidated into AppModals) --- */}
+      <AppModals
+        // Common props
+        theme={theme}
+        sessions={sessions}
+        setSessions={setSessions}
+        activeSessionId={activeSessionId}
+        activeSession={activeSession}
+        groups={groups}
+        setGroups={setGroups}
+        groupChats={groupChats}
+        shortcuts={shortcuts}
+        tabShortcuts={tabShortcuts}
+        // AppInfoModals props
+        shortcutsHelpOpen={shortcutsHelpOpen}
+        onCloseShortcutsHelp={handleCloseShortcutsHelp}
+        hasNoAgents={hasNoAgents}
+        keyboardMasteryStats={keyboardMasteryStats}
+        aboutModalOpen={aboutModalOpen}
+        onCloseAboutModal={handleCloseAboutModal}
+        autoRunStats={autoRunStats}
+        usageStats={usageStats}
+        onOpenLeaderboardRegistration={handleOpenLeaderboardRegistrationFromAbout}
+        isLeaderboardRegistered={isLeaderboardRegistered}
+        updateCheckModalOpen={updateCheckModalOpen}
+        onCloseUpdateCheckModal={handleCloseUpdateCheckModal}
+        processMonitorOpen={processMonitorOpen}
+        onCloseProcessMonitor={handleCloseProcessMonitor}
+        onNavigateToSession={handleProcessMonitorNavigateToSession}
+        onNavigateToGroupChat={handleProcessMonitorNavigateToGroupChat}
+        // AppConfirmModals props
+        confirmModalOpen={confirmModalOpen}
+        confirmModalMessage={confirmModalMessage}
+        confirmModalOnConfirm={confirmModalOnConfirm}
+        onCloseConfirmModal={handleCloseConfirmModal}
+        quitConfirmModalOpen={quitConfirmModalOpen}
+        onConfirmQuit={handleConfirmQuit}
+        onCancelQuit={handleCancelQuit}
+        // AppSessionModals props
+        newInstanceModalOpen={newInstanceModalOpen}
+        onCloseNewInstanceModal={handleCloseNewInstanceModal}
+        onCreateSession={createNewSession}
+        existingSessions={sessionsForValidation}
+        editAgentModalOpen={editAgentModalOpen}
+        onCloseEditAgentModal={handleCloseEditAgentModal}
+        onSaveEditAgent={handleSaveEditAgent}
+        editAgentSession={editAgentSession}
+        renameSessionModalOpen={renameInstanceModalOpen}
+        renameSessionValue={renameInstanceValue}
+        setRenameSessionValue={setRenameInstanceValue}
+        onCloseRenameSessionModal={handleCloseRenameSessionModal}
+        renameSessionTargetId={renameInstanceSessionId}
+        onAfterRename={flushSessionPersistence}
+        renameTabModalOpen={renameTabModalOpen}
+        renameTabId={renameTabId}
+        renameTabInitialName={renameTabInitialName}
+        onCloseRenameTabModal={handleCloseRenameTabModal}
+        onRenameTab={handleRenameTab}
+        // AppGroupModals props
+        createGroupModalOpen={createGroupModalOpen}
+        onCloseCreateGroupModal={handleCloseCreateGroupModal}
+        renameGroupModalOpen={renameGroupModalOpen}
+        renameGroupId={renameGroupId}
+        renameGroupValue={renameGroupValue}
+        setRenameGroupValue={setRenameGroupValue}
+        renameGroupEmoji={renameGroupEmoji}
+        setRenameGroupEmoji={setRenameGroupEmoji}
+        onCloseRenameGroupModal={handleCloseRenameGroupModal}
+        // AppWorktreeModals props
+        worktreeConfigModalOpen={worktreeConfigModalOpen}
+        onCloseWorktreeConfigModal={handleCloseWorktreeConfigModal}
+        onSaveWorktreeConfig={handleSaveWorktreeConfig}
+        onCreateWorktreeFromConfig={handleCreateWorktreeFromConfig}
+        onDisableWorktreeConfig={handleDisableWorktreeConfig}
+        createWorktreeModalOpen={createWorktreeModalOpen}
+        createWorktreeSession={createWorktreeSession}
+        onCloseCreateWorktreeModal={handleCloseCreateWorktreeModal}
+        onCreateWorktree={handleCreateWorktree}
+        createPRModalOpen={createPRModalOpen}
+        createPRSession={createPRSession}
+        onCloseCreatePRModal={handleCloseCreatePRModal}
+        onPRCreated={handlePRCreated}
+        deleteWorktreeModalOpen={deleteWorktreeModalOpen}
+        deleteWorktreeSession={deleteWorktreeSession}
+        onCloseDeleteWorktreeModal={handleCloseDeleteWorktreeModal}
+        onConfirmDeleteWorktree={handleConfirmDeleteWorktree}
+        onConfirmAndDeleteWorktreeOnDisk={handleConfirmAndDeleteWorktreeOnDisk}
+        // AppUtilityModals props
+        quickActionOpen={quickActionOpen}
+        quickActionInitialMode={quickActionInitialMode}
+        setQuickActionOpen={setQuickActionOpen}
+        setActiveSessionId={setActiveSessionId}
+        addNewSession={addNewSession}
+        setRenameInstanceValue={setRenameInstanceValue}
+        setRenameInstanceModalOpen={setRenameInstanceModalOpen}
+        setRenameGroupId={setRenameGroupId}
+        setRenameGroupValueForQuickActions={setRenameGroupValue}
+        setRenameGroupEmojiForQuickActions={setRenameGroupEmoji}
+        setRenameGroupModalOpenForQuickActions={setRenameGroupModalOpen}
+        setCreateGroupModalOpenForQuickActions={setCreateGroupModalOpen}
+        setLeftSidebarOpen={setLeftSidebarOpen}
+        setRightPanelOpen={setRightPanelOpen}
+        toggleInputMode={toggleInputMode}
+        deleteSession={deleteSession}
+        setSettingsModalOpen={setSettingsModalOpen}
+        setSettingsTab={setSettingsTab}
+        setShortcutsHelpOpen={setShortcutsHelpOpen}
+        setAboutModalOpen={setAboutModalOpen}
+        setLogViewerOpen={setLogViewerOpen}
+        setProcessMonitorOpen={setProcessMonitorOpen}
+        setActiveRightTab={setActiveRightTab}
+        setAgentSessionsOpen={setAgentSessionsOpen}
+        setActiveAgentSessionId={setActiveAgentSessionId}
+        setGitDiffPreview={setGitDiffPreview}
+        setGitLogOpen={setGitLogOpen}
+        isAiMode={activeSession?.inputMode === 'ai'}
+        onQuickActionsRenameTab={handleQuickActionsRenameTab}
+        onQuickActionsToggleReadOnlyMode={handleQuickActionsToggleReadOnlyMode}
+        onQuickActionsToggleTabShowThinking={handleQuickActionsToggleTabShowThinking}
+        onQuickActionsOpenTabSwitcher={handleQuickActionsOpenTabSwitcher}
+        setPlaygroundOpen={setPlaygroundOpen}
+        onQuickActionsRefreshGitFileState={handleQuickActionsRefreshGitFileState}
+        onQuickActionsDebugReleaseQueuedItem={handleQuickActionsDebugReleaseQueuedItem}
+        markdownEditMode={markdownEditMode}
+        onQuickActionsToggleMarkdownEditMode={handleQuickActionsToggleMarkdownEditMode}
+        setUpdateCheckModalOpenForQuickActions={setUpdateCheckModalOpen}
+        openWizard={openWizardModal}
+        wizardGoToStep={wizardGoToStep}
+        setDebugWizardModalOpen={setDebugWizardModalOpen}
+        setDebugPackageModalOpen={setDebugPackageModalOpen}
+        startTour={handleQuickActionsStartTour}
+        setFuzzyFileSearchOpen={setFuzzyFileSearchOpen}
+        onEditAgent={handleQuickActionsEditAgent}
+        onNewGroupChat={handleQuickActionsNewGroupChat}
+        onOpenGroupChat={handleOpenGroupChat}
+        onCloseGroupChat={handleCloseGroupChat}
+        onDeleteGroupChat={deleteGroupChatWithConfirmation}
+        activeGroupChatId={activeGroupChatId}
+        hasActiveSessionCapability={hasActiveSessionCapability}
+        onOpenMergeSession={handleQuickActionsOpenMergeSession}
+        onOpenSendToAgent={handleQuickActionsOpenSendToAgent}
+        onOpenCreatePR={handleQuickActionsOpenCreatePR}
+        onSummarizeAndContinue={handleQuickActionsSummarizeAndContinue}
+        canSummarizeActiveTab={activeSession ? canSummarize(activeSession.contextUsage) : false}
+        onToggleRemoteControl={handleQuickActionsToggleRemoteControl}
+        autoRunSelectedDocument={activeSession?.autoRunSelectedFile ?? null}
+        autoRunCompletedTaskCount={rightPanelRef.current?.getAutoRunCompletedTaskCount() ?? 0}
+        onAutoRunResetTasks={handleQuickActionsAutoRunResetTasks}
+        lightboxImage={lightboxImage}
+        lightboxImages={lightboxImages}
+        stagedImages={stagedImages}
+        onCloseLightbox={handleCloseLightbox}
+        onNavigateLightbox={handleNavigateLightbox}
+        onDeleteLightboxImage={lightboxAllowDeleteRef.current ? handleDeleteLightboxImage : undefined}
+        gitDiffPreview={gitDiffPreview}
+        gitViewerCwd={gitViewerCwd}
+        onCloseGitDiff={handleCloseGitDiff}
+        gitLogOpen={gitLogOpen}
+        onCloseGitLog={handleCloseGitLog}
+        autoRunSetupModalOpen={autoRunSetupModalOpen}
+        onCloseAutoRunSetup={handleCloseAutoRunSetup}
+        onAutoRunFolderSelected={handleAutoRunFolderSelected}
+        batchRunnerModalOpen={batchRunnerModalOpen}
+        onCloseBatchRunner={handleCloseBatchRunner}
+        onStartBatchRun={handleStartBatchRun}
+        onSaveBatchPrompt={handleSaveBatchPrompt}
+        showConfirmation={showConfirmation}
+        autoRunDocumentList={autoRunDocumentList}
+        autoRunDocumentTree={autoRunDocumentTree}
+        getDocumentTaskCount={getDocumentTaskCount}
+        onAutoRunRefresh={handleAutoRunRefresh}
+        tabSwitcherOpen={tabSwitcherOpen}
+        onCloseTabSwitcher={handleCloseTabSwitcher}
+        onTabSelect={handleUtilityTabSelect}
+        onNamedSessionSelect={handleNamedSessionSelect}
+        fuzzyFileSearchOpen={fuzzyFileSearchOpen}
+        filteredFileTree={filteredFileTree}
+        onCloseFileSearch={handleCloseFileSearch}
+        onFileSearchSelect={handleFileSearchSelect}
+        promptComposerOpen={promptComposerOpen}
+        onClosePromptComposer={handleClosePromptComposer}
+        promptComposerInitialValue={activeGroupChatId
+          ? (groupChats.find(c => c.id === activeGroupChatId)?.draftMessage || '')
+          : inputValue}
+        onPromptComposerSubmit={handlePromptComposerSubmit}
+        onPromptComposerSend={handlePromptComposerSend}
+        promptComposerSessionName={activeGroupChatId
+          ? groupChats.find(c => c.id === activeGroupChatId)?.name
+          : activeSession?.name}
+        promptComposerStagedImages={activeGroupChatId ? groupChatStagedImages : (canAttachImages ? stagedImages : [])}
+        setPromptComposerStagedImages={activeGroupChatId ? setGroupChatStagedImages : (canAttachImages ? setStagedImages : undefined)}
+        onPromptImageAttachBlocked={activeGroupChatId || !blockCodexResumeImages ? undefined : showImageAttachBlockedNotice}
+        onPromptOpenLightbox={handleSetLightboxImage}
+        promptTabSaveToHistory={activeGroupChatId ? false : (activeSession ? getActiveTab(activeSession)?.saveToHistory ?? false : false)}
+        onPromptToggleTabSaveToHistory={activeGroupChatId ? undefined : handlePromptToggleTabSaveToHistory}
+        promptTabReadOnlyMode={activeGroupChatId ? groupChatReadOnlyMode : (activeSession ? getActiveTab(activeSession)?.readOnlyMode ?? false : false)}
+        onPromptToggleTabReadOnlyMode={handlePromptToggleTabReadOnlyMode}
+        promptTabShowThinking={activeGroupChatId ? false : (activeSession ? getActiveTab(activeSession)?.showThinking ?? false : false)}
+        onPromptToggleTabShowThinking={activeGroupChatId ? undefined : handlePromptToggleTabShowThinking}
+        promptSupportsThinking={!activeGroupChatId && hasActiveSessionCapability('supportsThinkingDisplay')}
+        promptEnterToSend={enterToSendAI}
+        onPromptToggleEnterToSend={handlePromptToggleEnterToSend}
+        queueBrowserOpen={queueBrowserOpen}
+        onCloseQueueBrowser={handleCloseQueueBrowser}
+        onRemoveQueueItem={handleRemoveQueueItem}
+        onSwitchQueueSession={handleSwitchQueueSession}
+        onReorderQueueItems={handleReorderQueueItems}
+        // AppGroupChatModals props
+        showNewGroupChatModal={showNewGroupChatModal}
+        onCloseNewGroupChatModal={handleCloseNewGroupChatModal}
+        onCreateGroupChat={handleCreateGroupChat}
+        showDeleteGroupChatModal={showDeleteGroupChatModal}
+        onCloseDeleteGroupChatModal={handleCloseDeleteGroupChatModal}
+        onConfirmDeleteGroupChat={handleConfirmDeleteGroupChat}
+        showRenameGroupChatModal={showRenameGroupChatModal}
+        onCloseRenameGroupChatModal={handleCloseRenameGroupChatModal}
+        onRenameGroupChatFromModal={handleRenameGroupChatFromModal}
+        showEditGroupChatModal={showEditGroupChatModal}
+        onCloseEditGroupChatModal={handleCloseEditGroupChatModal}
+        onUpdateGroupChat={handleUpdateGroupChat}
+        showGroupChatInfo={showGroupChatInfo}
+        groupChatMessages={groupChatMessages}
+        onCloseGroupChatInfo={handleCloseGroupChatInfo}
+        onOpenModeratorSession={handleOpenModeratorSession}
+        // AppAgentModals props
+        leaderboardRegistrationOpen={leaderboardRegistrationOpen}
+        onCloseLeaderboardRegistration={handleCloseLeaderboardRegistration}
+        leaderboardRegistration={leaderboardRegistration}
+        onSaveLeaderboardRegistration={handleSaveLeaderboardRegistration}
+        onLeaderboardOptOut={handleLeaderboardOptOut}
+        errorSession={errorSession}
+        recoveryActions={recoveryActions}
+        onDismissAgentError={handleCloseAgentErrorModal}
+        groupChatError={groupChatError}
+        groupChatRecoveryActions={groupChatRecoveryActions}
+        onClearGroupChatError={handleClearGroupChatError}
+        mergeSessionModalOpen={mergeSessionModalOpen}
+        onCloseMergeSession={handleCloseMergeSession}
+        onMerge={handleMerge}
+        transferState={transferState}
+        transferProgress={transferProgress}
+        transferSourceAgent={transferSourceAgent}
+        transferTargetAgent={transferTargetAgent}
+        onCancelTransfer={handleCancelTransfer}
+        onCompleteTransfer={handleCompleteTransfer}
+        sendToAgentModalOpen={sendToAgentModalOpen}
+        onCloseSendToAgent={handleCloseSendToAgent}
+        onSendToAgent={handleSendToAgent}
+      />
 
       {/* --- DEBUG PACKAGE MODAL --- */}
       <DebugPackageModal
@@ -8351,16 +8371,6 @@ function MaestroConsoleInner() {
       />
 
       {/* NOTE: All modals are now rendered via the unified <AppModals /> component above */}
-
-      {/* --- CLOSE ALL TABS CONFIRMATION MODAL --- */}
-      {closeAllTabsConfirmOpen && activeSession && (
-        <ConfirmModal
-          theme={theme}
-          message={`Close all ${activeSession.aiTabs.length} ${activeSession.aiTabs.length === 1 ? 'tab' : 'tabs'}? A new empty tab will be created.`}
-          onConfirm={confirmCloseAllTabs}
-          onClose={() => setCloseAllTabsConfirmOpen(false)}
-        />
-      )}
 
       {/* --- EMPTY STATE VIEW (when no sessions) --- */}
       {sessions.length === 0 && !isMobileLandscape ? (

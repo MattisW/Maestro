@@ -377,8 +377,18 @@ export const MainPanel = React.memo(forwardRef<MainPanelHandle, MainPanelProps>(
     };
   }, []);
 
-  // Responsive breakpoints for hiding/simplifying widgets
+  // Responsive breakpoints for hiding/simplifying widgets (progressive reduction as space shrinks)
+  // At widest: full display with "CONTEXT WINDOW" label and wide gauge
+  // Below 800px: "CONTEXT" label, gauge stays full width
+  // Below 700px: compact git widget (file count only)
+  // Below 650px: narrow context gauge (w-16 instead of w-24)
+  // Below 600px: git branch shows icon only (no text)
+  // Below 550px: hide UUID pill
+  // Below 500px: hide cost widget
   const showCostWidget = panelWidth > 500;
+  const showUuidPill = panelWidth > 550;
+  const useIconOnlyGitBranch = panelWidth < 600;
+  const useNarrowContextGauge = panelWidth < 650;
   const useCompactGitWidget = panelWidth < 700;
   const useCompactContextLabel = panelWidth < 800;
 
@@ -529,9 +539,12 @@ export const MainPanel = React.memo(forwardRef<MainPanelHandle, MainPanelProps>(
                     {activeSession.isGitRepo ? (
                       <>
                         <GitBranch className="w-3 h-3" />
-                        <span className="max-w-[120px] truncate">
-                          {gitInfo?.branch || 'GIT'}
-                        </span>
+                        {/* Hide branch name text at narrow widths, show on hover via title */}
+                        {!useIconOnlyGitBranch && (
+                          <span className="max-w-[120px] truncate">
+                            {gitInfo?.branch || 'GIT'}
+                          </span>
+                        )}
                       </>
                     ) : 'LOCAL'}
                   </span>
@@ -725,8 +738,8 @@ export const MainPanel = React.memo(forwardRef<MainPanelHandle, MainPanelProps>(
             )}
 
             <div className="flex items-center gap-3 justify-end shrink-0">
-              {/* Session UUID Pill - click to copy full UUID, left-most of session stats */}
-              {activeSession.inputMode === 'ai' && activeTab?.agentSessionId && hasCapability('supportsSessionId') && (
+              {/* Session UUID Pill - click to copy full UUID, left-most of session stats, hidden at narrow widths */}
+              {showUuidPill && activeSession.inputMode === 'ai' && activeTab?.agentSessionId && hasCapability('supportsSessionId') && (
                 <button
                   className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border transition-colors hover:opacity-80"
                   style={{ backgroundColor: theme.colors.accent + '20', color: theme.colors.accent, borderColor: theme.colors.accent + '30' }}
@@ -755,7 +768,8 @@ export const MainPanel = React.memo(forwardRef<MainPanelHandle, MainPanelProps>(
                 {...contextTooltip.triggerHandlers}
               >
                 <span className="text-[10px] font-bold uppercase" style={{ color: theme.colors.textDim }}>{useCompactContextLabel ? 'Context' : 'Context Window'}</span>
-                <div className="w-24 h-1.5 rounded-full mt-1 overflow-hidden" style={{ backgroundColor: theme.colors.border }}>
+                {/* Gauge width: w-24 (96px) normally, w-16 (64px) when narrow */}
+                <div className={`${useNarrowContextGauge ? 'w-16' : 'w-24'} h-1.5 rounded-full mt-1 overflow-hidden`} style={{ backgroundColor: theme.colors.border }}>
                   <div
                     className="h-full transition-all duration-500 ease-out"
                     style={{

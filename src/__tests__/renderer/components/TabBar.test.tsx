@@ -36,6 +36,24 @@ vi.mock('lucide-react', () => ({
   ArrowRightCircle: ({ className, style }: { className?: string; style?: React.CSSProperties }) => (
     <span data-testid="arrow-right-circle-icon" className={className} style={style}>→</span>
   ),
+  Minimize2: ({ className, style }: { className?: string; style?: React.CSSProperties }) => (
+    <span data-testid="minimize-icon" className={className} style={style}>⊟</span>
+  ),
+  Download: ({ className, style }: { className?: string; style?: React.CSSProperties }) => (
+    <span data-testid="download-icon" className={className} style={style}>↓</span>
+  ),
+  Clipboard: ({ className, style }: { className?: string; style?: React.CSSProperties }) => (
+    <span data-testid="clipboard-icon" className={className} style={style}>📎</span>
+  ),
+  Minus: ({ className, style }: { className?: string; style?: React.CSSProperties }) => (
+    <span data-testid="minus-icon" className={className} style={style}>−</span>
+  ),
+  ArrowLeftToLine: ({ className, style }: { className?: string; style?: React.CSSProperties }) => (
+    <span data-testid="arrow-left-to-line-icon" className={className} style={style}>⇤</span>
+  ),
+  ArrowRightToLine: ({ className, style }: { className?: string; style?: React.CSSProperties }) => (
+    <span data-testid="arrow-right-to-line-icon" className={className} style={style}>⇥</span>
+  ),
 }));
 
 // Mock react-dom createPortal

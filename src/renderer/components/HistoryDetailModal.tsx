@@ -342,7 +342,7 @@ export function HistoryDetailModal({
                     return (
                       <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-2">
-                          <div className="w-32 h-2 rounded-full overflow-hidden" style={{ backgroundColor: theme.colors.border }}>
+                          <div className="w-24 h-2 rounded-full overflow-hidden" style={{ backgroundColor: theme.colors.border }}>
                             <div
                               className="h-full transition-all duration-500 ease-out"
                               style={{

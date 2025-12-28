@@ -379,26 +379,25 @@ export function AchievementCard({ theme, autoRunStats, globalStats, usageStats, 
     return `${minutes}m`;
   };
 
-  // Helper to load an image from URL with timeout
-  const loadImage = useCallback((url: string, timeoutMs: number = 5000): Promise<HTMLImageElement | null> => {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      const timeout = setTimeout(() => {
-        img.onload = null;
-        img.onerror = null;
-        resolve(null);
-      }, timeoutMs);
-      img.onload = () => {
-        clearTimeout(timeout);
-        resolve(img);
-      };
-      img.onerror = () => {
-        clearTimeout(timeout);
-        resolve(null);
-      };
-      img.src = url;
-    });
+  // Helper to load an image from URL - fetches via main process to avoid CORS issues
+  const loadImage = useCallback(async (url: string): Promise<HTMLImageElement | null> => {
+    try {
+      // Use IPC to fetch the image from main process (avoids CORS)
+      const base64DataUrl = await window.maestro.fs.fetchImageAsBase64(url);
+      if (!base64DataUrl) {
+        return null;
+      }
+      // Create image from the base64 data URL
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => resolve(null);
+        img.src = base64DataUrl;
+      });
+    } catch (error) {
+      console.error('Failed to load image:', error);
+      return null;
+    }
   }, []);
 
   // Generate shareable achievement card as canvas
@@ -477,9 +476,9 @@ export function AchievementCard({ theme, autoRunStats, globalStats, usageStats, 
     ctx.roundRect(-2, -2, width + 4, height + 4, 22);
     ctx.stroke();
 
-    // Avatar/Trophy icon - larger with more vertical space
+    // Avatar/Trophy icon - larger with more vertical space at top
     const iconX = width / 2;
-    const iconY = 60;  // Moved down slightly
+    const iconY = 70;  // More breathing room at top
     const iconRadius = 40;  // Larger radius
 
     if (avatarImage) {
@@ -492,49 +491,42 @@ export function AchievementCard({ theme, autoRunStats, globalStats, usageStats, 
       ctx.drawImage(avatarImage, iconX - iconRadius, iconY - iconRadius, iconRadius * 2, iconRadius * 2);
       ctx.restore();
 
-      // Add a gold border around the avatar
+      // Add a bright gold border around the avatar
       ctx.beginPath();
       ctx.arc(iconX, iconY, iconRadius + 2, 0, Math.PI * 2);
       ctx.strokeStyle = '#FFD700';
       ctx.lineWidth = 3;
       ctx.stroke();
 
-      // Add a larger trophy badge in the bottom-right corner
-      const badgeRadius = 18;  // Larger badge
+      // Add a larger trophy badge in the bottom-right corner - BRIGHT and vibrant
+      const badgeRadius = 18;
       const badgeX = iconX + iconRadius - 6;
       const badgeY = iconY + iconRadius - 6;
+
+      // Draw badge background - pure bright gold, no dimming
       ctx.beginPath();
       ctx.arc(badgeX, badgeY, badgeRadius, 0, Math.PI * 2);
-      // Bright gold gradient for trophy badge
-      const badgeGradient = ctx.createRadialGradient(badgeX, badgeY - 5, 0, badgeX, badgeY, badgeRadius);
-      badgeGradient.addColorStop(0, '#FFD700');  // Bright gold
-      badgeGradient.addColorStop(0.5, '#FFC107');
-      badgeGradient.addColorStop(1, '#FF9800');
-      ctx.fillStyle = badgeGradient;
+      ctx.fillStyle = '#FFD700';  // Solid bright gold - no gradient that might dim it
       ctx.fill();
-      // Badge border
-      ctx.strokeStyle = '#B8860B';
+      // Bright gold border
+      ctx.strokeStyle = '#FFE55C';  // Even brighter gold border
       ctx.lineWidth = 2;
       ctx.stroke();
-      // Trophy emoji - larger
+      // Trophy emoji - larger and centered
       ctx.font = '20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('🏆', badgeX, badgeY + 1);
     } else {
-      // Default trophy icon - bright gold circle
+      // Default trophy icon - BRIGHT gold circle, no overlay effects
       ctx.beginPath();
       ctx.arc(iconX, iconY, iconRadius, 0, Math.PI * 2);
-      // Bright, vibrant gold gradient
-      const trophyGradient = ctx.createRadialGradient(iconX, iconY - 15, 0, iconX, iconY, iconRadius);
-      trophyGradient.addColorStop(0, '#FFD700');  // Bright gold center
-      trophyGradient.addColorStop(0.6, '#FFC107');
-      trophyGradient.addColorStop(1, '#FF9800');  // Darker gold edge
-      ctx.fillStyle = trophyGradient;
+      // Pure bright gold - solid color instead of gradient to avoid dimming
+      ctx.fillStyle = '#FFD700';
       ctx.fill();
-      // Add border for definition
-      ctx.strokeStyle = '#B8860B';
-      ctx.lineWidth = 2;
+      // Bright border for extra pop
+      ctx.strokeStyle = '#FFE55C';
+      ctx.lineWidth = 3;
       ctx.stroke();
 
       // Trophy emoji - larger
@@ -546,7 +538,7 @@ export function AchievementCard({ theme, autoRunStats, globalStats, usageStats, 
 
     // Title - show display name if personalized, otherwise generic title
     // Positioned with more breathing room after larger icon
-    const titleY = iconY + iconRadius + 28;
+    const titleY = iconY + iconRadius + 32;
     ctx.font = '600 18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillStyle = '#F472B6';
     ctx.textAlign = 'center';
@@ -695,9 +687,10 @@ export function AchievementCard({ theme, autoRunStats, globalStats, usageStats, 
     drawPeakStat(30 + row3ColWidth * 2.5, maxQueries, 'Parallel Queries');
     drawPeakStat(30 + row3ColWidth * 3.5, maxQueue, 'Queue Depth');
 
-    // --- Social Handles Row (if personalized) ---
+    // --- Social Handles Row (if personalized) - positioned closer to footer ---
     if (hasSocialHandles) {
-      const socialY = row3Y + row3Height + rowGap + 4;
+      // Position social handles right above the footer, not after the stats
+      const socialY = height - 70;  // 70px from bottom, leaving room for footer
       const socialHeight = 20;
 
       // Draw social handles centered
@@ -723,20 +716,32 @@ export function AchievementCard({ theme, autoRunStats, globalStats, usageStats, 
         const halfSize = size / 2;
 
         if (icon === 'github') {
-          // GitHub mark - octocat silhouette approximation as a circle with cutout
+          // GitHub mark - the invertocat/octocat logo silhouette
+          // Draw white circle background
           ctx.fillStyle = '#FFFFFF';
           ctx.beginPath();
           ctx.arc(x, y, halfSize, 0, Math.PI * 2);
           ctx.fill();
-          // Draw simplified octocat shape
+          // Draw the GitHub cat face shape in dark color
           ctx.fillStyle = '#1a1a2e';
+          const s = halfSize * 0.85;  // Scale factor
           ctx.beginPath();
-          // Body
-          ctx.arc(x, y + 1, halfSize * 0.6, 0, Math.PI * 2);
-          ctx.fill();
-          // Head bump
-          ctx.beginPath();
-          ctx.arc(x, y - halfSize * 0.3, halfSize * 0.5, 0, Math.PI, true);
+          // Start from top center, draw the cat head shape
+          ctx.moveTo(x, y - s * 0.75);  // Top center
+          // Left ear
+          ctx.lineTo(x - s * 0.4, y - s * 0.9);
+          ctx.lineTo(x - s * 0.55, y - s * 0.55);
+          // Left side of face
+          ctx.quadraticCurveTo(x - s * 0.95, y - s * 0.2, x - s * 0.75, y + s * 0.4);
+          // Bottom left
+          ctx.quadraticCurveTo(x - s * 0.5, y + s * 0.85, x, y + s * 0.75);
+          // Bottom right (mirror)
+          ctx.quadraticCurveTo(x + s * 0.5, y + s * 0.85, x + s * 0.75, y + s * 0.4);
+          // Right side of face
+          ctx.quadraticCurveTo(x + s * 0.95, y - s * 0.2, x + s * 0.55, y - s * 0.55);
+          // Right ear
+          ctx.lineTo(x + s * 0.4, y - s * 0.9);
+          ctx.closePath();
           ctx.fill();
         } else if (icon === 'twitter') {
           // X/Twitter - simple X shape
@@ -761,27 +766,41 @@ export function AchievementCard({ theme, autoRunStats, globalStats, usageStats, 
           ctx.textBaseline = 'middle';
           ctx.fillText('in', x, y + 1);
         } else if (icon === 'discord') {
-          // Discord - rounded square with controller/game icon hint
+          // Discord Clyde logo - the controller/gamepad face
           ctx.fillStyle = '#5865F2';
           ctx.beginPath();
           ctx.roundRect(x - halfSize, y - halfSize, size, size, 3);
           ctx.fill();
-          // Draw simplified Discord logo (two circles for eyes, curved bottom)
+          // Draw the Discord Clyde face (simplified game controller shape)
           ctx.fillStyle = '#FFFFFF';
+          const s = halfSize * 0.8;
+          // Main body shape (rounded trapezoid/controller)
+          ctx.beginPath();
+          ctx.moveTo(x - s * 0.8, y - s * 0.3);
+          // Top left curve going up
+          ctx.quadraticCurveTo(x - s * 0.7, y - s * 0.7, x - s * 0.3, y - s * 0.55);
+          // Top center dip
+          ctx.quadraticCurveTo(x, y - s * 0.45, x + s * 0.3, y - s * 0.55);
+          // Top right curve
+          ctx.quadraticCurveTo(x + s * 0.7, y - s * 0.7, x + s * 0.8, y - s * 0.3);
+          // Right side down
+          ctx.quadraticCurveTo(x + s * 0.9, y + s * 0.2, x + s * 0.5, y + s * 0.65);
+          // Bottom
+          ctx.quadraticCurveTo(x, y + s * 0.75, x - s * 0.5, y + s * 0.65);
+          // Left side up
+          ctx.quadraticCurveTo(x - s * 0.9, y + s * 0.2, x - s * 0.8, y - s * 0.3);
+          ctx.closePath();
+          ctx.fill();
+          // Cut out eyes (draw background color circles)
+          ctx.fillStyle = '#5865F2';
           // Left eye
           ctx.beginPath();
-          ctx.ellipse(x - halfSize * 0.35, y - halfSize * 0.1, halfSize * 0.2, halfSize * 0.25, 0, 0, Math.PI * 2);
+          ctx.ellipse(x - s * 0.35, y - s * 0.05, s * 0.18, s * 0.22, 0, 0, Math.PI * 2);
           ctx.fill();
           // Right eye
           ctx.beginPath();
-          ctx.ellipse(x + halfSize * 0.35, y - halfSize * 0.1, halfSize * 0.2, halfSize * 0.25, 0, 0, Math.PI * 2);
+          ctx.ellipse(x + s * 0.35, y - s * 0.05, s * 0.18, s * 0.22, 0, 0, Math.PI * 2);
           ctx.fill();
-          // Smile/body curve
-          ctx.beginPath();
-          ctx.arc(x, y + halfSize * 0.5, halfSize * 0.5, Math.PI * 0.2, Math.PI * 0.8);
-          ctx.strokeStyle = '#FFFFFF';
-          ctx.lineWidth = 1.5;
-          ctx.stroke();
         }
         ctx.restore();
       };

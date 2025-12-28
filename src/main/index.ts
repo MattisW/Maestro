@@ -1122,6 +1122,26 @@ function setupIpcHandlers() {
     }
   });
 
+  // Fetch image from URL and return as base64 data URL (avoids CORS issues)
+  ipcMain.handle('fs:fetchImageAsBase64', async (_, url: string) => {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      const base64 = buffer.toString('base64');
+      // Determine mime type from content-type header or URL
+      const contentType = response.headers.get('content-type') || 'image/png';
+      return `data:${contentType};base64,${base64}`;
+    } catch (error) {
+      // Return null on failure - let caller handle gracefully
+      logger.warn(`Failed to fetch image from ${url}: ${error}`, 'fs:fetchImageAsBase64');
+      return null;
+    }
+  });
+
   // Live session management - toggle sessions as live/offline in web interface
   ipcMain.handle('live:toggle', async (_, sessionId: string, agentSessionId?: string) => {
     if (!webServer) {

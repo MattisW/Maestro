@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useImperativeHandle, forwardRef, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useImperativeHandle, forwardRef, useState, useCallback, memo } from 'react';
 import { PanelRightClose, PanelRightOpen, Loader2, GitBranch } from 'lucide-react';
 import type { Session, Theme, RightPanelTab, Shortcut, BatchRunState, FocusArea } from '../types';
 import type { FileTreeChanges } from '../utils/fileExplorer';
@@ -99,7 +99,7 @@ interface RightPanelProps {
   onFileClick?: (path: string) => void;
 }
 
-export const RightPanel = forwardRef<RightPanelHandle, RightPanelProps>(function RightPanel(props, ref) {
+export const RightPanel = memo(forwardRef<RightPanelHandle, RightPanelProps>(function RightPanel(props, ref) {
   const {
     session, theme, shortcuts, rightPanelOpen, setRightPanelOpen, rightPanelWidth,
     setRightPanelWidthState, activeRightTab, setActiveRightTab, activeFocus, setActiveFocus,
@@ -560,4 +560,4 @@ export const RightPanel = forwardRef<RightPanelHandle, RightPanelProps>(function
       )}
     </div>
   );
-});
+}));

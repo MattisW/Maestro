@@ -69,16 +69,48 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 // Mock ResizeObserver using a proper class-like constructor
+// Simulates a 1000px width by default which ensures all responsive UI elements are visible
 class MockResizeObserver {
   callback: ResizeObserverCallback;
   constructor(callback: ResizeObserverCallback) {
     this.callback = callback;
   }
-  observe = vi.fn();
+  observe = vi.fn((target: Element) => {
+    // Immediately call callback with a reasonable width to simulate layout
+    // This ensures responsive breakpoints work correctly in tests
+    const entry: ResizeObserverEntry = {
+      target,
+      contentRect: {
+        width: 1000,
+        height: 500,
+        top: 0,
+        left: 0,
+        bottom: 500,
+        right: 1000,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      },
+      borderBoxSize: [{ blockSize: 500, inlineSize: 1000 }],
+      contentBoxSize: [{ blockSize: 500, inlineSize: 1000 }],
+      devicePixelContentBoxSize: [{ blockSize: 500, inlineSize: 1000 }],
+    };
+    // Use setTimeout to simulate async behavior like the real ResizeObserver
+    setTimeout(() => this.callback([entry], this as unknown as ResizeObserver), 0);
+  });
   unobserve = vi.fn();
   disconnect = vi.fn();
 }
 global.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
+
+// Mock offsetWidth to return reasonable values for responsive breakpoint tests
+// This ensures components that check element dimensions work correctly in jsdom
+Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
+  configurable: true,
+  get() {
+    return 1000; // Default to wide enough for all responsive features to show
+  },
+});
 
 // Mock IntersectionObserver
 global.IntersectionObserver = vi.fn().mockImplementation(() => ({

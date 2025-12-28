@@ -78,9 +78,7 @@
             "pages": [
               "configuration",
               "remote-access",
-              "troubleshooting",
-              "contributing",
-              "license"
+              "troubleshooting"
             ]
           }
         ]

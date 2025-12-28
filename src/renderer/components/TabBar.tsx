@@ -1,6 +1,6 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, memo } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Plus, Star, Copy, Edit2, Mail, Pencil, Search, GitMerge, ArrowRightCircle, Minimize2 } from 'lucide-react';
+import { X, Plus, Star, Copy, Edit2, Mail, Pencil, Search, GitMerge, ArrowRightCircle, Minimize2, Download, Clipboard, Minus, ArrowLeftToLine, ArrowRightToLine } from 'lucide-react';
 import type { AITab, Theme } from '../types';
 import { hasDraft } from '../utils/tabHelpers';
 
@@ -272,6 +272,18 @@ function Tab({
   const handleCloseRightClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     onCloseRight?.();
+    setOverlayOpen(false);
+  };
+
+  const handleCopyContextClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onCopyContext?.();
+    setOverlayOpen(false);
+  };
+
+  const handleExportHtmlClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onExportHtml?.();
     setOverlayOpen(false);
   };
 
@@ -587,7 +599,7 @@ function Tab({
               style={{ color: theme.colors.textMain }}
               disabled={hasOnlyOneTab}
             >
-              <X className="w-3.5 h-3.5" style={{ color: theme.colors.textDim }} />
+              <Minus className="w-3.5 h-3.5" style={{ color: theme.colors.textDim }} />
               Close Others
             </button>
 
@@ -600,7 +612,7 @@ function Tab({
               style={{ color: theme.colors.textMain }}
               disabled={isFirstTab}
             >
-              <X className="w-3.5 h-3.5" style={{ color: theme.colors.textDim }} />
+              <ArrowLeftToLine className="w-3.5 h-3.5" style={{ color: theme.colors.textDim }} />
               Close Tabs to the Left
             </button>
 
@@ -613,7 +625,7 @@ function Tab({
               style={{ color: theme.colors.textMain }}
               disabled={isLastTab}
             >
-              <X className="w-3.5 h-3.5" style={{ color: theme.colors.textDim }} />
+              <ArrowRightToLine className="w-3.5 h-3.5" style={{ color: theme.colors.textDim }} />
               Close Tabs to the Right
             </button>
           </div>
@@ -629,7 +641,7 @@ function Tab({
  * Shows tabs for each Claude Code conversation within a Maestro session.
  * Appears only in AI mode (hidden in terminal mode).
  */
-export function TabBar({
+function TabBarInner({
   tabs,
   activeTabId,
   theme,
@@ -931,3 +943,5 @@ export function TabBar({
     </div>
   );
 }
+
+export const TabBar = memo(TabBarInner);

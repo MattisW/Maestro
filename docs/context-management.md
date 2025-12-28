@@ -12,7 +12,7 @@ Hover over any tab with an established session to access the tab menu overlay:
 
 | Action | Description |
 |--------|-------------|
-| **Copy Session ID** | Copy the Claude Code session ID to clipboard |
+| **Copy Session ID** | Copy the session ID to clipboard (for session continuity) |
 | **Star Session** | Bookmark this session for quick access |
 | **Rename Tab** | Give the tab a descriptive name |
 | **Mark as Unread** | Add unread indicator to the tab |

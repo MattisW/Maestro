@@ -367,6 +367,7 @@ interface MaestroAPI {
       isDirectory: boolean;
       isFile: boolean;
     }>;
+    fetchImageAsBase64: (url: string) => Promise<string | null>;
   };
   webserver: {
     getUrl: () => Promise<string>;
