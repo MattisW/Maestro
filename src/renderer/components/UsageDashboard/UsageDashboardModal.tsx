@@ -21,6 +21,7 @@ import { AgentComparisonChart } from './AgentComparisonChart';
 import { SourceDistributionChart } from './SourceDistributionChart';
 import { DurationTrendsChart } from './DurationTrendsChart';
 import { AutoRunStats } from './AutoRunStats';
+import { EmptyState } from './EmptyState';
 import type { Theme } from '../../types';
 import { useLayerStack } from '../../contexts/LayerStackContext';
 import { MODAL_PRIORITIES } from '../../constants/modalPriorities';
@@ -377,22 +378,8 @@ export function UsageDashboardModal({
               </button>
             </div>
           ) : !data || (data.totalQueries === 0 && data.bySource.user === 0 && data.bySource.auto === 0) ? (
-            /* Empty State */
-            <div
-              className="h-full flex flex-col items-center justify-center gap-4"
-              style={{ color: theme.colors.textDim }}
-              data-testid="usage-dashboard-empty"
-            >
-              <BarChart3 className="w-16 h-16 opacity-30" />
-              <div className="text-center">
-                <p className="text-lg mb-2" style={{ color: theme.colors.textMain }}>
-                  No usage data yet
-                </p>
-                <p className="text-sm">
-                  Start using Maestro to see your stats!
-                </p>
-              </div>
-            </div>
+            /* Empty State Component */
+            <EmptyState theme={theme} />
           ) : (
             <div className="space-y-6" data-testid="usage-dashboard-content">
               {/* View-specific content based on viewMode */}
