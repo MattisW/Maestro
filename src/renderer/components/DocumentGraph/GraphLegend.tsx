@@ -12,7 +12,7 @@
  */
 
 import React, { useState, memo, useCallback } from 'react';
-import { ChevronDown, ChevronUp, FileText, Globe, ArrowRight } from 'lucide-react';
+import { ChevronDown, ChevronUp, FileText, Globe, ArrowRight, AlertTriangle } from 'lucide-react';
 import type { Theme } from '../../types';
 
 /**
@@ -370,6 +370,47 @@ export const GraphLegend = memo(function GraphLegend({
                     style={{ color: theme.colors.textDim, opacity: 0.8 }}
                   >
                     Edges to/from selected node
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Status Indicators Section */}
+          <div>
+            <h4
+              className="text-xs font-medium mb-2"
+              style={{ color: theme.colors.textDim }}
+            >
+              Status Indicators
+            </h4>
+            <div className="space-y-2">
+              {/* Broken links warning */}
+              <div className="flex items-center gap-2">
+                <div
+                  className="flex items-center justify-center rounded"
+                  style={{
+                    width: 24,
+                    height: 24,
+                    backgroundColor: '#f59e0b20',
+                  }}
+                  role="img"
+                  aria-label="Broken links warning indicator"
+                >
+                  <AlertTriangle size={14} style={{ color: '#f59e0b' }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span
+                    className="text-xs font-medium block"
+                    style={{ color: theme.colors.textMain }}
+                  >
+                    Broken Links
+                  </span>
+                  <span
+                    className="text-xs block truncate"
+                    style={{ color: theme.colors.textDim, opacity: 0.8 }}
+                  >
+                    Links to non-existent files
                   </span>
                 </div>
               </div>

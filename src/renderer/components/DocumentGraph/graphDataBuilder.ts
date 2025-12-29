@@ -114,6 +114,8 @@ interface ParsedFile {
   externalLinks: ExternalLink[];
   /** Computed document stats */
   stats: DocumentStats;
+  /** All internal link paths (before broken link filtering) - used to compute broken links */
+  allInternalLinkPaths: string[];
 }
 
 /**
@@ -217,6 +219,7 @@ async function parseFile(rootPath: string, relativePath: string): Promise<Parsed
       internalLinks,
       externalLinks,
       stats,
+      allInternalLinkPaths: internalLinks, // Store all links to identify broken ones later
     };
   } catch (error) {
     console.warn(`Failed to parse file ${fullPath}:`, error);
@@ -293,6 +296,9 @@ export async function buildGraphData(options: BuildOptions): Promise<GraphData> 
     const file = parsedFiles[i];
     const nodeId = `doc-${file.relativePath}`;
 
+    // Identify broken links (links to files that don't exist in the scanned directory)
+    const brokenLinks = file.allInternalLinkPaths.filter((link) => !knownPaths.has(link));
+
     // Create document node
     nodes.push({
       id: nodeId,
@@ -301,6 +307,8 @@ export async function buildGraphData(options: BuildOptions): Promise<GraphData> 
       data: {
         nodeType: 'document',
         ...file.stats,
+        // Only include brokenLinks if there are any
+        ...(brokenLinks.length > 0 ? { brokenLinks } : {}),
       },
     });
 

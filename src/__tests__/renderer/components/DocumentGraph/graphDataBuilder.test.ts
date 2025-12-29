@@ -1732,4 +1732,281 @@ describe('graphDataBuilder', () => {
       });
     });
   });
+
+  describe('Broken internal links detection', () => {
+    /**
+     * These tests verify that the graph builder correctly identifies and tracks
+     * broken internal links (links to files that don't exist in the scanned directory).
+     */
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('should identify broken links to non-existent files', async () => {
+      mockReadDir.mockResolvedValue([
+        { name: 'doc1.md', isDirectory: false, path: '/test/doc1.md' },
+      ]);
+
+      mockReadFile.mockImplementation(() => {
+        // Link to a file that doesn't exist
+        return Promise.resolve('# Doc 1\n\n[[missing-doc]]\n[[another-missing]]');
+      });
+
+      mockStat.mockResolvedValue({ size: 100, createdAt: '', modifiedAt: '' });
+
+      const result = await buildGraphData({
+        rootPath: '/test',
+        includeExternalLinks: false,
+      });
+
+      expect(result.nodes).toHaveLength(1);
+
+      const nodeData = result.nodes[0].data as DocumentNodeData;
+      expect(nodeData.brokenLinks).toBeDefined();
+      expect(nodeData.brokenLinks).toHaveLength(2);
+      expect(nodeData.brokenLinks).toContain('missing-doc.md');
+      expect(nodeData.brokenLinks).toContain('another-missing.md');
+    });
+
+    it('should NOT include brokenLinks when all links are valid', async () => {
+      mockReadDir.mockResolvedValue([
+        { name: 'doc1.md', isDirectory: false, path: '/test/doc1.md' },
+        { name: 'doc2.md', isDirectory: false, path: '/test/doc2.md' },
+      ]);
+
+      mockReadFile.mockImplementation((path: string) => {
+        if (path.includes('doc1')) {
+          return Promise.resolve('# Doc 1\n\n[[doc2]]');
+        }
+        return Promise.resolve('# Doc 2\n\nNo links.');
+      });
+
+      mockStat.mockResolvedValue({ size: 100, createdAt: '', modifiedAt: '' });
+
+      const result = await buildGraphData({
+        rootPath: '/test',
+        includeExternalLinks: false,
+      });
+
+      expect(result.nodes).toHaveLength(2);
+
+      const doc1Data = result.nodes.find(n => n.id === 'doc-doc1.md')?.data as DocumentNodeData;
+      // brokenLinks should NOT be present when there are no broken links
+      expect(doc1Data.brokenLinks).toBeUndefined();
+    });
+
+    it('should include brokenLinks only when some links are broken', async () => {
+      mockReadDir.mockResolvedValue([
+        { name: 'doc1.md', isDirectory: false, path: '/test/doc1.md' },
+        { name: 'doc2.md', isDirectory: false, path: '/test/doc2.md' },
+      ]);
+
+      mockReadFile.mockImplementation((path: string) => {
+        if (path.includes('doc1')) {
+          // doc1 links to doc2 (valid) and doc3 (broken)
+          return Promise.resolve('# Doc 1\n\n[[doc2]]\n[[doc3]]');
+        }
+        return Promise.resolve('# Doc 2');
+      });
+
+      mockStat.mockResolvedValue({ size: 100, createdAt: '', modifiedAt: '' });
+
+      const result = await buildGraphData({
+        rootPath: '/test',
+        includeExternalLinks: false,
+      });
+
+      const doc1Data = result.nodes.find(n => n.id === 'doc-doc1.md')?.data as DocumentNodeData;
+      expect(doc1Data.brokenLinks).toBeDefined();
+      expect(doc1Data.brokenLinks).toHaveLength(1);
+      expect(doc1Data.brokenLinks).toContain('doc3.md');
+    });
+
+    it('should handle relative path broken links', async () => {
+      mockReadDir.mockImplementation((path: string) => {
+        if (path === '/test') {
+          return Promise.resolve([
+            { name: 'docs', isDirectory: true, path: '/test/docs' },
+          ]);
+        }
+        if (path === '/test/docs') {
+          return Promise.resolve([
+            { name: 'readme.md', isDirectory: false, path: '/test/docs/readme.md' },
+          ]);
+        }
+        return Promise.resolve([]);
+      });
+
+      mockReadFile.mockImplementation(() => {
+        // Link to a relative path that doesn't exist
+        return Promise.resolve('# Readme\n\n[link](../missing/file.md)');
+      });
+
+      mockStat.mockResolvedValue({ size: 100, createdAt: '', modifiedAt: '' });
+
+      const result = await buildGraphData({
+        rootPath: '/test',
+        includeExternalLinks: false,
+      });
+
+      const nodeData = result.nodes[0].data as DocumentNodeData;
+      expect(nodeData.brokenLinks).toBeDefined();
+      expect(nodeData.brokenLinks!.length).toBeGreaterThan(0);
+    });
+
+    it('should track broken links separately from valid edges', async () => {
+      mockReadDir.mockResolvedValue([
+        { name: 'doc1.md', isDirectory: false, path: '/test/doc1.md' },
+        { name: 'doc2.md', isDirectory: false, path: '/test/doc2.md' },
+      ]);
+
+      mockReadFile.mockImplementation((path: string) => {
+        if (path.includes('doc1')) {
+          // doc1 links to doc2 (valid), doc3 (broken), and doc4 (broken)
+          return Promise.resolve('# Doc 1\n\n[[doc2]] [[doc3]] [[doc4]]');
+        }
+        return Promise.resolve('# Doc 2');
+      });
+
+      mockStat.mockResolvedValue({ size: 100, createdAt: '', modifiedAt: '' });
+
+      const result = await buildGraphData({
+        rootPath: '/test',
+        includeExternalLinks: false,
+      });
+
+      // Should have 1 valid edge (doc1 -> doc2)
+      expect(result.edges).toHaveLength(1);
+      expect(result.edges[0].source).toBe('doc-doc1.md');
+      expect(result.edges[0].target).toBe('doc-doc2.md');
+
+      // Should have 2 broken links
+      const doc1Data = result.nodes.find(n => n.id === 'doc-doc1.md')?.data as DocumentNodeData;
+      expect(doc1Data.brokenLinks).toHaveLength(2);
+    });
+
+    it('should handle multiple documents with broken links', async () => {
+      mockReadDir.mockResolvedValue([
+        { name: 'doc1.md', isDirectory: false, path: '/test/doc1.md' },
+        { name: 'doc2.md', isDirectory: false, path: '/test/doc2.md' },
+      ]);
+
+      mockReadFile.mockImplementation((path: string) => {
+        if (path.includes('doc1')) {
+          return Promise.resolve('# Doc 1\n\n[[missing1]]');
+        }
+        return Promise.resolve('# Doc 2\n\n[[missing2]]');
+      });
+
+      mockStat.mockResolvedValue({ size: 100, createdAt: '', modifiedAt: '' });
+
+      const result = await buildGraphData({
+        rootPath: '/test',
+        includeExternalLinks: false,
+      });
+
+      const doc1Data = result.nodes.find(n => n.id === 'doc-doc1.md')?.data as DocumentNodeData;
+      const doc2Data = result.nodes.find(n => n.id === 'doc-doc2.md')?.data as DocumentNodeData;
+
+      expect(doc1Data.brokenLinks).toContain('missing1.md');
+      expect(doc2Data.brokenLinks).toContain('missing2.md');
+    });
+
+    it('should NOT count external links as broken', async () => {
+      mockReadDir.mockResolvedValue([
+        { name: 'doc1.md', isDirectory: false, path: '/test/doc1.md' },
+      ]);
+
+      mockReadFile.mockImplementation(() => {
+        // External link should not appear as broken
+        return Promise.resolve('# Doc 1\n\n[GitHub](https://github.com/test)');
+      });
+
+      mockStat.mockResolvedValue({ size: 100, createdAt: '', modifiedAt: '' });
+
+      const result = await buildGraphData({
+        rootPath: '/test',
+        includeExternalLinks: true,
+      });
+
+      const nodeData = result.nodes.find(n => n.type === 'documentNode')?.data as DocumentNodeData;
+      // External links should not be in brokenLinks
+      expect(nodeData.brokenLinks).toBeUndefined();
+    });
+
+    it('should handle wiki links with display text as broken', async () => {
+      mockReadDir.mockResolvedValue([
+        { name: 'doc1.md', isDirectory: false, path: '/test/doc1.md' },
+      ]);
+
+      mockReadFile.mockImplementation(() => {
+        // Wiki link with display text: [[path|display]]
+        return Promise.resolve('# Doc 1\n\n[[missing-doc|Display Text]]');
+      });
+
+      mockStat.mockResolvedValue({ size: 100, createdAt: '', modifiedAt: '' });
+
+      const result = await buildGraphData({
+        rootPath: '/test',
+        includeExternalLinks: false,
+      });
+
+      const nodeData = result.nodes[0].data as DocumentNodeData;
+      expect(nodeData.brokenLinks).toBeDefined();
+      expect(nodeData.brokenLinks).toContain('missing-doc.md');
+    });
+
+    it('should NOT count image links as broken internal links', async () => {
+      mockReadDir.mockResolvedValue([
+        { name: 'doc1.md', isDirectory: false, path: '/test/doc1.md' },
+      ]);
+
+      mockReadFile.mockImplementation(() => {
+        // Image embeds should not be treated as internal links
+        return Promise.resolve('# Doc 1\n\n[[screenshot.png]]\n[[diagram.svg]]');
+      });
+
+      mockStat.mockResolvedValue({ size: 100, createdAt: '', modifiedAt: '' });
+
+      const result = await buildGraphData({
+        rootPath: '/test',
+        includeExternalLinks: false,
+      });
+
+      const nodeData = result.nodes[0].data as DocumentNodeData;
+      // Image links should be skipped, not counted as broken
+      expect(nodeData.brokenLinks).toBeUndefined();
+    });
+
+    it('should handle many broken links efficiently', async () => {
+      const brokenLinkCount = 50;
+
+      mockReadDir.mockResolvedValue([
+        { name: 'doc1.md', isDirectory: false, path: '/test/doc1.md' },
+      ]);
+
+      mockReadFile.mockImplementation(() => {
+        const links = Array.from({ length: brokenLinkCount }, (_, i) =>
+          `[[missing-${i}]]`
+        ).join('\n');
+        return Promise.resolve(`# Doc 1\n\n${links}`);
+      });
+
+      mockStat.mockResolvedValue({ size: 500, createdAt: '', modifiedAt: '' });
+
+      const result = await buildGraphData({
+        rootPath: '/test',
+        includeExternalLinks: false,
+      });
+
+      const nodeData = result.nodes[0].data as DocumentNodeData;
+      expect(nodeData.brokenLinks).toHaveLength(brokenLinkCount);
+
+      // Verify all broken links are correctly identified
+      for (let i = 0; i < brokenLinkCount; i++) {
+        expect(nodeData.brokenLinks).toContain(`missing-${i}.md`);
+      }
+    });
+  });
 });

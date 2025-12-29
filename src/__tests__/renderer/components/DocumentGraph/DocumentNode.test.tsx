@@ -607,4 +607,136 @@ describe('DocumentNode', () => {
       expect(nodeElement).not.toHaveClass('search-highlight');
     });
   });
+
+  describe('Broken Links Warning', () => {
+    it('shows warning icon when document has broken links', () => {
+      const props = createNodeProps({
+        brokenLinks: ['missing-doc.md', 'nonexistent/file.md'],
+      });
+
+      renderWithProvider(<DocumentNode {...props} />);
+
+      const warningIcon = screen.getByTestId('broken-links-warning');
+      expect(warningIcon).toBeInTheDocument();
+    });
+
+    it('does not show warning icon when brokenLinks is empty', () => {
+      const props = createNodeProps({
+        brokenLinks: [],
+      });
+
+      renderWithProvider(<DocumentNode {...props} />);
+
+      expect(screen.queryByTestId('broken-links-warning')).not.toBeInTheDocument();
+    });
+
+    it('does not show warning icon when brokenLinks is undefined', () => {
+      const props = createNodeProps();
+
+      renderWithProvider(<DocumentNode {...props} />);
+
+      expect(screen.queryByTestId('broken-links-warning')).not.toBeInTheDocument();
+    });
+
+    it('displays correct aria-label for single broken link', () => {
+      const props = createNodeProps({
+        brokenLinks: ['missing-doc.md'],
+      });
+
+      renderWithProvider(<DocumentNode {...props} />);
+
+      const warningIcon = screen.getByTestId('broken-links-warning');
+      expect(warningIcon).toHaveAttribute('aria-label', '1 broken link');
+    });
+
+    it('displays correct aria-label for multiple broken links', () => {
+      const props = createNodeProps({
+        brokenLinks: ['missing1.md', 'missing2.md', 'missing3.md'],
+      });
+
+      renderWithProvider(<DocumentNode {...props} />);
+
+      const warningIcon = screen.getByTestId('broken-links-warning');
+      expect(warningIcon).toHaveAttribute('aria-label', '3 broken links');
+    });
+
+    it('includes broken links in tooltip', () => {
+      const props = createNodeProps({
+        filePath: 'docs/readme.md',
+        brokenLinks: ['missing1.md', 'subfolder/missing2.md'],
+      });
+
+      const { container } = renderWithProvider(<DocumentNode {...props} />);
+
+      const nodeElement = container.querySelector('.document-node');
+      const tooltip = nodeElement?.getAttribute('title') || '';
+
+      expect(tooltip).toContain('docs/readme.md');
+      expect(tooltip).toContain('⚠️ Broken links (2)');
+      expect(tooltip).toContain('missing1.md');
+      expect(tooltip).toContain('subfolder/missing2.md');
+    });
+
+    it('does not include broken links section in tooltip when no broken links', () => {
+      const props = createNodeProps({
+        filePath: 'docs/readme.md',
+        brokenLinks: [],
+      });
+
+      const { container } = renderWithProvider(<DocumentNode {...props} />);
+
+      const nodeElement = container.querySelector('.document-node');
+      const tooltip = nodeElement?.getAttribute('title') || '';
+
+      expect(tooltip).toContain('docs/readme.md');
+      expect(tooltip).not.toContain('⚠️ Broken links');
+    });
+
+    it('warning icon has amber/warning color', () => {
+      const props = createNodeProps({
+        brokenLinks: ['missing.md'],
+      });
+
+      const { container } = renderWithProvider(<DocumentNode {...props} />);
+
+      const warningIcon = screen.getByTestId('broken-links-warning');
+      // The icon should have the amber warning color
+      expect(warningIcon).toHaveStyle({
+        color: '#f59e0b',
+      });
+    });
+
+    it('shows warning icon alongside title and file icon', () => {
+      const props = createNodeProps({
+        title: 'Document With Broken Links',
+        brokenLinks: ['missing.md'],
+      });
+
+      renderWithProvider(<DocumentNode {...props} />);
+
+      // All three should be visible: title, file icon, and warning
+      expect(screen.getByText('Document With Broken Links')).toBeInTheDocument();
+      expect(screen.getByTestId('broken-links-warning')).toBeInTheDocument();
+    });
+
+    it('includes broken links in tooltip alongside full title when title is truncated', () => {
+      const longTitle = 'This is a very long title that definitely exceeds forty characters';
+      const props = createNodeProps({
+        title: longTitle,
+        filePath: 'docs/long-doc.md',
+        brokenLinks: ['missing.md'],
+      });
+
+      const { container } = renderWithProvider(<DocumentNode {...props} />);
+
+      const nodeElement = container.querySelector('.document-node');
+      const tooltip = nodeElement?.getAttribute('title') || '';
+
+      // Should contain full title, file path, AND broken links
+      expect(tooltip).toContain(longTitle);
+      expect(tooltip).toContain('docs/long-doc.md');
+      expect(tooltip).toContain('⚠️ Broken links (1)');
+      expect(tooltip).toContain('missing.md');
+    });
+  });
 });

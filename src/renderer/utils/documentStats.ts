@@ -29,6 +29,8 @@ export interface DocumentStats {
   description?: string;
   /** Path to the document file */
   filePath: string;
+  /** Paths to broken internal links (links to non-existent files) */
+  brokenLinks?: string[];
 }
 
 /**

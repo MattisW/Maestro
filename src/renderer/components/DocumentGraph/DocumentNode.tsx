@@ -11,7 +11,7 @@
 
 import React, { memo, useMemo } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
-import { FileText, Hash, AlignLeft, HardDrive } from 'lucide-react';
+import { FileText, Hash, AlignLeft, HardDrive, AlertTriangle } from 'lucide-react';
 import type { Theme } from '../../types';
 import type { DocumentNodeData } from './graphDataBuilder';
 
@@ -22,6 +22,7 @@ export interface DocumentNodeProps extends NodeProps<DocumentNodeData & {
   theme: Theme;
   searchActive?: boolean;
   searchMatch?: boolean;
+  brokenLinks?: string[];
 }> {
   // Props come from React Flow - data, selected, etc.
 }
@@ -51,7 +52,10 @@ export const DocumentNode = memo(function DocumentNode({
   data,
   selected,
 }: DocumentNodeProps) {
-  const { title, lineCount, wordCount, size, description, filePath, theme, searchActive, searchMatch } = data;
+  const { title, lineCount, wordCount, size, description, filePath, theme, searchActive, searchMatch, brokenLinks } = data;
+
+  // Check if this document has broken links
+  const hasBrokenLinks = brokenLinks && brokenLinks.length > 0;
 
   // Determine if this node should be dimmed (search active but not matching)
   const isDimmed = searchActive && !searchMatch;
@@ -122,6 +126,12 @@ export const DocumentNode = memo(function DocumentNode({
     height: 8,
   }), [theme.colors]);
 
+  // Warning icon style for broken links indicator
+  const warningIconStyle = useMemo(() => ({
+    color: '#f59e0b', // Amber/warning color
+    flexShrink: 0,
+  }), []);
+
   // Truncate title if too long
   const displayTitle = truncateText(title, MAX_TITLE_LENGTH);
   const isTitleTruncated = title.length > MAX_TITLE_LENGTH;
@@ -132,10 +142,15 @@ export const DocumentNode = memo(function DocumentNode({
     : null;
   const isDescriptionTruncated = description ? description.length > MAX_DESCRIPTION_LENGTH : false;
 
-  // Build tooltip: show full title if truncated, always show file path
+  // Build broken links tooltip text
+  const brokenLinksTooltip = hasBrokenLinks
+    ? `\n\n⚠️ Broken links (${brokenLinks.length}):\n${brokenLinks.map(link => `  • ${link}`).join('\n')}`
+    : '';
+
+  // Build tooltip: show full title if truncated, always show file path, plus broken links if any
   const tooltipText = isTitleTruncated
-    ? `${title}\n\n${filePath}`
-    : filePath;
+    ? `${title}\n\n${filePath}${brokenLinksTooltip}`
+    : `${filePath}${brokenLinksTooltip}`;
 
   return (
     <div
@@ -150,13 +165,22 @@ export const DocumentNode = memo(function DocumentNode({
         style={handleStyle}
       />
 
-      {/* Title with document icon */}
+      {/* Title with document icon and optional warning icon */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
         <FileText
           size={14}
           style={{ color: theme.colors.accent, flexShrink: 0 }}
         />
         <div style={titleStyle}>{displayTitle}</div>
+        {hasBrokenLinks && (
+          <span
+            data-testid="broken-links-warning"
+            aria-label={`${brokenLinks.length} broken link${brokenLinks.length > 1 ? 's' : ''}`}
+            style={warningIconStyle}
+          >
+            <AlertTriangle size={14} />
+          </span>
+        )}
       </div>
 
       {/* Stats row: lines, words, size */}
