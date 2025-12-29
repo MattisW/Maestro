@@ -80,13 +80,18 @@ interface MetricCardProps {
   label: string;
   value: string;
   theme: Theme;
+  /** Animation delay index for staggered entrance (0-based) */
+  animationIndex?: number;
 }
 
-function MetricCard({ icon, label, value, theme }: MetricCardProps) {
+function MetricCard({ icon, label, value, theme, animationIndex = 0 }: MetricCardProps) {
   return (
     <div
-      className="p-4 rounded-lg flex items-start gap-3"
-      style={{ backgroundColor: theme.colors.bgMain }}
+      className="p-4 rounded-lg flex items-start gap-3 dashboard-card-enter"
+      style={{
+        backgroundColor: theme.colors.bgMain,
+        animationDelay: `${animationIndex * 50}ms`,
+      }}
       data-testid="metric-card"
       role="group"
       aria-label={`${label}: ${value}`}
@@ -178,13 +183,14 @@ export function SummaryCards({ data, theme, columns = 5 }: SummaryCardsProps) {
       role="region"
       aria-label="Usage summary metrics"
     >
-      {metrics.map((metric) => (
+      {metrics.map((metric, index) => (
         <MetricCard
           key={metric.label}
           icon={metric.icon}
           label={metric.label}
           value={metric.value}
           theme={theme}
+          animationIndex={index}
         />
       ))}
     </div>

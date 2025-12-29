@@ -585,7 +585,8 @@ export function UsageDashboardModal({
             <EmptyState theme={theme} />
           ) : (
             <div
-              className="space-y-6"
+              key={viewMode} // Re-mount content when view mode changes to trigger animations
+              className="space-y-6 dashboard-content-enter"
               data-testid="usage-dashboard-content"
               role="tabpanel"
               id={`tabpanel-${viewMode}`}
@@ -601,9 +602,10 @@ export function UsageDashboardModal({
                     role="region"
                     aria-label={getSectionLabel('summary-cards')}
                     onKeyDown={(e) => handleSectionKeyDown(e, 'summary-cards')}
-                    className="outline-none rounded-lg transition-shadow"
+                    className="outline-none rounded-lg transition-shadow dashboard-section-enter"
                     style={{
                       boxShadow: focusedSection === 'summary-cards' ? `0 0 0 2px ${theme.colors.accent}` : 'none',
+                      animationDelay: '0ms',
                     }}
                     data-testid="section-summary-cards"
                   >
@@ -618,9 +620,10 @@ export function UsageDashboardModal({
 
                   {/* Charts Grid - 2 columns on wide, 1 on narrow */}
                   <div
-                    className="grid gap-6"
+                    className="grid gap-6 dashboard-section-enter"
                     style={{
                       gridTemplateColumns: `repeat(${layout.chartGridCols}, minmax(0, 1fr))`,
+                      animationDelay: '100ms',
                     }}
                   >
                     {/* Agent Comparison Chart */}
@@ -669,10 +672,11 @@ export function UsageDashboardModal({
                     role="region"
                     aria-label={getSectionLabel('activity-heatmap')}
                     onKeyDown={(e) => handleSectionKeyDown(e, 'activity-heatmap')}
-                    className="outline-none rounded-lg transition-shadow"
+                    className="outline-none rounded-lg transition-shadow dashboard-section-enter"
                     style={{
                       minHeight: '200px',
                       boxShadow: focusedSection === 'activity-heatmap' ? `0 0 0 2px ${theme.colors.accent}` : 'none',
+                      animationDelay: '200ms',
                     }}
                     data-testid="section-activity-heatmap"
                   >
@@ -692,10 +696,11 @@ export function UsageDashboardModal({
                     role="region"
                     aria-label={getSectionLabel('duration-trends')}
                     onKeyDown={(e) => handleSectionKeyDown(e, 'duration-trends')}
-                    className="outline-none rounded-lg transition-shadow"
+                    className="outline-none rounded-lg transition-shadow dashboard-section-enter"
                     style={{
                       minHeight: '280px',
                       boxShadow: focusedSection === 'duration-trends' ? `0 0 0 2px ${theme.colors.accent}` : 'none',
+                      animationDelay: '300ms',
                     }}
                     data-testid="section-duration-trends"
                   >
@@ -719,10 +724,11 @@ export function UsageDashboardModal({
                     role="region"
                     aria-label={getSectionLabel('agent-comparison')}
                     onKeyDown={(e) => handleSectionKeyDown(e, 'agent-comparison')}
-                    className="outline-none rounded-lg transition-shadow"
+                    className="outline-none rounded-lg transition-shadow dashboard-section-enter"
                     style={{
                       minHeight: '400px',
                       boxShadow: focusedSection === 'agent-comparison' ? `0 0 0 2px ${theme.colors.accent}` : 'none',
+                      animationDelay: '0ms',
                     }}
                     data-testid="section-agent-comparison"
                   >
@@ -742,10 +748,11 @@ export function UsageDashboardModal({
                     role="region"
                     aria-label={getSectionLabel('activity-heatmap')}
                     onKeyDown={(e) => handleSectionKeyDown(e, 'activity-heatmap')}
-                    className="outline-none rounded-lg transition-shadow"
+                    className="outline-none rounded-lg transition-shadow dashboard-section-enter"
                     style={{
                       minHeight: '300px',
                       boxShadow: focusedSection === 'activity-heatmap' ? `0 0 0 2px ${theme.colors.accent}` : 'none',
+                      animationDelay: '0ms',
                     }}
                     data-testid="section-activity-heatmap"
                   >
@@ -763,10 +770,11 @@ export function UsageDashboardModal({
                     role="region"
                     aria-label={getSectionLabel('duration-trends')}
                     onKeyDown={(e) => handleSectionKeyDown(e, 'duration-trends')}
-                    className="outline-none rounded-lg transition-shadow"
+                    className="outline-none rounded-lg transition-shadow dashboard-section-enter"
                     style={{
                       minHeight: '280px',
                       boxShadow: focusedSection === 'duration-trends' ? `0 0 0 2px ${theme.colors.accent}` : 'none',
+                      animationDelay: '100ms',
                     }}
                     data-testid="section-duration-trends"
                   >
@@ -790,9 +798,10 @@ export function UsageDashboardModal({
                     role="region"
                     aria-label={getSectionLabel('autorun-stats')}
                     onKeyDown={(e) => handleSectionKeyDown(e, 'autorun-stats')}
-                    className="outline-none rounded-lg transition-shadow"
+                    className="outline-none rounded-lg transition-shadow dashboard-section-enter"
                     style={{
                       boxShadow: focusedSection === 'autorun-stats' ? `0 0 0 2px ${theme.colors.accent}` : 'none',
+                      animationDelay: '0ms',
                     }}
                     data-testid="section-autorun-stats"
                   >

@@ -197,6 +197,68 @@ body {
   }
 }
 
+/* Usage Dashboard - View mode transition animations */
+@keyframes dashboard-content-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dashboard-content-exit {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+/* Usage Dashboard - Staggered card entrance animation */
+@keyframes dashboard-card-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Usage Dashboard - Chart section enter animation */
+@keyframes dashboard-section-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Usage Dashboard animation utility classes */
+.dashboard-content-enter {
+  animation: dashboard-content-enter 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.dashboard-card-enter {
+  animation: dashboard-card-enter 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  opacity: 0;
+}
+
+.dashboard-section-enter {
+  animation: dashboard-section-enter 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  opacity: 0;
+}
+
 .animate-in {
   animation: fade-in 0.2s ease-in;
 }
@@ -356,5 +418,14 @@ body {
   [data-testid="skeleton-box"],
   [data-testid="skeleton-circle"] {
     animation: none !important;
+  }
+
+  /* Disable Usage Dashboard state transition animations */
+  .dashboard-content-enter,
+  .dashboard-card-enter,
+  .dashboard-section-enter {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
   }
 }
