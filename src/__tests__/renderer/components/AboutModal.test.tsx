@@ -7,7 +7,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { AboutModal } from '../../../renderer/components/AboutModal';
-import type { Theme, Session, AutoRunStats } from '../../../renderer/types';
+import type { Theme, AutoRunStats } from '../../../renderer/types';
 
 // Mock lucide-react icons
 vi.mock('lucide-react', () => ({
@@ -125,26 +125,6 @@ const createTheme = (): Theme => ({
   },
 });
 
-// Create test session
-const createSession = (overrides: Partial<Session> = {}): Session => ({
-  id: 'session-1',
-  name: 'Test Session',
-  toolType: 'claude-code',
-  state: 'idle',
-  inputMode: 'ai',
-  cwd: '/test/path',
-  projectRoot: '/test/path',
-  aiPid: 12345,
-  terminalPid: 12346,
-  aiLogs: [],
-  shellLogs: [],
-  isGitRepo: false,
-  fileTree: [],
-  fileExplorerExpanded: [],
-  activeTimeMs: 0,
-  ...overrides,
-});
-
 // Create test autoRunStats
 const createAutoRunStats = (overrides: Partial<AutoRunStats> = {}): AutoRunStats => ({
   cumulativeTimeMs: 0,
@@ -212,7 +192,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -227,7 +207,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -240,7 +220,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -253,7 +233,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -266,7 +246,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -279,7 +259,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -294,7 +274,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -307,7 +287,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -320,7 +300,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -334,7 +314,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -350,7 +330,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -366,7 +346,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -383,7 +363,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -400,7 +380,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -417,7 +397,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -439,7 +419,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -459,7 +439,7 @@ describe('AboutModal', () => {
       const { unmount } = render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -476,7 +456,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -493,7 +473,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -515,7 +495,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -543,7 +523,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -556,7 +536,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -569,7 +549,7 @@ describe('AboutModal', () => {
       const { unmount } = render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -584,7 +564,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -618,7 +598,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -642,7 +622,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -664,7 +644,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -684,7 +664,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -707,7 +687,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -730,7 +710,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -756,7 +736,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[createSession({ activeTimeMs: 3900000 })]} // 1h 5m
+          handsOnTimeMs={3900000} // 1h 5m
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -775,7 +755,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[createSession({ activeTimeMs: 125000 })]} // 2m 5s
+          handsOnTimeMs={125000} // 2m 5s
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -794,7 +774,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[createSession({ activeTimeMs: 45000 })]} // 45s
+          handsOnTimeMs={45000} // 45s
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -813,7 +793,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[createSession({ activeTimeMs: 0 })]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -828,14 +808,11 @@ describe('AboutModal', () => {
       expect(screen.queryByText('Active Time')).not.toBeInTheDocument();
     });
 
-    it('should accumulate active time from multiple sessions', async () => {
+    it('should display accumulated hands-on time', async () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[
-            createSession({ id: 's1', activeTimeMs: 60000 }), // 1m
-            createSession({ id: 's2', activeTimeMs: 60000 }), // 1m
-          ]}
+          handsOnTimeMs={120000} // 2m total
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -856,7 +833,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -881,7 +858,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -906,7 +883,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -932,7 +909,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -955,7 +932,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -980,7 +957,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -995,7 +972,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -1010,7 +987,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -1025,7 +1002,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -1037,12 +1014,12 @@ describe('AboutModal', () => {
   });
 
   describe('Edge cases', () => {
-    it('should handle empty sessions array', () => {
+    it('should handle zero handsOnTimeMs', () => {
       expect(() => {
         render(
           <AboutModal
             theme={theme}
-            sessions={[]}
+            handsOnTimeMs={0}
             autoRunStats={createAutoRunStats()}
             onClose={onClose}
           />
@@ -1050,31 +1027,11 @@ describe('AboutModal', () => {
       }).not.toThrow();
     });
 
-    it('should handle sessions with undefined activeTimeMs', async () => {
-      render(
-        <AboutModal
-          theme={theme}
-          sessions={[createSession({ activeTimeMs: undefined })]}
-          autoRunStats={createAutoRunStats()}
-          onClose={onClose}
-        />
-      );
-
-      await act(async () => {
-        if (statsCallback) {
-          statsCallback(createGlobalStats());
-        }
-      });
-
-      // Should not show Active Time with 0
-      expect(screen.queryByText('Active Time')).not.toBeInTheDocument();
-    });
-
     it('should handle very large token counts', async () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
@@ -1095,7 +1052,7 @@ describe('AboutModal', () => {
       render(
         <AboutModal
           theme={theme}
-          sessions={[]}
+          handsOnTimeMs={0}
           autoRunStats={createAutoRunStats()}
           onClose={onClose}
         />
