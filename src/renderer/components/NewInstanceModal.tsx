@@ -116,19 +116,32 @@ export function NewInstanceModal({ isOpen, onClose, onCreate, theme, existingSes
       const detectedAgents = await window.maestro.agents.detect();
       setAgents(detectedAgents);
 
-      // Per-agent config (path, args, env vars) starts empty - each agent gets its own config
-      // No provider-level loading - config is set per-agent during creation
-      setCustomAgentPaths({});
-      setCustomAgentArgs({});
-      setCustomAgentEnvVars({});
-
-      // Load configurations for all agents (model, contextWindow - these are provider-level)
+      // Load configurations for all agents
       const configs: Record<string, Record<string, any>> = {};
+      const paths: Record<string, string> = {};
+      const args: Record<string, string> = {};
+      const envVars: Record<string, Record<string, string>> = {};
+
       for (const agent of detectedAgents) {
         const config = await window.maestro.agents.getConfig(agent.id);
         configs[agent.id] = config;
+
+        // Extract per-agent settings from the loaded config
+        if (config.customPath) {
+          paths[agent.id] = config.customPath;
+        }
+        if (config.customArgs) {
+          args[agent.id] = config.customArgs;
+        }
+        if (config.customEnvVars && Object.keys(config.customEnvVars).length > 0) {
+          envVars[agent.id] = config.customEnvVars;
+        }
       }
+
       setAgentConfigs(configs);
+      setCustomAgentPaths(paths);
+      setCustomAgentArgs(args);
+      setCustomAgentEnvVars(envVars);
 
       // Select first available non-hidden agent
       // (hidden agents like 'terminal' should never be auto-selected)

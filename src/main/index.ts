@@ -61,9 +61,10 @@ if (isDevelopment && !DEMO_MODE && !process.env.USE_PROD_DATA) {
 // ============================================================================
 // Store Initialization (after userData path is configured)
 // ============================================================================
+
 const bootstrapStore = new Store<BootstrapSettings>({
   name: 'maestro-bootstrap',
-  cwd: app.getPath('userData'), // Explicit path after dev mode adjustment
+  cwd: app.getPath('userData'),
   defaults: {},
 });
 
@@ -92,7 +93,7 @@ function getSyncPath(): string | undefined {
 }
 
 // Get the sync path once at startup
-// If no custom sync path, use the (potentially modified) userData path
+// If no custom sync path, use the current userData path (dev or prod depending on mode)
 const syncPath = getSyncPath() || app.getPath('userData');
 
 // Initialize Sentry for crash reporting
@@ -1146,6 +1147,55 @@ function setupIpcHandlers() {
     } catch (error) {
       throw new Error(`Failed to get file stats: ${error}`);
     }
+  });
+
+  // Calculate total size of a directory recursively
+  // Respects the same ignore patterns as loadFileTree (node_modules, __pycache__)
+  ipcMain.handle('fs:directorySize', async (_, dirPath: string) => {
+    let totalSize = 0;
+    let fileCount = 0;
+    let folderCount = 0;
+
+    const calculateSize = async (currentPath: string, depth: number = 0): Promise<void> => {
+      // Limit recursion depth to match file tree loading
+      if (depth >= 10) return;
+
+      try {
+        const entries = await fs.readdir(currentPath, { withFileTypes: true });
+
+        for (const entry of entries) {
+          // Skip common ignore patterns (same as loadFileTree)
+          if (entry.name === 'node_modules' || entry.name === '__pycache__') {
+            continue;
+          }
+
+          const fullPath = path.join(currentPath, entry.name);
+
+          if (entry.isDirectory()) {
+            folderCount++;
+            await calculateSize(fullPath, depth + 1);
+          } else if (entry.isFile()) {
+            fileCount++;
+            try {
+              const stats = await fs.stat(fullPath);
+              totalSize += stats.size;
+            } catch {
+              // Skip files we can't stat (permissions, etc.)
+            }
+          }
+        }
+      } catch {
+        // Skip directories we can't read
+      }
+    };
+
+    await calculateSize(dirPath);
+
+    return {
+      totalSize,
+      fileCount,
+      folderCount
+    };
   });
 
   ipcMain.handle('fs:writeFile', async (_, filePath: string, content: string) => {
