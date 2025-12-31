@@ -229,7 +229,15 @@ export function useAppHandlers(deps: UseAppHandlersDeps): UseAppHandlersReturn {
         cwd: newPath,
         fullPath: newPath,
         fileTree: [],
-        fileTreeError: undefined
+        fileTreeError: undefined,
+        // Clear ALL SSH state when selecting a new local directory
+        // The folder picker always returns local paths, so SSH should be disabled
+        sshRemote: undefined,
+        sshRemoteId: undefined,
+        remoteCwd: undefined,
+        // Also clear session-level SSH config to disable SSH for future spawns
+        // User selecting a local folder means they want local execution
+        sessionSshRemoteConfig: undefined,
       };
     }));
   }, [activeSessionId, setSessions]);
