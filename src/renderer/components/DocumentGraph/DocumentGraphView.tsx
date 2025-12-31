@@ -27,6 +27,8 @@ import {
   AlertCircle,
   RotateCcw,
   HelpCircle,
+  Calendar,
+  CheckSquare,
 } from 'lucide-react';
 import type { Theme } from '../../types';
 import { useLayerStack } from '../../contexts/LayerStackContext';
@@ -44,6 +46,29 @@ const GRAPH_REBUILD_DEBOUNCE_DELAY = 300;
 const DEFAULT_MAX_NODES = 200;
 /** Number of additional nodes to load when clicking "Load more" */
 const LOAD_MORE_INCREMENT = 25;
+
+/**
+ * Count markdown tasks (checkboxes) in content
+ * Reuses pattern from FilePreview.tsx
+ */
+const countMarkdownTasks = (content: string): { completed: number; total: number } => {
+  const openMatches = content.match(/^[\s]*[-*]\s*\[\s*\]/gm);
+  const closedMatches = content.match(/^[\s]*[-*]\s*\[[xX]\]/gm);
+  const open = openMatches?.length || 0;
+  const closed = closedMatches?.length || 0;
+  return { completed: closed, total: open + closed };
+};
+
+/**
+ * Format date for display in footer
+ */
+const formatDate = (date: Date): string => {
+  return date.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+};
 
 /**
  * Props for the DocumentGraphView component
@@ -174,6 +199,18 @@ export function DocumentGraphView({
   // Track the focus/depth that the positions were created for
   const positionsContextRef = useRef<{ focusFile: string | null; depth: number } | null>(null);
 
+  // Selected node file stats (created/modified dates)
+  const [selectedNodeStats, setSelectedNodeStats] = useState<{
+    createdAt: Date | null;
+    modifiedAt: Date | null;
+  } | null>(null);
+
+  // Selected node task counts
+  const [selectedNodeTasks, setSelectedNodeTasks] = useState<{
+    completed: number;
+    total: number;
+  } | null>(null);
+
   /**
    * Handle escape - show confirmation modal
    */
@@ -242,6 +279,19 @@ export function DocumentGraphView({
       containerRef.current?.focus();
     }
   }, [isOpen]);
+
+  /**
+   * Focus mind map container when graph finishes loading
+   * This enables immediate keyboard navigation
+   */
+  useEffect(() => {
+    if (isOpen && !loading && !error && nodes.length > 0 && activeFocusFile) {
+      // Small delay to ensure MindMap is rendered
+      requestAnimationFrame(() => {
+        mindMapContainerRef.current?.focus();
+      });
+    }
+  }, [isOpen, loading, error, nodes.length, activeFocusFile]);
 
   /**
    * Track graph container dimensions
@@ -450,6 +500,41 @@ export function DocumentGraphView({
     setSelectedNode(node);
     setContextMenu(null);
   }, []);
+
+  /**
+   * Load file stats and task counts when selected document node changes
+   */
+  useEffect(() => {
+    if (!selectedNode || selectedNode.nodeType !== 'document' || !selectedNode.filePath) {
+      setSelectedNodeStats(null);
+      setSelectedNodeTasks(null);
+      return;
+    }
+
+    const fullPath = `${rootPath}/${selectedNode.filePath}`;
+
+    // Load file stats (created/modified dates)
+    window.maestro.fs.stat(fullPath)
+      .then(stats => {
+        setSelectedNodeStats({
+          createdAt: stats.createdAt ? new Date(stats.createdAt) : null,
+          modifiedAt: stats.modifiedAt ? new Date(stats.modifiedAt) : null,
+        });
+      })
+      .catch(() => {
+        setSelectedNodeStats(null);
+      });
+
+    // Load file content to count tasks
+    window.maestro.fs.readFile(fullPath)
+      .then(content => {
+        const tasks = countMarkdownTasks(content);
+        setSelectedNodeTasks(tasks.total > 0 ? tasks : null);
+      })
+      .catch(() => {
+        setSelectedNodeTasks(null);
+      });
+  }, [selectedNode, rootPath]);
 
   /**
    * Handle node double-click - recenter on this document
@@ -1050,7 +1135,7 @@ export function DocumentGraphView({
         {/* Selected Node Info Bar */}
         {selectedNode && (
           <div
-            className="px-6 py-2 border-b flex items-center gap-3 text-sm"
+            className="px-6 py-2 border-b flex items-center justify-between text-sm"
             style={{
               borderColor: theme.colors.border,
               backgroundColor: `${theme.colors.accent}10`,
@@ -1058,20 +1143,24 @@ export function DocumentGraphView({
           >
             {selectedNode.nodeType === 'document' ? (
               <>
-                <span style={{ color: theme.colors.accent, fontWeight: 500 }}>
-                  {selectedNode.label}
-                </span>
+                {/* Left side: title and connection count */}
+                <div className="flex items-center gap-3">
+                  <span style={{ color: theme.colors.accent, fontWeight: 500 }}>
+                    {selectedNode.label}
+                  </span>
+                  {selectedNode.connectionCount !== undefined && selectedNode.connectionCount > 0 && (
+                    <span
+                      className="px-2 py-0.5 rounded text-xs"
+                      style={{ backgroundColor: theme.colors.accent, color: theme.colors.bgMain }}
+                    >
+                      {selectedNode.connectionCount} connection{selectedNode.connectionCount !== 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
+                {/* Right side: file path */}
                 <span style={{ color: theme.colors.textDim }}>
                   {selectedNode.filePath}
                 </span>
-                {selectedNode.connectionCount !== undefined && selectedNode.connectionCount > 0 && (
-                  <span
-                    className="px-2 py-0.5 rounded text-xs"
-                    style={{ backgroundColor: theme.colors.accent, color: theme.colors.bgMain }}
-                  >
-                    {selectedNode.connectionCount} connection{selectedNode.connectionCount !== 1 ? 's' : ''}
-                  </span>
-                )}
               </>
             ) : (
               <>
@@ -1091,7 +1180,7 @@ export function DocumentGraphView({
         {/* Main Content - Force Graph */}
         <div
           ref={graphContainerRef}
-          className="flex-1 relative"
+          className="flex-1 relative min-h-0 overflow-hidden"
           style={{ backgroundColor: theme.colors.bgMain }}
         >
           {loading ? (
@@ -1226,10 +1315,11 @@ export function DocumentGraphView({
 
         {/* Footer */}
         <div
-          className="px-6 py-3 border-t flex items-center justify-between text-xs flex-shrink-0"
+          className="px-6 py-4 border-t flex items-center justify-between text-xs flex-shrink-0"
           style={{
             borderColor: theme.colors.border,
             color: theme.colors.textDim,
+            minHeight: 52,
           }}
         >
           <div className="flex items-center gap-3">
@@ -1290,6 +1380,39 @@ export function DocumentGraphView({
               </button>
             )}
           </div>
+
+          {/* Center: Selected node stats */}
+          {selectedNode?.nodeType === 'document' && (selectedNodeStats || selectedNodeTasks) && (
+            <div className="flex items-center gap-4" style={{ color: theme.colors.textDim }}>
+              {/* Task counts */}
+              {selectedNodeTasks && (
+                <div className="flex items-center gap-1.5" title="Markdown tasks">
+                  <CheckSquare className="w-3.5 h-3.5" style={{ color: theme.colors.accent }} />
+                  <span>
+                    <span style={{ color: theme.colors.success }}>{selectedNodeTasks.completed}</span>
+                    <span> of </span>
+                    <span style={{ color: theme.colors.textMain }}>{selectedNodeTasks.total}</span>
+                    <span> tasks</span>
+                  </span>
+                </div>
+              )}
+              {/* Created date */}
+              {selectedNodeStats?.createdAt && (
+                <div className="flex items-center gap-1.5" title="Created date">
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>Created {formatDate(selectedNodeStats.createdAt)}</span>
+                </div>
+              )}
+              {/* Modified date */}
+              {selectedNodeStats?.modifiedAt && (
+                <div className="flex items-center gap-1.5" title="Modified date">
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>Modified {formatDate(selectedNodeStats.modifiedAt)}</span>
+                </div>
+              )}
+            </div>
+          )}
+
           <span style={{ opacity: 0.7 }}>
             Click to select • Double-click to recenter • O to open • Arrow keys to navigate • Esc to close
           </span>

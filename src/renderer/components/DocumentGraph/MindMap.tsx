@@ -117,10 +117,12 @@ const VERTICAL_SPACING = 120;
 const NODE_WIDTH = 260;
 /** Header height for node title bar */
 const NODE_HEADER_HEIGHT = 32;
-/** Minimum node height (title only) */
-const NODE_HEIGHT_BASE = 56;
+/** Sub-header height for folder path */
+const NODE_SUBHEADER_HEIGHT = 22;
+/** Minimum node height (title + folder path) */
+const NODE_HEIGHT_BASE = 56 + NODE_SUBHEADER_HEIGHT;
 /** Node height with description */
-const NODE_HEIGHT_WITH_DESC = 90;
+const NODE_HEIGHT_WITH_DESC = 90 + NODE_SUBHEADER_HEIGHT;
 /** Maximum characters per line in description */
 const DESC_MAX_CHARS_PER_LINE = 32;
 /** Scale factor for center node */
@@ -214,6 +216,58 @@ function drawOpenIcon(
   ctx.lineTo(arrowEnd.x, arrowEnd.y);
   ctx.lineTo(arrowEnd.x, arrowEnd.y + boxSize * 0.3);
   ctx.stroke();
+}
+
+/**
+ * Draw a folder icon
+ */
+function drawFolderIcon(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  size: number,
+  color: string
+): void {
+  ctx.fillStyle = color;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  const w = size;
+  const h = size * 0.75;
+  const tabWidth = w * 0.35;
+  const tabHeight = h * 0.2;
+  const cornerRadius = 1.5;
+
+  // Draw folder shape
+  ctx.beginPath();
+  // Start at bottom left
+  ctx.moveTo(x + cornerRadius, y + h);
+  // Bottom edge
+  ctx.lineTo(x + w - cornerRadius, y + h);
+  // Bottom right corner
+  ctx.quadraticCurveTo(x + w, y + h, x + w, y + h - cornerRadius);
+  // Right edge
+  ctx.lineTo(x + w, y + tabHeight + cornerRadius);
+  // Top right corner
+  ctx.quadraticCurveTo(x + w, y + tabHeight, x + w - cornerRadius, y + tabHeight);
+  // Top edge (right of tab)
+  ctx.lineTo(x + tabWidth + cornerRadius, y + tabHeight);
+  // Tab right corner
+  ctx.lineTo(x + tabWidth, y + cornerRadius);
+  // Tab top corner
+  ctx.quadraticCurveTo(x + tabWidth, y, x + tabWidth - cornerRadius, y);
+  // Tab top edge
+  ctx.lineTo(x + cornerRadius, y);
+  // Top left corner
+  ctx.quadraticCurveTo(x, y, x, y + cornerRadius);
+  // Left edge
+  ctx.lineTo(x, y + h - cornerRadius);
+  // Bottom left corner
+  ctx.quadraticCurveTo(x, y + h, x + cornerRadius, y + h);
+  ctx.closePath();
+  ctx.fill();
 }
 
 /**
@@ -617,7 +671,7 @@ function renderDocumentNode(
   matchesSearch: boolean,
   searchActive: boolean
 ): void {
-  const { x, y, width, height, label, description, isSelected, isFocused } = node;
+  const { x, y, width, height, label, description, filePath, isSelected, isFocused } = node;
 
   // Calculate opacity based on search state
   const alpha = searchActive && !matchesSearch ? 0.3 : 1;
@@ -652,6 +706,13 @@ function renderDocumentNode(
   ctx.closePath();
   ctx.fill();
 
+  // Draw sub-header background (lighter accent) for folder path
+  const subHeaderColor = isFocused || isSelected
+    ? `${theme.colors.accent}40`
+    : `${theme.colors.accent}25`;
+  ctx.fillStyle = subHeaderColor;
+  ctx.fillRect(nodeLeft, nodeTop + NODE_HEADER_HEIGHT, width, NODE_SUBHEADER_HEIGHT);
+
   // Draw border around entire node
   ctx.strokeStyle = isFocused || isSelected
     ? theme.colors.accent
@@ -676,6 +737,30 @@ function renderDocumentNode(
   const iconY = nodeTop + (NODE_HEADER_HEIGHT - OPEN_ICON_SIZE) / 2;
   drawOpenIcon(ctx, iconX, iconY, OPEN_ICON_SIZE, isHovered ? '#FFFFFF' : 'rgba(255,255,255,0.7)');
 
+  // Sub-header: folder icon and path
+  const subHeaderY = nodeTop + NODE_HEADER_HEIGHT;
+  const folderIconSize = 12;
+  const folderIconX = nodeLeft + 10;
+  const folderIconY = subHeaderY + (NODE_SUBHEADER_HEIGHT - folderIconSize * 0.75) / 2;
+  const folderColor = isFocused || isSelected ? theme.colors.accent : `${theme.colors.accent}CC`;
+  drawFolderIcon(ctx, folderIconX, folderIconY, folderIconSize, folderColor);
+
+  // Folder path text (extract directory from filePath)
+  if (filePath) {
+    const pathParts = filePath.split('/');
+    pathParts.pop(); // Remove filename
+    const folderPath = pathParts.length > 0 ? pathParts.join('/') : './';
+
+    ctx.fillStyle = theme.colors.textDim;
+    ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+
+    const maxPathWidth = width - folderIconSize - 24;
+    const pathText = truncateText(folderPath || './', Math.floor(maxPathWidth / 5.5));
+    ctx.fillText(pathText, folderIconX + folderIconSize + 6, subHeaderY + NODE_SUBHEADER_HEIGHT / 2);
+  }
+
   // Description (in body, if present)
   if (description) {
     ctx.fillStyle = theme.colors.textDim;
@@ -688,7 +773,7 @@ function renderDocumentNode(
     const descLines = wrapText(ctx, description, maxDescWidth, 2);
 
     const lineHeight = 14;
-    const descStartY = nodeTop + NODE_HEADER_HEIGHT + bodyPadding;
+    const descStartY = nodeTop + NODE_HEADER_HEIGHT + NODE_SUBHEADER_HEIGHT + bodyPadding;
 
     descLines.forEach((line, i) => {
       ctx.fillText(line, nodeLeft + bodyPadding, descStartY + i * lineHeight);

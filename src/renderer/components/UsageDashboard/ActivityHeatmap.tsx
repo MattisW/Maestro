@@ -62,6 +62,25 @@ interface MonthLabel {
   startCol: number;
 }
 
+// 4-hour block data structures for month view
+interface TimeBlockCell {
+  date: Date;
+  dateString: string;
+  blockIndex: number; // 0-5 (0=0-4am, 1=4-8am, 2=8-12pm, 3=12-4pm, 4=4-8pm, 5=8-12am)
+  blockLabel: string; // e.g., "12a-4a", "4a-8a"
+  count: number;
+  duration: number;
+  intensity: number;
+  isPlaceholder?: boolean;
+}
+
+interface DayColumnWithBlocks {
+  date: Date;
+  dateString: string;
+  dayLabel: string;
+  blocks: TimeBlockCell[];
+}
+
 interface ActivityHeatmapProps {
   /** Aggregated stats data from the API */
   data: StatsAggregation;
@@ -95,10 +114,88 @@ function getDaysForRange(timeRange: StatsTimeRange): number {
 
 /**
  * Check if we should use single-day mode (one pixel per day, no hour breakdown)
- * Used for month+ time ranges where AM/PM split would be too cramped
+ * Used for year/all time ranges where time-of-day breakdown would be too cramped
  */
 function shouldUseSingleDayMode(timeRange: StatsTimeRange): boolean {
-  return timeRange === 'month' || timeRange === 'year' || timeRange === 'all';
+  return timeRange === 'year' || timeRange === 'all';
+}
+
+/**
+ * Check if we should use 4-hour block mode (6 blocks per day)
+ * Used for month view to show time-of-day patterns
+ */
+function shouldUse4HourBlockMode(timeRange: StatsTimeRange): boolean {
+  return timeRange === 'month';
+}
+
+// Time block labels for 4-hour chunks
+const TIME_BLOCK_LABELS = ['12a-4a', '4a-8a', '8a-12p', '12p-4p', '4p-8p', '8p-12a'];
+
+/**
+ * Build day columns with 4-hour time blocks for month view
+ */
+function build4HourBlockGrid(
+  numDays: number,
+  dayDataMap: Map<string, { count: number; duration: number }>,
+  metricMode: MetricMode
+): { dayColumns: DayColumnWithBlocks[]; maxCount: number; maxDuration: number } {
+  const today = new Date();
+  const columns: DayColumnWithBlocks[] = [];
+  let maxCount = 0;
+  let maxDuration = 0;
+
+  // Generate days from (numDays-1) days ago to today
+  for (let dayOffset = numDays - 1; dayOffset >= 0; dayOffset--) {
+    const date = subDays(today, dayOffset);
+    const dateString = format(date, 'yyyy-MM-dd');
+    const dayStats = dayDataMap.get(dateString) || { count: 0, duration: 0 };
+
+    // Create 6 time blocks per day
+    const blocks: TimeBlockCell[] = TIME_BLOCK_LABELS.map((label, blockIndex) => {
+      // Distribute data across blocks with weighting for typical work hours
+      // Blocks 2-4 (8am-8pm) get more weight
+      let weight = 1;
+      if (blockIndex >= 2 && blockIndex <= 4) {
+        weight = 2; // Work hours get double weight
+      }
+
+      // Total weight: 1 + 1 + 2 + 2 + 2 + 1 = 9
+      const totalWeight = 9;
+      const count = Math.round((dayStats.count * weight) / totalWeight);
+      const duration = Math.round((dayStats.duration * weight) / totalWeight);
+
+      maxCount = Math.max(maxCount, count);
+      maxDuration = Math.max(maxDuration, duration);
+
+      return {
+        date,
+        dateString,
+        blockIndex,
+        blockLabel: label,
+        count,
+        duration,
+        intensity: 0, // Calculated later
+      };
+    });
+
+    columns.push({
+      date,
+      dateString,
+      dayLabel: format(date, 'd'),
+      blocks,
+    });
+  }
+
+  // Calculate intensities
+  const maxVal = metricMode === 'count' ? Math.max(maxCount, 1) : Math.max(maxDuration, 1);
+  columns.forEach((col) => {
+    col.blocks.forEach((block) => {
+      const value = metricMode === 'count' ? block.count : block.duration;
+      block.intensity = calculateIntensity(value, maxVal);
+    });
+  });
+
+  return { dayColumns: columns, maxCount, maxDuration };
 }
 
 /**
@@ -321,10 +418,11 @@ function getIntensityColor(intensity: number, theme: Theme, colorBlindMode?: boo
 
 export function ActivityHeatmap({ data, timeRange, theme, colorBlindMode = false }: ActivityHeatmapProps) {
   const [metricMode, setMetricMode] = useState<MetricMode>('count');
-  const [hoveredCell, setHoveredCell] = useState<HourData | DayCell | null>(null);
+  const [hoveredCell, setHoveredCell] = useState<HourData | DayCell | TimeBlockCell | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
 
   const useGitHubLayout = shouldUseSingleDayMode(timeRange);
+  const use4HourBlockLayout = shouldUse4HourBlockMode(timeRange);
 
   // Convert byDay data to a lookup map
   const dayDataMap = useMemo(() => {
@@ -335,16 +433,23 @@ export function ActivityHeatmap({ data, timeRange, theme, colorBlindMode = false
     return map;
   }, [data.byDay]);
 
-  // GitHub-style grid data for month/year/all views
+  // GitHub-style grid data for year/all views
   const gitHubGrid = useMemo(() => {
     if (!useGitHubLayout) return null;
     const numDays = getDaysForRange(timeRange);
     return buildGitHubGrid(numDays, dayDataMap, metricMode);
   }, [useGitHubLayout, timeRange, dayDataMap, metricMode]);
 
+  // 4-hour block grid data for month view
+  const blockGrid = useMemo(() => {
+    if (!use4HourBlockLayout) return null;
+    const numDays = getDaysForRange(timeRange);
+    return build4HourBlockGrid(numDays, dayDataMap, metricMode);
+  }, [use4HourBlockLayout, timeRange, dayDataMap, metricMode]);
+
   // Generate hour-based data for the heatmap (day/week views)
   const { dayColumns, hourLabels } = useMemo(() => {
-    if (useGitHubLayout) {
+    if (useGitHubLayout || use4HourBlockLayout) {
       return { dayColumns: [], hourLabels: [] };
     }
 
@@ -428,6 +533,19 @@ export function ActivityHeatmap({ data, timeRange, theme, colorBlindMode = false
 
   const handleMouseEnterDay = useCallback(
     (cell: DayCell, event: React.MouseEvent<HTMLDivElement>) => {
+      if (cell.isPlaceholder) return;
+      setHoveredCell(cell);
+      const rect = event.currentTarget.getBoundingClientRect();
+      setTooltipPos({
+        x: rect.left + rect.width / 2,
+        y: rect.top,
+      });
+    },
+    []
+  );
+
+  const handleMouseEnterBlock = useCallback(
+    (cell: TimeBlockCell, event: React.MouseEvent<HTMLDivElement>) => {
       if (cell.isPlaceholder) return;
       setHoveredCell(cell);
       const rect = event.currentTarget.getBoundingClientRect();
@@ -593,8 +711,75 @@ export function ActivityHeatmap({ data, timeRange, theme, colorBlindMode = false
         </div>
       )}
 
+      {/* 4-hour block heatmap for month view */}
+      {use4HourBlockLayout && blockGrid && (
+        <div className="flex gap-2">
+          {/* Time block labels (Y-axis) */}
+          <div className="flex flex-col flex-shrink-0" style={{ width: 48, paddingTop: 18 }}>
+            {TIME_BLOCK_LABELS.map((label, idx) => (
+              <div
+                key={idx}
+                className="text-xs text-right flex items-center justify-end pr-1"
+                style={{
+                  color: theme.colors.textDim,
+                  height: 18,
+                }}
+              >
+                {label}
+              </div>
+            ))}
+          </div>
+
+          {/* Grid of cells with scrolling */}
+          <div className="flex-1 overflow-x-auto">
+            <div className="flex gap-[2px]" style={{ minWidth: blockGrid.dayColumns.length * 15 }}>
+              {blockGrid.dayColumns.map((col) => (
+                <div
+                  key={col.dateString}
+                  className="flex flex-col gap-[2px]"
+                  style={{ width: 13, flexShrink: 0 }}
+                >
+                  {/* Day label */}
+                  <div
+                    className="text-xs text-center truncate h-[16px] flex items-center justify-center"
+                    style={{ color: theme.colors.textDim, fontSize: 10 }}
+                    title={format(col.date, 'EEEE, MMM d')}
+                  >
+                    {col.dayLabel}
+                  </div>
+                  {/* Time block cells */}
+                  {col.blocks.map((block) => (
+                    <div
+                      key={`${col.dateString}-${block.blockIndex}`}
+                      className="rounded-sm cursor-default"
+                      style={{
+                        height: 16,
+                        backgroundColor: block.isPlaceholder
+                          ? 'transparent'
+                          : getIntensityColor(block.intensity, theme, colorBlindMode),
+                        outline:
+                          hoveredCell && 'blockIndex' in hoveredCell && hoveredCell.dateString === block.dateString && hoveredCell.blockIndex === block.blockIndex
+                            ? `2px solid ${theme.colors.accent}`
+                            : 'none',
+                        outlineOffset: -1,
+                        transition: 'background-color 0.3s ease, outline 0.15s ease',
+                      }}
+                      onMouseEnter={(e) => handleMouseEnterBlock(block, e)}
+                      onMouseLeave={handleMouseLeave}
+                      role="gridcell"
+                      aria-label={`${format(block.date, 'MMM d')} ${block.blockLabel}: ${block.count} ${block.count === 1 ? 'query' : 'queries'}${block.duration > 0 ? `, ${formatDuration(block.duration)}` : ''}`}
+                      tabIndex={0}
+                    />
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Original hourly heatmap for day/week views */}
-      {!useGitHubLayout && (
+      {!useGitHubLayout && !use4HourBlockLayout && (
         <div className="flex gap-2">
           {/* Hour labels (Y-axis) */}
           <div className="flex flex-col flex-shrink-0" style={{ width: 28, paddingTop: 18 }}>
@@ -719,8 +904,9 @@ export function ActivityHeatmap({ data, timeRange, theme, colorBlindMode = false
         // Check if tooltip would overflow top - if so, show below
         const wouldOverflowTop = tooltipPos.y - tooltipHeight - margin < 0;
 
-        // Determine if this is a DayCell or HourData
-        const isDayCell = 'dayOfWeek' in hoveredCell;
+        // Determine cell type for time display
+        const isBlockCell = 'blockIndex' in hoveredCell;
+        const isHourCell = 'hour' in hoveredCell;
 
         return (
           <div
@@ -736,7 +922,8 @@ export function ActivityHeatmap({ data, timeRange, theme, colorBlindMode = false
           >
             <div className="font-medium mb-0.5">
               {format(hoveredCell.date, 'EEEE, MMM d, yyyy')}
-              {!isDayCell && 'hour' in hoveredCell && ` at ${hoveredCell.hour}:00`}
+              {isHourCell && ` at ${(hoveredCell as HourData).hour}:00`}
+              {isBlockCell && ` (${(hoveredCell as TimeBlockCell).blockLabel})`}
             </div>
             <div style={{ color: theme.colors.textDim }}>
               {hoveredCell.count} {hoveredCell.count === 1 ? 'query' : 'queries'}
