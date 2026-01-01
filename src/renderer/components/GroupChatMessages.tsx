@@ -219,7 +219,7 @@ export const GroupChatMessages = forwardRef<GroupChatMessagesHandle, GroupChatMe
             >
               {/* Timestamp - outside bubble, like AI Terminal */}
               <div
-                className={`w-16 shrink-0 text-[10px] pt-2 ${isUser ? 'text-right' : 'text-left'}`}
+                className={`w-20 shrink-0 text-[10px] pt-2 ${isUser ? 'text-right' : 'text-left'}`}
                 style={{ color: theme.colors.textDim, opacity: 0.6 }}
               >
                 {formatTimestamp(msg.timestamp)}
@@ -377,7 +377,7 @@ export const GroupChatMessages = forwardRef<GroupChatMessagesHandle, GroupChatMe
       {/* Typing indicator */}
       {state !== 'idle' && (
         <div className="flex gap-4 px-6 py-2">
-          <div className="w-16 shrink-0" />
+          <div className="w-20 shrink-0" />
           <div
             className="flex-1 min-w-0 p-4 rounded-xl border rounded-tl-none"
             style={{ backgroundColor: theme.colors.bgActivity, borderColor: theme.colors.border }}

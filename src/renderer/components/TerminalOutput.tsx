@@ -292,7 +292,7 @@ const LogItemComponent = memo(({
 
   return (
     <div ref={logItemRef} className={`flex gap-4 group ${isUserMessage ? 'flex-row-reverse' : ''} px-6 py-2`} data-log-index={index}>
-      <div className={`w-16 shrink-0 text-[10px] pt-2 ${isUserMessage ? 'text-right' : 'text-left'}`}
+      <div className={`w-20 shrink-0 text-[10px] pt-2 ${isUserMessage ? 'text-right' : 'text-left'}`}
            style={{ fontFamily, color: theme.colors.textDim, opacity: 0.6 }}>
         {(() => {
           const logDate = new Date(log.timestamp);
