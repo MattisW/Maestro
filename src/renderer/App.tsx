@@ -8965,10 +8965,11 @@ function MaestroConsoleInner() {
             });
           }}
           theme={theme}
-          rootPath={activeSession?.cwd ?? ''}
+          rootPath={activeSession?.projectRoot || activeSession?.cwd || ''}
           onDocumentOpen={(filePath) => {
             // Open the document in file preview
-            const fullPath = `${activeSession?.cwd ?? ''}/${filePath}`;
+            const treeRoot = activeSession?.projectRoot || activeSession?.cwd || '';
+            const fullPath = `${treeRoot}/${filePath}`;
             window.maestro.fs.readFile(fullPath, activeSession?.sshRemoteId).then((content) => {
               if (content !== null) {
                 setPreviewFile({ name: filePath.split('/').pop() || filePath, content, path: fullPath });
