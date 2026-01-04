@@ -549,13 +549,17 @@ export async function sendWizardMessage(
       // Set up thinking chunk listener - uses the dedicated event from process-manager
       // This receives parsed thinking content (isPartial text) that's already extracted
       if (callbacks?.onThinkingChunk) {
+        console.log('[InlineWizard] Setting up onThinkingChunk listener for session:', session.sessionId);
         thinkingListenerCleanup = window.maestro.process.onThinkingChunk(
           (receivedSessionId: string, content: string) => {
+            console.log('[InlineWizard] onThinkingChunk received:', { receivedSessionId, expectedSessionId: session.sessionId, contentLength: content?.length });
             if (receivedSessionId === session.sessionId && content) {
               callbacks.onThinkingChunk!(content);
             }
           }
         );
+      } else {
+        console.log('[InlineWizard] No onThinkingChunk callback provided');
       }
 
       // Set up exit listener

@@ -18,8 +18,7 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import rehypeSlug from 'rehype-slug';
 import {
   Eye,
   Edit,
@@ -32,9 +31,11 @@ import type { Theme } from '../../../types';
 import { MermaidRenderer } from '../../MermaidRenderer';
 import type { GeneratedDocument } from '../WizardContext';
 import { DocumentSelector } from './DocumentSelector';
+import { generateProseStyles, createMarkdownComponents } from '../../../utils/markdownConfig';
 
-// Memoize remarkPlugins array - it never changes
+// Memoize plugin arrays - they never change
 const REMARK_PLUGINS = [remarkGfm];
+const REHYPE_PLUGINS = [rehypeSlug];
 
 /**
  * Image preview thumbnail for staged images
@@ -467,115 +468,52 @@ export function DocumentEditor({
     }
   };
 
-  // Prose styles for markdown preview - scoped to proseClassPrefix to avoid CSS conflicts
+  // Prose styles using shared markdownConfig for consistent rendering with AutoRun
   const proseStyles = useMemo(
-    () => `
-    .${proseClassPrefix} .prose h1 { color: ${theme.colors.textMain}; font-size: 2em; font-weight: bold; margin: 0.67em 0; }
-    .${proseClassPrefix} .prose h2 { color: ${theme.colors.textMain}; font-size: 1.5em; font-weight: bold; margin: 0.75em 0; }
-    .${proseClassPrefix} .prose h3 { color: ${theme.colors.textMain}; font-size: 1.17em; font-weight: bold; margin: 0.83em 0; }
-    .${proseClassPrefix} .prose p { color: ${theme.colors.textMain}; margin: 0.5em 0; }
-    .${proseClassPrefix} .prose ul, .${proseClassPrefix} .prose ol { color: ${theme.colors.textMain}; margin: 0.5em 0; padding-left: 1.5em; }
-    .${proseClassPrefix} .prose ul { list-style-type: disc; }
-    .${proseClassPrefix} .prose li { margin: 0.25em 0; display: list-item; }
-    .${proseClassPrefix} .prose code { background-color: ${theme.colors.bgActivity}; color: ${theme.colors.textMain}; padding: 0.2em 0.4em; border-radius: 3px; font-size: 0.9em; }
-    .${proseClassPrefix} .prose pre { background-color: ${theme.colors.bgActivity}; color: ${theme.colors.textMain}; padding: 1em; border-radius: 6px; overflow-x: auto; }
-    .${proseClassPrefix} .prose pre code { background: none; padding: 0; }
-    .${proseClassPrefix} .prose blockquote { border-left: 4px solid ${theme.colors.border}; padding-left: 1em; margin: 0.5em 0; color: ${theme.colors.textDim}; }
-    .${proseClassPrefix} .prose a { color: ${theme.colors.accent}; text-decoration: underline; }
-    .${proseClassPrefix} .prose strong { font-weight: bold; }
-    .${proseClassPrefix} .prose em { font-style: italic; }
-    .${proseClassPrefix} .prose input[type="checkbox"] {
-      appearance: none;
-      -webkit-appearance: none;
-      width: 16px;
-      height: 16px;
-      border: 2px solid ${theme.colors.accent};
-      border-radius: 3px;
-      background-color: transparent;
-      cursor: pointer;
-      vertical-align: middle;
-      margin-right: 8px;
-      position: relative;
-    }
-    .${proseClassPrefix} .prose input[type="checkbox"]:checked {
-      background-color: ${theme.colors.accent};
-      border-color: ${theme.colors.accent};
-    }
-    .${proseClassPrefix} .prose input[type="checkbox"]:checked::after {
-      content: '';
-      position: absolute;
-      left: 4px;
-      top: 1px;
-      width: 5px;
-      height: 9px;
-      border: solid ${theme.colors.bgMain};
-      border-width: 0 2px 2px 0;
-      transform: rotate(45deg);
-    }
-    .${proseClassPrefix} .prose li:has(> input[type="checkbox"]) {
-      list-style-type: none;
-      margin-left: -1.5em;
-    }
-  `,
+    () => generateProseStyles({
+      theme,
+      coloredHeadings: true,  // Match AutoRun colored headings
+      compactSpacing: false,
+      includeCheckboxStyles: true,
+      scopeSelector: `.${proseClassPrefix}`,
+    }),
     [theme, proseClassPrefix]
   );
 
-  // Markdown components
-  const markdownComponents = useMemo(
-    () => ({
-      code: ({ inline, className, children, ...props }: any) => {
-        const match = (className || '').match(/language-(\w+)/);
-        const language = match ? match[1] : 'text';
-        const codeContent = String(children).replace(/\n$/, '');
-
-        if (!inline && language === 'mermaid') {
-          return <MermaidRenderer chart={codeContent} theme={theme} />;
-        }
-
-        return !inline && match ? (
-          <SyntaxHighlighter
-            language={language}
-            style={vscDarkPlus}
-            customStyle={{
-              margin: '0.5em 0',
-              padding: '1em',
-              background: theme.colors.bgActivity,
-              fontSize: '0.9em',
-              borderRadius: '6px',
-            }}
-            PreTag="div"
-          >
-            {codeContent}
-          </SyntaxHighlighter>
-        ) : (
-          <code className={className} {...props}>
-            {children}
-          </code>
-        );
-      },
-      img: ({ src, alt, ...props }: any) => (
+  // Custom image component that handles Auto Run folder paths
+  const WizardImageRenderer = useMemo(() => {
+    return function WizardImage({ src, alt }: { src?: string; alt?: string }) {
+      return (
         <MarkdownImage
           src={src}
           alt={alt}
           folderPath={folderPath}
           theme={theme}
-          {...props}
         />
-      ),
-      a: ({ href, children }: any) => (
-        <a
-          href={href}
-          onClick={(e) => {
-            e.preventDefault();
-            if (href) window.maestro.shell.openExternal(href);
-          }}
-          style={{ color: theme.colors.accent, textDecoration: 'underline', cursor: 'pointer' }}
-        >
-          {children}
-        </a>
-      ),
+      );
+    };
+  }, [folderPath, theme]);
+
+  // Mermaid renderer wrapper for createMarkdownComponents
+  const MermaidWrapper = useMemo(() => {
+    return function Mermaid({ code }: { code: string; theme: Theme }) {
+      return <MermaidRenderer chart={code} theme={theme} />;
+    };
+  }, []);
+
+  // Markdown components using shared factory for consistent rendering with AutoRun
+  const markdownComponents = useMemo(
+    () => createMarkdownComponents({
+      theme,
+      imageRenderer: WizardImageRenderer,
+      customLanguageRenderers: {
+        mermaid: MermaidWrapper,
+      },
+      onExternalLinkClick: (href) => {
+        window.maestro.shell.openExternal(href);
+      },
     }),
-    [theme, folderPath]
+    [theme, WizardImageRenderer, MermaidWrapper]
   );
 
   return (
@@ -783,6 +721,7 @@ export function DocumentEditor({
             <style>{proseStyles}</style>
             <ReactMarkdown
               remarkPlugins={REMARK_PLUGINS}
+              rehypePlugins={REHYPE_PLUGINS}
               components={markdownComponents}
             >
               {content || '*No content yet.*'}

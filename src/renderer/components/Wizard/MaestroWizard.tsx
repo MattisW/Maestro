@@ -115,6 +115,9 @@ export function MaestroWizard({
   const [announcement, setAnnouncement] = useState('');
   const [announcementKey, setAnnouncementKey] = useState(0);
 
+  // Ref for modal element (used for keyboard event handling)
+  const modalRef = useRef<HTMLDivElement>(null);
+
   // Refs for stable callbacks
   const closeWizardRef = useRef(closeWizard);
   closeWizardRef.current = closeWizard;
@@ -266,23 +269,25 @@ export function MaestroWizard({
     }
   }, [state.isOpen, showExitConfirm, registerLayer, unregisterLayer, handleCloseRequest]);
 
-  // Capture-phase handler to intercept Cmd+E before it reaches the main app
+  // Bubble-phase handler to stop Cmd+E from reaching the main app after wizard handles it
   // This prevents the wizard's edit/preview toggle from leaking to the AutoRun component
   useEffect(() => {
     if (!state.isOpen) return;
 
-    const handleCaptureKeyDown = (e: KeyboardEvent) => {
-      // Intercept Cmd+E to prevent it from reaching the main app's AutoRun
+    const modal = modalRef.current;
+    if (!modal) return;
+
+    const handleBubbleKeyDown = (e: KeyboardEvent) => {
+      // Stop Cmd+E from bubbling further after the wizard's internal handlers process it
       if ((e.metaKey || e.ctrlKey) && e.key === 'e' && !e.shiftKey) {
-        // Don't preventDefault here - let the wizard's internal handlers process it
-        // Just stop it from propagating to the main app
+        // By the time this bubble-phase handler runs, the wizard's React handlers
+        // have already processed the event. Now we stop it from reaching the main app.
         e.stopPropagation();
       }
     };
 
-    // Use capture phase to intercept before bubbling
-    document.addEventListener('keydown', handleCaptureKeyDown, true);
-    return () => document.removeEventListener('keydown', handleCaptureKeyDown, true);
+    modal.addEventListener('keydown', handleBubbleKeyDown, false);
+    return () => modal.removeEventListener('keydown', handleBubbleKeyDown, false);
   }, [state.isOpen]);
 
   /**
@@ -341,6 +346,7 @@ export function MaestroWizard({
       />
 
       <div
+        ref={modalRef}
         className="w-[90vw] h-[80vh] max-w-5xl rounded-xl border shadow-2xl flex flex-col overflow-hidden wizard-modal"
         style={{
           backgroundColor: theme.colors.bgMain,

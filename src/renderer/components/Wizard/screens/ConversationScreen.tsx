@@ -680,17 +680,6 @@ export function ConversationScreen({ theme }: ConversationScreenProps): JSX.Elem
                   ) {
                     setStreamingText((prev) => prev + msg.event.delta.text);
                   }
-
-                  // Extract thinking content when showThinking is enabled
-                  // Claude outputs thinking in content_block_delta with type "thinking_delta"
-                  if (
-                    showThinking &&
-                    msg.type === 'content_block_delta' &&
-                    msg.delta?.type === 'thinking_delta' &&
-                    msg.delta?.thinking
-                  ) {
-                    setThinkingContent((prev) => prev + msg.delta.thinking);
-                  }
                   // Note: We intentionally skip the 'assistant' message type here
                   // because it contains the complete message, not incremental updates.
                   // The final text will be added via onComplete callback.
@@ -702,9 +691,15 @@ export function ConversationScreen({ theme }: ConversationScreenProps): JSX.Elem
               // Ignore parse errors
             }
           },
+          // Thinking content comes via the dedicated onThinkingChunk callback
+          // This receives parsed thinking content from process-manager's thinking-chunk event
+          onThinkingChunk: showThinking ? (content) => {
+            setThinkingContent((prev) => prev + content);
+          } : undefined,
           onComplete: (sendResult) => {
-            // Clear streaming text when response is complete
+            // Clear streaming text and thinking content when response is complete
             setStreamingText('');
+            setThinkingContent('');
 
             console.log('[ConversationScreen] onComplete:', {
               success: sendResult.success,
@@ -995,6 +990,11 @@ export function ConversationScreen({ theme }: ConversationScreenProps): JSX.Elem
       if (e.key === 'Escape') {
         e.preventDefault();
         previousStep();
+      }
+      // Cmd+Shift+K to toggle thinking display
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setShowThinking((prev) => !prev);
       }
     },
     [previousStep]
@@ -1315,18 +1315,29 @@ export function ConversationScreen({ theme }: ConversationScreenProps): JSX.Elem
 
         {/* Controls and keyboard hints */}
         <div className="mt-4 flex justify-center gap-6 items-center">
-          {/* Show Thinking toggle */}
-          <button
-            onClick={() => setShowThinking(!showThinking)}
-            className={`flex items-center gap-1 text-xs px-2 py-1 rounded hover:bg-white/5 transition-opacity ${
-              showThinking ? 'opacity-100' : 'opacity-50 hover:opacity-100'
-            }`}
-            title={showThinking ? 'Hide AI thinking (show filler messages)' : 'Show AI thinking'}
-            style={showThinking ? { color: theme.colors.accent } : { color: theme.colors.textDim }}
+          {/* Show Thinking toggle with keyboard shortcut */}
+          <span
+            className="text-xs flex items-center gap-1"
+            style={{ color: theme.colors.textDim }}
           >
-            <Brain className="w-3 h-3" />
-            <span>Thinking</span>
-          </button>
+            <kbd
+              className="px-1.5 py-0.5 rounded text-xs"
+              style={{ backgroundColor: theme.colors.border }}
+            >
+              ⌘⇧K
+            </kbd>
+            <button
+              onClick={() => setShowThinking(!showThinking)}
+              className={`flex items-center gap-1 px-2 py-1 rounded hover:bg-white/5 transition-opacity ${
+                showThinking ? 'opacity-100' : 'opacity-50 hover:opacity-100'
+              }`}
+              title={showThinking ? 'Hide AI thinking (show filler messages)' : 'Show AI thinking'}
+              style={showThinking ? { color: theme.colors.accent } : { color: theme.colors.textDim }}
+            >
+              <Brain className="w-3 h-3" />
+              <span>Thinking</span>
+            </button>
+          </span>
           <span
             className="text-xs flex items-center gap-1"
             style={{ color: theme.colors.textDim }}

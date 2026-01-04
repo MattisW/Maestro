@@ -69,6 +69,8 @@ export interface ConversationCallbacks {
   onReceiving?: () => void;
   /** Called with partial output chunks (for streaming display) */
   onChunk?: OutputChunkCallback;
+  /** Called with thinking content chunks from the AI (for showThinking display) */
+  onThinkingChunk?: (content: string) => void;
   /** Called when response is complete */
   onComplete?: (result: SendMessageResult) => void;
   /** Called when an error occurs */
@@ -101,6 +103,8 @@ interface ConversationSession {
   dataListenerCleanup?: () => void;
   /** Cleanup function for exit listener */
   exitListenerCleanup?: () => void;
+  /** Cleanup function for thinking chunk listener */
+  thinkingListenerCleanup?: () => void;
   /** Timeout ID for response timeout (for cleanup) */
   responseTimeoutId?: NodeJS.Timeout;
 }
@@ -302,6 +306,18 @@ class ConversationManager {
           }
         }
       );
+
+      // Set up thinking chunk listener - uses the dedicated event from process-manager
+      // This receives parsed thinking content (isPartial text) that's already extracted
+      if (this.session!.callbacks?.onThinkingChunk) {
+        this.session!.thinkingListenerCleanup = window.maestro.process.onThinkingChunk?.(
+          (sessionId: string, content: string) => {
+            if (sessionId === this.session?.sessionId && content) {
+              this.session.callbacks?.onThinkingChunk?.(content);
+            }
+          }
+        );
+      }
 
       // Set up exit listener
       this.session!.exitListenerCleanup = window.maestro.process.onExit(
@@ -551,6 +567,10 @@ class ConversationManager {
     if (this.session?.exitListenerCleanup) {
       this.session.exitListenerCleanup();
       this.session.exitListenerCleanup = undefined;
+    }
+    if (this.session?.thinkingListenerCleanup) {
+      this.session.thinkingListenerCleanup();
+      this.session.thinkingListenerCleanup = undefined;
     }
     if (this.session?.responseTimeoutId) {
       clearTimeout(this.session.responseTimeoutId);

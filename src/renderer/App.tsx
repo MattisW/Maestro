@@ -112,7 +112,7 @@ import type {
 import { THEMES } from './constants/themes';
 import { generateId } from './utils/ids';
 import { getContextColor } from './utils/theme';
-import { setActiveTab, createTab, closeTab, reopenClosedTab, getActiveTab, getWriteModeTab, navigateToNextTab, navigateToPrevTab, navigateToTabByIndex, navigateToLastTab, getInitialRenameValue } from './utils/tabHelpers';
+import { setActiveTab, createTab, closeTab, reopenClosedTab, getActiveTab, getWriteModeTab, navigateToNextTab, navigateToPrevTab, navigateToTabByIndex, navigateToLastTab, getInitialRenameValue, hasActiveWizard } from './utils/tabHelpers';
 import { shouldOpenExternally, flattenTree } from './utils/fileExplorer';
 import type { FileNode } from './types/fileTree';
 import { substituteTemplateVariables } from './utils/templateVariables';
@@ -3969,14 +3969,41 @@ You are taking over this conversation. Based on the context above, provide a bri
     }));
   }, []);
 
-  const handleTabClose = useCallback((tabId: string) => {
+  /**
+   * Internal tab close handler that performs the actual close.
+   * Wizard tabs are closed without being added to history (they can't be restored).
+   */
+  const performTabClose = useCallback((tabId: string) => {
     setSessions(prev => prev.map(s => {
       if (s.id !== activeSessionIdRef.current) return s;
+      // Check if this is a wizard tab - wizard tabs should not be added to close history
+      const tab = s.aiTabs.find(t => t.id === tabId);
+      const isWizardTab = tab && hasActiveWizard(tab);
       // Note: showUnreadOnly is accessed via ref pattern if needed, or we accept this dep
-      const result = closeTab(s, tabId, false); // Don't filter for unread during close
+      const result = closeTab(s, tabId, false, { skipHistory: isWizardTab }); // Don't filter for unread during close
       return result ? result.session : s;
     }));
   }, []);
+
+  /**
+   * Tab close handler that shows confirmation for wizard tabs.
+   * Wizard tabs require confirmation before closing since they can't be restored.
+   */
+  const handleTabClose = useCallback((tabId: string) => {
+    // Find the tab to check if it has an active wizard
+    const session = sessionsRef.current.find(s => s.id === activeSessionIdRef.current);
+    const tab = session?.aiTabs.find(t => t.id === tabId);
+
+    if (tab && hasActiveWizard(tab)) {
+      // Show confirmation modal for wizard tabs
+      setConfirmModalMessage('Close this wizard? Your progress will be lost and cannot be restored.');
+      setConfirmModalOnConfirm(() => () => performTabClose(tabId));
+      setConfirmModalOpen(true);
+    } else {
+      // Regular tab - close directly
+      performTabClose(tabId);
+    }
+  }, [performTabClose]);
 
   const handleNewTab = useCallback(() => {
     setSessions(prev => prev.map(s => {
@@ -4358,26 +4385,32 @@ You are taking over this conversation. Based on the context above, provide a bri
     }
 
     // Send message with thinking callback
+    // Capture session and tab IDs at call time to avoid stale closure issues
+    const sessionId = activeSession?.id;
+    const tabId = activeSession ? getActiveTab(activeSession)?.id : undefined;
+
     await sendInlineWizardMessage(content, {
       onThinkingChunk: (chunk) => {
-        // Only accumulate thinking content if showWizardThinking is enabled
-        if (!activeSession) return;
-        const activeTab = getActiveTab(activeSession);
-        if (!activeTab?.wizardState?.showWizardThinking) return;
+        // Use sessionsRef.current for fresh state, not captured activeSession
+        if (!sessionId || !tabId) return;
 
         // Accumulate thinking content in the session state
+        // All checks happen inside the updater to use fresh state
         setSessions(prev => prev.map(s => {
-          if (s.id !== activeSession.id) return s;
+          if (s.id !== sessionId) return s;
+          const tab = s.aiTabs.find(t => t.id === tabId);
+          if (!tab?.wizardState?.showWizardThinking) return s;
+
           return {
             ...s,
-            aiTabs: s.aiTabs.map(tab => {
-              if (tab.id !== activeTab.id) return tab;
-              if (!tab.wizardState) return tab;
+            aiTabs: s.aiTabs.map(t => {
+              if (t.id !== tabId) return t;
+              if (!t.wizardState) return t;
               return {
-                ...tab,
+                ...t,
                 wizardState: {
-                  ...tab.wizardState,
-                  thinkingContent: (tab.wizardState.thinkingContent || '') + chunk,
+                  ...t.wizardState,
+                  thinkingContent: (t.wizardState.thinkingContent || '') + chunk,
                 }
               };
             })
@@ -8813,6 +8846,8 @@ You are taking over this conversation. Based on the context above, provide a bri
     setSelectedSidebarIndex, setActiveSessionId, handleViewGitDiff, setGitLogOpen, setActiveAgentSessionId,
     setAgentSessionsOpen, setLogViewerOpen, setProcessMonitorOpen, setUsageDashboardOpen, logsEndRef, inputRef, terminalOutputRef, sidebarContainerRef,
     setSessions, createTab, closeTab, reopenClosedTab, getActiveTab, setRenameTabId, setRenameTabInitialName,
+    // Wizard tab close support - for confirmation modal before closing wizard tabs
+    hasActiveWizard, performTabClose, setConfirmModalOpen, setConfirmModalMessage, setConfirmModalOnConfirm,
     setRenameTabModalOpen, navigateToNextTab, navigateToPrevTab, navigateToTabByIndex, navigateToLastTab,
     setFileTreeFilterOpen, isShortcut, isTabShortcut, handleNavBack, handleNavForward, toggleUnreadFilter,
     setTabSwitcherOpen, showUnreadOnly, stagedImages, handleSetLightboxImage, setMarkdownEditMode,

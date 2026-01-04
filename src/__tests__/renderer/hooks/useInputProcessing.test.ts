@@ -673,15 +673,16 @@ describe('useInputProcessing', () => {
       expect(updatedSessions[0].executionQueue.length).toBe(1);
     });
 
-    it('processes immediately when Auto Run is active but session is idle', async () => {
+    it('queues write commands when Auto Run is active even if session is idle', async () => {
       const runningBatchState: BatchRunState = {
         ...defaultBatchState,
         isRunning: true,
       };
       mockGetBatchState.mockReturnValue(runningBatchState);
 
-      // When session is idle, even with AutoRun active, we process immediately
-      // This prevents messages from getting stuck in the queue
+      // When Auto Run is active, write-mode messages should ALWAYS be queued
+      // to prevent file conflicts, even if the session is idle.
+      // The queue will be processed when Auto Run completes via onProcessQueueAfterCompletion.
       const session = createMockSession({ state: 'idle' });
       const deps = createDeps({
         activeSession: session,
@@ -694,12 +695,13 @@ describe('useInputProcessing', () => {
         await result.current.processInput();
       });
 
-      // Should process immediately (set to busy), not add to queue
+      // Should add to queue, NOT process immediately
       expect(mockSetSessions).toHaveBeenCalled();
       const setSessionsCall = mockSetSessions.mock.calls[0][0];
       const updatedSessions = setSessionsCall([session]);
-      expect(updatedSessions[0].state).toBe('busy');
-      expect(updatedSessions[0].executionQueue.length).toBe(0);
+      expect(updatedSessions[0].state).toBe('idle'); // Session stays idle
+      expect(updatedSessions[0].executionQueue.length).toBe(1); // Message is queued
+      expect(updatedSessions[0].executionQueue[0].text).toBe('regular message');
     });
   });
 

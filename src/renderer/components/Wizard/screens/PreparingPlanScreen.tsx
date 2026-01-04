@@ -746,13 +746,14 @@ export function PreparingPlanScreen({
     };
 
     try {
-      // Generate documents
+      // Generate documents in the "Initiation" subfolder
       const result = await phaseGenerator.generateDocuments(
         {
           agentType: state.selectedAgent!,
           directoryPath: state.directoryPath,
           projectName: state.agentName || 'My Project',
           conversationHistory: state.conversationHistory,
+          subfolder: 'Initiation',
         },
         {
           onStart: () => {

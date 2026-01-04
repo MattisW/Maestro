@@ -23,6 +23,8 @@ export interface GenerationConfig {
   projectName: string;
   /** Full conversation history from project discovery */
   conversationHistory: WizardMessage[];
+  /** Optional subfolder within Auto Run Docs (e.g., "Initiation") */
+  subfolder?: string;
 }
 
 /**
@@ -314,7 +316,7 @@ export const wizardDebugLogger = new WizardDebugLogger();
  * - Name files as Phase-XX-Description.md
  */
 export function generateDocumentGenerationPrompt(config: GenerationConfig): string {
-  const { projectName, directoryPath, conversationHistory } = config;
+  const { projectName, directoryPath, conversationHistory, subfolder } = config;
   const projectDisplay = projectName || 'this project';
 
   // Build conversation summary
@@ -326,13 +328,18 @@ export function generateDocumentGenerationPrompt(config: GenerationConfig): stri
     })
     .join('\n\n');
 
+  // Build the full Auto Run folder path (including subfolder if specified)
+  const autoRunFolderPath = subfolder
+    ? `${AUTO_RUN_FOLDER_NAME}/${subfolder}`
+    : AUTO_RUN_FOLDER_NAME;
+
   // First, handle wizard-specific variables that have different semantics
   // from the central template system. We do this BEFORE the central function
   // so they take precedence over central defaults.
   let prompt = wizardDocumentGenerationPrompt
     .replace(/\{\{PROJECT_NAME\}\}/gi, projectDisplay)
     .replace(/\{\{DIRECTORY_PATH\}\}/gi, directoryPath)
-    .replace(/\{\{AUTO_RUN_FOLDER_NAME\}\}/gi, AUTO_RUN_FOLDER_NAME)
+    .replace(/\{\{AUTO_RUN_FOLDER_NAME\}\}/gi, autoRunFolderPath)
     .replace(/\{\{CONVERSATION_SUMMARY\}\}/gi, conversationSummary);
 
   // Build template context for remaining variables (date/time, etc.)
@@ -898,10 +905,12 @@ class PhaseGenerator {
         }
       );
 
-      // Set up file system watcher for Auto Run Docs folder
+      // Set up file system watcher for Auto Run Docs folder (including subfolder if specified)
       // This detects when the agent creates files and resets the timeout
-      const autoRunPath = `${config.directoryPath}/${AUTO_RUN_FOLDER_NAME}`;
-      wizardDebugLogger.log('info', 'Setting up file watcher', { autoRunPath });
+      const autoRunPath = config.subfolder
+        ? `${config.directoryPath}/${AUTO_RUN_FOLDER_NAME}/${config.subfolder}`
+        : `${config.directoryPath}/${AUTO_RUN_FOLDER_NAME}`;
+      wizardDebugLogger.log('info', 'Setting up file watcher', { autoRunPath, subfolder: config.subfolder });
 
       // Start watching the folder for file changes
       window.maestro.autorun.watchFolder(autoRunPath).then((result) => {
