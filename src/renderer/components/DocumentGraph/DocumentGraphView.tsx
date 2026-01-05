@@ -35,7 +35,7 @@ import { useLayerStack } from '../../contexts/LayerStackContext';
 import { MODAL_PRIORITIES } from '../../constants/modalPriorities';
 import { Modal, ModalFooter } from '../ui/Modal';
 import { useDebouncedCallback } from '../../hooks/utils';
-import { buildGraphData, ProgressData, GraphNodeData, CachedExternalData, invalidateCacheForFiles } from './graphDataBuilder';
+import { buildGraphData, ProgressData, GraphNodeData, CachedExternalData, invalidateCacheForFiles, BacklinkUpdateData, GraphData } from './graphDataBuilder';
 import { MindMap, MindMapNode, MindMapLink, convertToMindMapData, NodePositionOverride } from './MindMap';
 import { NodeContextMenu } from './NodeContextMenu';
 import { GraphLegend } from './GraphLegend';
@@ -219,6 +219,12 @@ export function DocumentGraphView({
     total: number;
   } | null>(null);
 
+  // Backlink loading state
+  const [backlinksLoading, setBacklinksLoading] = useState(false);
+  const [backlinkProgress, setBacklinkProgress] = useState<{ scanned: number; total: number } | null>(null);
+  const abortBacklinkScanRef = useRef<(() => void) | null>(null);
+  const currentGraphDataRef = useRef<GraphData | null>(null);
+
   /**
    * Handle escape - show confirmation modal
    */
@@ -330,12 +336,61 @@ export function DocumentGraphView({
   }, []);
 
   /**
+   * Handle backlink updates from background scan
+   */
+  const handleBacklinkUpdate = useCallback((updateData: BacklinkUpdateData) => {
+    setBacklinkProgress({ scanned: updateData.filesScanned, total: updateData.totalFiles });
+
+    if (updateData.newNodes.length > 0 || updateData.newEdges.length > 0) {
+      // Convert new nodes/edges to MindMap format and add them
+      const { nodes: newMindMapNodes, links: newMindMapLinks } = convertToMindMapData(
+        updateData.newNodes.map(n => ({ id: n.id, data: n.data })),
+        updateData.newEdges.map(e => ({ source: e.source, target: e.target, type: e.type })),
+        previewCharLimit
+      );
+
+      // Add new nodes/links to all our cached states
+      setNodes(prev => [...prev, ...newMindMapNodes]);
+      setLinks(prev => [...prev, ...newMindMapLinks]);
+      setDocumentOnlyNodes(prev => [...prev, ...newMindMapNodes]);
+      setDocumentOnlyLinks(prev => [...prev, ...newMindMapLinks]);
+      setAllNodesWithExternal(prev => [...prev, ...newMindMapNodes]);
+      setAllLinksWithExternal(prev => [...prev, ...newMindMapLinks]);
+      setLoadedDocuments(prev => prev + updateData.newNodes.length);
+
+      console.log('[DocumentGraph] Added backlinks:', {
+        newNodes: updateData.newNodes.length,
+        newEdges: updateData.newEdges.length,
+        progress: `${updateData.filesScanned}/${updateData.totalFiles}`,
+      });
+    }
+  }, [previewCharLimit]);
+
+  /**
+   * Handle backlink scan completion
+   */
+  const handleBacklinkComplete = useCallback(() => {
+    setBacklinksLoading(false);
+    setBacklinkProgress(null);
+    abortBacklinkScanRef.current = null;
+    console.log('[DocumentGraph] Backlink scan complete');
+  }, []);
+
+  /**
    * Load and build graph data
    */
   const loadGraphData = useCallback(async (resetPagination = true) => {
+    // Abort any ongoing backlink scan
+    if (abortBacklinkScanRef.current) {
+      abortBacklinkScanRef.current();
+      abortBacklinkScanRef.current = null;
+    }
+
     setLoading(true);
     setError(null);
     setProgress(null);
+    setBacklinksLoading(false);
+    setBacklinkProgress(null);
 
     if (resetPagination) {
       setMaxNodes(defaultMaxNodes);
@@ -352,7 +407,10 @@ export function DocumentGraphView({
         onProgress: handleProgress,
       });
 
-      console.log('[DocumentGraph] Graph data built:', {
+      // Store reference to current graph data for backlink scanning
+      currentGraphDataRef.current = graphData;
+
+      console.log('[DocumentGraph] Graph data built (outgoing links only):', {
         totalDocuments: graphData.totalDocuments,
         loadedDocuments: graphData.loadedDocuments,
         nodeCount: graphData.nodes.length,
@@ -412,13 +470,22 @@ export function DocumentGraphView({
 
       // Set active focus file from the required focusFilePath prop
       setActiveFocusFile(focusFilePath);
+
+      // Start background backlink scan after initial graph is displayed
+      if (graphData.startBacklinkScan) {
+        setBacklinksLoading(true);
+        abortBacklinkScanRef.current = graphData.startBacklinkScan(
+          handleBacklinkUpdate,
+          handleBacklinkComplete
+        );
+      }
     } catch (err) {
       console.error('Failed to build graph data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load document graph');
     } finally {
       setLoading(false);
     }
-  }, [rootPath, includeExternalLinks, maxNodes, defaultMaxNodes, handleProgress, focusFilePath, neighborDepth]);
+  }, [rootPath, includeExternalLinks, maxNodes, defaultMaxNodes, handleProgress, focusFilePath, neighborDepth, previewCharLimit, handleBacklinkUpdate, handleBacklinkComplete]);
 
   /**
    * Debounced version of loadGraphData for settings changes
@@ -482,10 +549,16 @@ export function DocumentGraphView({
   }, [previewCharLimit, debouncedLoadGraphData, isOpen]);
 
   /**
-   * Cancel debounced load on unmount
+   * Cancel debounced load and backlink scan on unmount
    */
   useEffect(() => {
-    return () => cancelDebouncedLoad();
+    return () => {
+      cancelDebouncedLoad();
+      if (abortBacklinkScanRef.current) {
+        abortBacklinkScanRef.current();
+        abortBacklinkScanRef.current = null;
+      }
+    };
   }, [cancelDebouncedLoad]);
 
   /**
@@ -1435,6 +1508,24 @@ export function DocumentGraphView({
                 )}
                 {loadingMore ? 'Loading...' : `Load more (${totalDocuments - loadedDocuments} remaining)`}
               </button>
+            )}
+            {/* Backlink loading indicator */}
+            {backlinksLoading && (
+              <span
+                className="flex items-center gap-1.5 px-2 py-1 rounded text-xs"
+                style={{
+                  backgroundColor: `${theme.colors.accent}15`,
+                  color: theme.colors.textDim,
+                }}
+                title="Scanning for documents that link to the current graph"
+              >
+                <Loader2 className="w-3 h-3 animate-spin" style={{ color: theme.colors.accent }} />
+                <span>
+                  Scanning backlinks
+                  {backlinkProgress && ` (${backlinkProgress.scanned}/${backlinkProgress.total})`}
+                  ...
+                </span>
+              </span>
             )}
           </div>
 

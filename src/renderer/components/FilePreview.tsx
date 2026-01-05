@@ -460,6 +460,9 @@ export const FilePreview = forwardRef<FilePreviewHandle, FilePreviewProps>(funct
     return isBinaryExtension(file.name) || isBinaryContent(file.content);
   }, [isImage, file]);
 
+  // Any non-binary, non-image file can be edited as text
+  const isEditableText = !isImage && !isBinary;
+
   // Calculate task counts for markdown files
   const taskCounts = useMemo(() => {
     if (!isMarkdown || !file?.content) return null;
@@ -935,9 +938,9 @@ export const FilePreview = forwardRef<FilePreviewHandle, FilePreviewProps>(funct
     return formatShortcutKeys(shortcut.keys);
   };
 
-  // Handle search in markdown edit mode - jump to and select the match in textarea
+  // Handle search in edit mode - jump to and select the match in textarea
   useEffect(() => {
-    if (!isMarkdown || !markdownEditMode || !searchQuery.trim() || !textareaRef.current) {
+    if (!isEditableText || !markdownEditMode || !searchQuery.trim() || !textareaRef.current) {
       return;
     }
 
@@ -980,7 +983,7 @@ export const FilePreview = forwardRef<FilePreviewHandle, FilePreviewProps>(funct
       const targetScroll = (lineNumber - 5) * lineHeight; // Leave some lines above
       textarea.scrollTop = Math.max(0, targetScroll);
     }
-  }, [searchQuery, currentMatchIndex, isMarkdown, markdownEditMode, editContent]);
+  }, [searchQuery, currentMatchIndex, isEditableText, markdownEditMode, editContent]);
 
   // Helper to check if a shortcut matches
   const isShortcut = (e: React.KeyboardEvent, shortcutId: string) => {
@@ -1011,7 +1014,7 @@ export const FilePreview = forwardRef<FilePreviewHandle, FilePreviewProps>(funct
       e.stopPropagation();
       setSearchOpen(true);
       setTimeout(() => searchInputRef.current?.focus(), 0);
-    } else if (e.key === 's' && (e.metaKey || e.ctrlKey) && isMarkdown && markdownEditMode) {
+    } else if (e.key === 's' && (e.metaKey || e.ctrlKey) && isEditableText && markdownEditMode) {
       // Cmd+S to save in edit mode
       e.preventDefault();
       e.stopPropagation();
@@ -1021,14 +1024,14 @@ export const FilePreview = forwardRef<FilePreviewHandle, FilePreviewProps>(funct
       e.stopPropagation();
       copyPathToClipboard();
       onShortcutUsed?.('copyFilePath');
-    } else if (isMarkdown && isShortcut(e, 'toggleMarkdownMode')) {
+    } else if (isEditableText && isShortcut(e, 'toggleMarkdownMode')) {
       e.preventDefault();
       e.stopPropagation();
       setMarkdownEditMode(!markdownEditMode);
     } else if (e.key === 'ArrowUp') {
       // In edit mode, let the textarea handle arrow keys for cursor movement
       // Only intercept when NOT in edit mode (preview/code view)
-      if (isMarkdown && markdownEditMode) return;
+      if (isEditableText && markdownEditMode) return;
 
       e.preventDefault();
       const container = contentRef.current;
@@ -1047,7 +1050,7 @@ export const FilePreview = forwardRef<FilePreviewHandle, FilePreviewProps>(funct
     } else if (e.key === 'ArrowDown') {
       // In edit mode, let the textarea handle arrow keys for cursor movement
       // Only intercept when NOT in edit mode (preview/code view)
-      if (isMarkdown && markdownEditMode) return;
+      if (isEditableText && markdownEditMode) return;
 
       e.preventDefault();
       const container = contentRef.current;
@@ -1065,7 +1068,7 @@ export const FilePreview = forwardRef<FilePreviewHandle, FilePreviewProps>(funct
       }
     } else if (e.key === 'ArrowLeft' && (e.metaKey || e.ctrlKey)) {
       // Cmd+Left: Navigate back in history (disabled in edit mode)
-      if (isMarkdown && markdownEditMode) return;
+      if (isEditableText && markdownEditMode) return;
       e.preventDefault();
       e.stopPropagation();
       if (canGoBack && onNavigateBack) {
@@ -1074,7 +1077,7 @@ export const FilePreview = forwardRef<FilePreviewHandle, FilePreviewProps>(funct
       }
     } else if (e.key === 'ArrowRight' && (e.metaKey || e.ctrlKey)) {
       // Cmd+Right: Navigate forward in history (disabled in edit mode)
-      if (isMarkdown && markdownEditMode) return;
+      if (isEditableText && markdownEditMode) return;
       e.preventDefault();
       e.stopPropagation();
       if (canGoForward && onNavigateForward) {
@@ -1089,7 +1092,7 @@ export const FilePreview = forwardRef<FilePreviewHandle, FilePreviewProps>(funct
       onOpenInGraph();
     } else if (isShortcut(e, 'fuzzyFileSearch') && onOpenFuzzySearch) {
       // Cmd+G: Open fuzzy file search (only in preview mode, not edit mode)
-      if (isMarkdown && markdownEditMode) return;
+      if (isEditableText && markdownEditMode) return;
       e.preventDefault();
       e.stopPropagation();
       onOpenFuzzySearch();
@@ -1131,47 +1134,45 @@ export const FilePreview = forwardRef<FilePreviewHandle, FilePreviewProps>(funct
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {isMarkdown && (
-              <>
-                {/* Save button - only shown in edit mode with changes */}
-                {markdownEditMode && onSave && (
-                  <button
-                    onClick={handleSave}
-                    disabled={!hasChanges || isSaving}
-                    className="px-3 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1.5"
-                    style={{
-                      backgroundColor: hasChanges ? theme.colors.accent : theme.colors.bgActivity,
-                      color: hasChanges ? theme.colors.accentForeground : theme.colors.textDim,
-                      opacity: hasChanges && !isSaving ? 1 : 0.5,
-                      cursor: hasChanges && !isSaving ? 'pointer' : 'default',
-                    }}
-                    title={hasChanges ? "Save changes (⌘S)" : "No changes to save"}
-                  >
-                    {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                    {isSaving ? 'Saving...' : 'Save'}
-                  </button>
-                )}
-                {/* Show remote images toggle - only in preview mode */}
-                {!markdownEditMode && (
-                  <button
-                    onClick={() => setShowRemoteImages(!showRemoteImages)}
-                    className="p-2 rounded hover:bg-white/10 transition-colors"
-                    style={{ color: showRemoteImages ? theme.colors.accent : theme.colors.textDim }}
-                    title={showRemoteImages ? "Hide remote images" : "Show remote images"}
-                  >
-                    <Globe className="w-4 h-4" />
-                  </button>
-                )}
-                {/* Toggle between edit and preview mode */}
-                <button
-                  onClick={() => setMarkdownEditMode(!markdownEditMode)}
-                  className="p-2 rounded hover:bg-white/10 transition-colors"
-                  style={{ color: markdownEditMode ? theme.colors.accent : theme.colors.textDim }}
-                  title={`${markdownEditMode ? "Show preview" : "Edit file"} (${formatShortcut('toggleMarkdownMode')})`}
-                >
-                  {markdownEditMode ? <Eye className="w-4 h-4" /> : <Edit className="w-4 h-4" />}
-                </button>
-              </>
+            {/* Save button - shown in edit mode with changes for any editable text file */}
+            {isEditableText && markdownEditMode && onSave && (
+              <button
+                onClick={handleSave}
+                disabled={!hasChanges || isSaving}
+                className="px-3 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1.5"
+                style={{
+                  backgroundColor: hasChanges ? theme.colors.accent : theme.colors.bgActivity,
+                  color: hasChanges ? theme.colors.accentForeground : theme.colors.textDim,
+                  opacity: hasChanges && !isSaving ? 1 : 0.5,
+                  cursor: hasChanges && !isSaving ? 'pointer' : 'default',
+                }}
+                title={hasChanges ? "Save changes (⌘S)" : "No changes to save"}
+              >
+                {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                {isSaving ? 'Saving...' : 'Save'}
+              </button>
+            )}
+            {/* Show remote images toggle - only for markdown in preview mode */}
+            {isMarkdown && !markdownEditMode && (
+              <button
+                onClick={() => setShowRemoteImages(!showRemoteImages)}
+                className="p-2 rounded hover:bg-white/10 transition-colors"
+                style={{ color: showRemoteImages ? theme.colors.accent : theme.colors.textDim }}
+                title={showRemoteImages ? "Hide remote images" : "Show remote images"}
+              >
+                <Globe className="w-4 h-4" />
+              </button>
+            )}
+            {/* Toggle between edit and preview/view mode - for any editable text file */}
+            {isEditableText && (
+              <button
+                onClick={() => setMarkdownEditMode(!markdownEditMode)}
+                className="p-2 rounded hover:bg-white/10 transition-colors"
+                style={{ color: markdownEditMode ? theme.colors.accent : theme.colors.textDim }}
+                title={`${markdownEditMode ? (isMarkdown ? "Show preview" : "View file") : "Edit file"} (${formatShortcut('toggleMarkdownMode')})`}
+              >
+                {markdownEditMode ? <Eye className="w-4 h-4" /> : <Edit className="w-4 h-4" />}
+              </button>
             )}
             <button
               onClick={copyContentToClipboard}
@@ -1458,8 +1459,8 @@ export const FilePreview = forwardRef<FilePreviewHandle, FilePreviewProps>(funct
               </button>
             </div>
           </div>
-        ) : isMarkdown && markdownEditMode ? (
-          // Edit mode - show editable textarea with search highlighting via selection
+        ) : isEditableText && markdownEditMode ? (
+          // Edit mode - show editable textarea for any text file
           <textarea
             ref={textareaRef}
             value={editContent}

@@ -191,6 +191,88 @@ describe('FilePreview', () => {
     });
   });
 
+  describe('text file editing', () => {
+    it('shows edit button for markdown files', () => {
+      render(<FilePreview {...defaultProps} />);
+
+      expect(screen.getByTestId('edit-icon')).toBeInTheDocument();
+    });
+
+    it('shows edit button for JSON files', () => {
+      render(
+        <FilePreview
+          {...defaultProps}
+          file={{ name: 'config.json', content: '{"key": "value"}', path: '/test/config.json' }}
+        />
+      );
+
+      expect(screen.getByTestId('edit-icon')).toBeInTheDocument();
+    });
+
+    it('shows edit button for YAML files', () => {
+      render(
+        <FilePreview
+          {...defaultProps}
+          file={{ name: 'config.yaml', content: 'key: value', path: '/test/config.yaml' }}
+        />
+      );
+
+      expect(screen.getByTestId('edit-icon')).toBeInTheDocument();
+    });
+
+    it('shows edit button for TypeScript files', () => {
+      render(
+        <FilePreview
+          {...defaultProps}
+          file={{ name: 'app.ts', content: 'const x = 1;', path: '/test/app.ts' }}
+        />
+      );
+
+      expect(screen.getByTestId('edit-icon')).toBeInTheDocument();
+    });
+
+    it('does not show edit button for image files', () => {
+      render(
+        <FilePreview
+          {...defaultProps}
+          file={{ name: 'image.png', content: 'data:image/png;base64,...', path: '/test/image.png' }}
+        />
+      );
+
+      expect(screen.queryByTestId('edit-icon')).not.toBeInTheDocument();
+    });
+
+    it('toggles to edit mode when edit button is clicked', () => {
+      const setMarkdownEditMode = vi.fn();
+      render(
+        <FilePreview
+          {...defaultProps}
+          file={{ name: 'config.json', content: '{"key": "value"}', path: '/test/config.json' }}
+          setMarkdownEditMode={setMarkdownEditMode}
+        />
+      );
+
+      const editButton = screen.getByTestId('edit-icon').parentElement;
+      fireEvent.click(editButton!);
+
+      expect(setMarkdownEditMode).toHaveBeenCalledWith(true);
+    });
+
+    it('shows textarea when in edit mode for non-markdown files', () => {
+      render(
+        <FilePreview
+          {...defaultProps}
+          file={{ name: 'config.json', content: '{"key": "value"}', path: '/test/config.json' }}
+          markdownEditMode={true}
+        />
+      );
+
+      const textarea = screen.getByRole('textbox');
+      expect(textarea).toBeInTheDocument();
+      expect(textarea).toHaveValue('{"key": "value"}');
+    });
+  });
+
   describe('basic rendering', () => {
     it('renders file preview with file name', () => {
       render(<FilePreview {...defaultProps} />);

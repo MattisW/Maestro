@@ -57,7 +57,17 @@ vi.mock('../../../../renderer/contexts/LayerStackContext', () => ({
 
 // Mock graphDataBuilder
 vi.mock('../../../../renderer/components/DocumentGraph/graphDataBuilder', () => ({
-  buildGraphData: vi.fn().mockResolvedValue({ nodes: [], edges: [] }),
+  buildGraphData: vi.fn().mockResolvedValue({
+    nodes: [],
+    edges: [],
+    totalDocuments: 0,
+    loadedDocuments: 0,
+    hasMore: false,
+    cachedExternalData: { externalNodes: [], externalEdges: [], domainCount: 0, totalLinkCount: 0 },
+    internalLinkCount: 0,
+    backlinksLoading: true,
+    startBacklinkScan: vi.fn().mockReturnValue(() => {}),
+  }),
   isDocumentNode: (data: any) => data?.nodeType === 'document',
   isExternalLinkNode: (data: any) => data?.nodeType === 'external',
 }));

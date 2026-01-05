@@ -40,6 +40,12 @@ vi.mock('lucide-react', () => ({
     <span data-testid="clock-icon" className={className} style={style}>🕐</span>,
   RotateCw: ({ className, style }: { className?: string; style?: React.CSSProperties }) =>
     <span data-testid="rotatecw-icon" className={className} style={style}>🔃</span>,
+  Edit2: ({ className, style }: { className?: string; style?: React.CSSProperties }) =>
+    <span data-testid="edit2-icon" className={className} style={style}>✏️</span>,
+  Trash2: ({ className, style }: { className?: string; style?: React.CSSProperties }) =>
+    <span data-testid="trash2-icon" className={className} style={style}>🗑️</span>,
+  AlertTriangle: ({ className, style }: { className?: string; style?: React.CSSProperties }) =>
+    <span data-testid="alert-triangle-icon" className={className} style={style}>⚠️</span>,
 }));
 
 // Mock @tanstack/react-virtual for virtualization
@@ -1459,6 +1465,118 @@ describe('FileExplorerPanel', () => {
 
       // Callback should now be registered
       expect(clickOutsideCallback).toBeInstanceOf(Function);
+    });
+
+    it('shows Rename option in context menu', () => {
+      const { container } = render(<FileExplorerPanel {...defaultProps} />);
+      const fileItem = Array.from(container.querySelectorAll('[data-file-index]'))
+        .find(el => el.textContent?.includes('package.json'));
+      fireEvent.contextMenu(fileItem!, { clientX: 100, clientY: 200 });
+
+      expect(screen.getByText('Rename')).toBeInTheDocument();
+    });
+
+    it('shows Delete option in context menu', () => {
+      const { container } = render(<FileExplorerPanel {...defaultProps} />);
+      const fileItem = Array.from(container.querySelectorAll('[data-file-index]'))
+        .find(el => el.textContent?.includes('package.json'));
+      fireEvent.contextMenu(fileItem!, { clientX: 100, clientY: 200 });
+
+      expect(screen.getByText('Delete')).toBeInTheDocument();
+    });
+
+    it('opens rename modal when Rename is clicked', () => {
+      const { container } = render(<FileExplorerPanel {...defaultProps} />);
+      const fileItem = Array.from(container.querySelectorAll('[data-file-index]'))
+        .find(el => el.textContent?.includes('package.json'));
+      fireEvent.contextMenu(fileItem!, { clientX: 100, clientY: 200 });
+
+      const renameButton = screen.getByText('Rename');
+      fireEvent.click(renameButton);
+
+      expect(screen.getByText('Rename file')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('package.json')).toBeInTheDocument();
+    });
+
+    it('opens delete modal when Delete is clicked', async () => {
+      // Mock countItems for the delete modal
+      const mockFs = {
+        countItems: vi.fn().mockResolvedValue({ fileCount: 0, folderCount: 0 }),
+      };
+      (window as any).maestro = { fs: mockFs };
+
+      const { container } = render(<FileExplorerPanel {...defaultProps} />);
+      const fileItem = Array.from(container.querySelectorAll('[data-file-index]'))
+        .find(el => el.textContent?.includes('package.json'));
+      fireEvent.contextMenu(fileItem!, { clientX: 100, clientY: 200 });
+
+      const deleteButton = screen.getByText('Delete');
+      await act(async () => {
+        fireEvent.click(deleteButton);
+      });
+
+      expect(screen.getByText('Delete file?')).toBeInTheDocument();
+      expect(screen.getByText(/package.json/)).toBeInTheDocument();
+    });
+
+    it('closes rename modal on Escape key', () => {
+      const { container } = render(<FileExplorerPanel {...defaultProps} />);
+      const fileItem = Array.from(container.querySelectorAll('[data-file-index]'))
+        .find(el => el.textContent?.includes('package.json'));
+      fireEvent.contextMenu(fileItem!, { clientX: 100, clientY: 200 });
+
+      const renameButton = screen.getByText('Rename');
+      fireEvent.click(renameButton);
+
+      expect(screen.getByText('Rename file')).toBeInTheDocument();
+
+      // Press Escape in the input
+      const input = screen.getByDisplayValue('package.json');
+      fireEvent.keyDown(input, { key: 'Escape' });
+
+      expect(screen.queryByText('Rename file')).not.toBeInTheDocument();
+    });
+
+    it('shows folder delete warning with item count', async () => {
+      // Mock countItems for the delete modal
+      const mockFs = {
+        countItems: vi.fn().mockResolvedValue({ fileCount: 5, folderCount: 2 }),
+      };
+      (window as any).maestro = { fs: mockFs };
+
+      const { container } = render(<FileExplorerPanel {...defaultProps} />);
+      const folderItem = Array.from(container.querySelectorAll('[data-file-index]'))
+        .find(el => el.textContent?.includes('src'));
+      fireEvent.contextMenu(folderItem!, { clientX: 100, clientY: 200 });
+
+      const deleteButton = screen.getByText('Delete');
+      await act(async () => {
+        fireEvent.click(deleteButton);
+      });
+
+      expect(screen.getByText('Delete folder?')).toBeInTheDocument();
+      expect(screen.getByText(/5 files/)).toBeInTheDocument();
+      expect(screen.getByText(/2 subfolders/)).toBeInTheDocument();
+    });
+
+    it('focuses Cancel button in delete modal by default', async () => {
+      const mockFs = {
+        countItems: vi.fn().mockResolvedValue({ fileCount: 0, folderCount: 0 }),
+      };
+      (window as any).maestro = { fs: mockFs };
+
+      const { container } = render(<FileExplorerPanel {...defaultProps} />);
+      const fileItem = Array.from(container.querySelectorAll('[data-file-index]'))
+        .find(el => el.textContent?.includes('package.json'));
+      fireEvent.contextMenu(fileItem!, { clientX: 100, clientY: 200 });
+
+      const deleteButton = screen.getByText('Delete');
+      await act(async () => {
+        fireEvent.click(deleteButton);
+      });
+
+      const cancelButton = screen.getByText('Cancel');
+      expect(cancelButton).toHaveFocus();
     });
   });
 });

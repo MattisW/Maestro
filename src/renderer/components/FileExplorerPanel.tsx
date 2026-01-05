@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { ChevronRight, ChevronDown, ChevronUp, Folder, RefreshCw, Check, Eye, EyeOff, Target, Copy, ExternalLink, Server, GitBranch, Clock, RotateCw, FileText } from 'lucide-react';
+import { ChevronRight, ChevronDown, ChevronUp, Folder, RefreshCw, Check, Eye, EyeOff, Target, Copy, ExternalLink, Server, GitBranch, Clock, RotateCw, FileText, Edit2, Trash2, AlertTriangle } from 'lucide-react';
 import type { Session, Theme, FocusArea } from '../types';
 import type { FileNode } from '../types/fileTree';
 import type { FileTreeChanges } from '../utils/fileExplorer';
@@ -142,6 +142,26 @@ function FileExplorerPanelInner(props: FileExplorerPanelProps) {
     path: string;
   } | null>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
+
+  // Rename modal state
+  const [renameModal, setRenameModal] = useState<{
+    node: FileNode;
+    path: string;
+    absolutePath: string;
+  } | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [renameError, setRenameError] = useState<string | null>(null);
+  const renameInputRef = useRef<HTMLInputElement>(null);
+
+  // Delete confirmation modal state
+  const [deleteModal, setDeleteModal] = useState<{
+    node: FileNode;
+    path: string;
+    absolutePath: string;
+    itemCount?: { fileCount: number; folderCount: number };
+  } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const cancelButtonRef = useRef<HTMLButtonElement>(null);
 
   // Close context menu when clicking outside
   useClickOutside(contextMenuRef, () => {
@@ -295,6 +315,115 @@ function FileExplorerPanelInner(props: FileExplorerPanelProps) {
     }
     setContextMenu(null);
   }, [contextMenu, session.fullPath]);
+
+  // Open rename modal
+  const handleOpenRename = useCallback(() => {
+    if (contextMenu) {
+      const absolutePath = `${session.fullPath}/${contextMenu.path}`;
+      setRenameModal({
+        node: contextMenu.node,
+        path: contextMenu.path,
+        absolutePath
+      });
+      setRenameValue(contextMenu.node.name);
+      setRenameError(null);
+    }
+    setContextMenu(null);
+  }, [contextMenu, session.fullPath]);
+
+  // Execute rename
+  const handleRename = useCallback(async () => {
+    if (!renameModal || !renameValue.trim()) return;
+
+    const newName = renameValue.trim();
+    if (newName === renameModal.node.name) {
+      setRenameModal(null);
+      return;
+    }
+
+    // Validate new name
+    if (newName.includes('/') || newName.includes('\\')) {
+      setRenameError('Name cannot contain slashes');
+      return;
+    }
+
+    try {
+      const parentDir = renameModal.absolutePath.substring(0, renameModal.absolutePath.lastIndexOf('/'));
+      const newPath = `${parentDir}/${newName}`;
+      await window.maestro.fs.rename(renameModal.absolutePath, newPath);
+      setRenameModal(null);
+      // Refresh file tree
+      refreshFileTree(session.id);
+      onShowFlash?.(`Renamed to "${newName}"`);
+    } catch (error) {
+      setRenameError(error instanceof Error ? error.message : 'Rename failed');
+    }
+  }, [renameModal, renameValue, refreshFileTree, session.id, onShowFlash]);
+
+  // Open delete confirmation modal
+  const handleOpenDelete = useCallback(async () => {
+    if (contextMenu) {
+      const absolutePath = `${session.fullPath}/${contextMenu.path}`;
+      const modalData: typeof deleteModal = {
+        node: contextMenu.node,
+        path: contextMenu.path,
+        absolutePath
+      };
+
+      // For folders, count items inside
+      if (contextMenu.node.type === 'folder') {
+        try {
+          const count = await window.maestro.fs.countItems(absolutePath);
+          modalData.itemCount = count;
+        } catch {
+          // If count fails, proceed without it
+        }
+      }
+
+      setDeleteModal(modalData);
+    }
+    setContextMenu(null);
+  }, [contextMenu, session.fullPath]);
+
+  // Execute delete
+  const handleDelete = useCallback(async () => {
+    if (!deleteModal) return;
+
+    setIsDeleting(true);
+    try {
+      await window.maestro.fs.delete(deleteModal.absolutePath);
+      setDeleteModal(null);
+      // Refresh file tree
+      refreshFileTree(session.id);
+      onShowFlash?.(`Deleted "${deleteModal.node.name}"`);
+    } catch (error) {
+      onShowFlash?.(`Delete failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [deleteModal, refreshFileTree, session.id, onShowFlash]);
+
+  // Focus rename input when modal opens
+  useEffect(() => {
+    if (renameModal && renameInputRef.current) {
+      renameInputRef.current.focus();
+      // Select the filename without extension for files
+      const name = renameModal.node.name;
+      const dotIndex = renameModal.node.type === 'file' ? name.lastIndexOf('.') : -1;
+      if (dotIndex > 0) {
+        renameInputRef.current.setSelectionRange(0, dotIndex);
+      } else {
+        renameInputRef.current.select();
+      }
+    }
+  }, [renameModal]);
+
+  // Focus cancel button when delete modal opens
+  useEffect(() => {
+    if (deleteModal && cancelButtonRef.current) {
+      cancelButtonRef.current.focus();
+    }
+  }, [deleteModal]);
 
   // Close context menu on Escape key
   useEffect(() => {
@@ -834,6 +963,163 @@ function FileExplorerPanelInner(props: FileExplorerPanelProps) {
               <ExternalLink className="w-3.5 h-3.5" style={{ color: theme.colors.textDim }} />
               <span>Reveal in Finder</span>
             </button>
+
+            {/* Divider before destructive actions */}
+            <div className="my-1 border-t" style={{ borderColor: theme.colors.border }} />
+
+            {/* Rename option */}
+            <button
+              onClick={handleOpenRename}
+              className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs hover:bg-white/10 transition-colors"
+              style={{ color: theme.colors.textMain }}
+            >
+              <Edit2 className="w-3.5 h-3.5" style={{ color: theme.colors.textDim }} />
+              <span>Rename</span>
+            </button>
+
+            {/* Delete option */}
+            <button
+              onClick={handleOpenDelete}
+              className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs hover:bg-white/10 transition-colors"
+              style={{ color: theme.colors.error }}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete</span>
+            </button>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Rename Modal */}
+      {renameModal && createPortal(
+        <div
+          className="fixed inset-0 z-[10001] flex items-center justify-center"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+          onClick={() => setRenameModal(null)}
+        >
+          <div
+            className="rounded-lg shadow-xl border p-4 min-w-[320px] max-w-[400px]"
+            style={{
+              backgroundColor: theme.colors.bgSidebar,
+              borderColor: theme.colors.border,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3
+              className="text-sm font-medium mb-3"
+              style={{ color: theme.colors.textMain }}
+            >
+              Rename {renameModal.node.type === 'folder' ? 'folder' : 'file'}
+            </h3>
+            <input
+              ref={renameInputRef}
+              type="text"
+              value={renameValue}
+              onChange={(e) => {
+                setRenameValue(e.target.value);
+                setRenameError(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleRename();
+                } else if (e.key === 'Escape') {
+                  setRenameModal(null);
+                }
+              }}
+              className="w-full px-3 py-2 rounded border bg-transparent outline-none text-sm"
+              style={{
+                borderColor: renameError ? theme.colors.error : theme.colors.border,
+                color: theme.colors.textMain
+              }}
+              placeholder="Enter new name"
+            />
+            {renameError && (
+              <p className="text-xs mt-1" style={{ color: theme.colors.error }}>
+                {renameError}
+              </p>
+            )}
+            <p className="text-xs mt-2 opacity-60" style={{ color: theme.colors.textDim }}>
+              Press Enter to save, Esc to cancel
+            </p>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal && createPortal(
+        <div
+          className="fixed inset-0 z-[10001] flex items-center justify-center"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+          onClick={() => !isDeleting && setDeleteModal(null)}
+        >
+          <div
+            className="rounded-lg shadow-xl border p-4 min-w-[320px] max-w-[400px]"
+            style={{
+              backgroundColor: theme.colors.bgSidebar,
+              borderColor: theme.colors.border,
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape' && !isDeleting) {
+                setDeleteModal(null);
+              }
+            }}
+          >
+            <div className="flex items-start gap-3 mb-3">
+              <div
+                className="p-2 rounded-full"
+                style={{ backgroundColor: `${theme.colors.error}20` }}
+              >
+                <AlertTriangle className="w-5 h-5" style={{ color: theme.colors.error }} />
+              </div>
+              <div className="flex-1">
+                <h3
+                  className="text-sm font-medium"
+                  style={{ color: theme.colors.textMain }}
+                >
+                  Delete {deleteModal.node.type === 'folder' ? 'folder' : 'file'}?
+                </h3>
+                <p className="text-xs mt-1" style={{ color: theme.colors.textDim }}>
+                  <span className="font-medium" style={{ color: theme.colors.textMain }}>
+                    {deleteModal.node.name}
+                  </span>
+                  {' '}will be permanently deleted.
+                </p>
+                {deleteModal.node.type === 'folder' && deleteModal.itemCount && (
+                  <p className="text-xs mt-2" style={{ color: theme.colors.warning }}>
+                    This folder contains {deleteModal.itemCount.fileCount} file{deleteModal.itemCount.fileCount !== 1 ? 's' : ''}
+                    {deleteModal.itemCount.folderCount > 0 && (
+                      <> and {deleteModal.itemCount.folderCount} subfolder{deleteModal.itemCount.folderCount !== 1 ? 's' : ''}</>
+                    )}.
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                ref={cancelButtonRef}
+                onClick={() => setDeleteModal(null)}
+                disabled={isDeleting}
+                className="px-3 py-1.5 rounded text-xs font-medium hover:bg-white/10 transition-colors"
+                style={{ color: theme.colors.textMain }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="px-3 py-1.5 rounded text-xs font-medium transition-colors"
+                style={{
+                  backgroundColor: theme.colors.error,
+                  color: '#fff',
+                  opacity: isDeleting ? 0.6 : 1
+                }}
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
           </div>
         </div>,
         document.body

@@ -239,6 +239,35 @@ export interface GraphData {
   cachedExternalData: CachedExternalData;
   /** Total count of internal links */
   internalLinkCount: number;
+  /** Whether backlinks are still being loaded in the background */
+  backlinksLoading?: boolean;
+  /**
+   * Start lazy loading of backlinks in the background.
+   * Call this after the initial graph is displayed.
+   * @param onUpdate - Callback fired when new backlinks are discovered, with updated graph data
+   * @param onComplete - Callback fired when backlink scanning is complete
+   * @returns Abort function to cancel the background scan
+   */
+  startBacklinkScan?: (
+    onUpdate: (data: BacklinkUpdateData) => void,
+    onComplete: () => void
+  ) => () => void;
+}
+
+/**
+ * Data provided when backlinks are discovered during lazy loading
+ */
+export interface BacklinkUpdateData {
+  /** New nodes to add (documents that link to existing nodes) */
+  newNodes: GraphNode[];
+  /** New edges to add (backlink connections) */
+  newEdges: GraphEdge[];
+  /** Files scanned so far */
+  filesScanned: number;
+  /** Total files to scan (if known) */
+  totalFiles: number;
+  /** Current file being scanned */
+  currentFile?: string;
 }
 
 /**
@@ -546,23 +575,21 @@ async function buildReverseLinkIndex(
 }
 
 /**
- * Build graph data starting from a focus file and traversing outward via links.
+ * Build graph data starting from a focus file and traversing outward via OUTGOING links only.
  * Uses BFS to discover connected documents up to maxDepth levels.
- * Now includes BOTH outgoing links (A → B) and incoming links (backlinks: X → A).
+ *
+ * This is the "instant" phase - it only follows outgoing links which requires no directory scan.
+ * Backlinks (incoming links) are loaded lazily in the background via startBacklinkScan().
  *
  * @param options - Build configuration options
- * @returns GraphData with nodes and edges
+ * @returns GraphData with nodes, edges, and a startBacklinkScan function for lazy backlink loading
  */
 export async function buildGraphData(options: BuildOptions): Promise<GraphData> {
   const { rootPath, focusFile, maxDepth = 3, maxNodes = 100, onProgress } = options;
 
   const buildStart = perfMetrics.start();
 
-  console.log('[DocumentGraph] Building graph from focus file:', { rootPath, focusFile, maxDepth, maxNodes });
-
-  // Step 1: Build reverse link index to enable bidirectional traversal
-  // This scans all markdown files to know which files link TO each file
-  const { reverseIndex, existingFiles } = await buildReverseLinkIndex(rootPath, onProgress);
+  console.log('[DocumentGraph] Building graph from focus file (outgoing links only):', { rootPath, focusFile, maxDepth, maxNodes });
 
   // Track parsed files by path for deduplication
   const parsedFileMap = new Map<string, ParsedFile>();
@@ -571,7 +598,7 @@ export async function buildGraphData(options: BuildOptions): Promise<GraphData> 
   // Track visited paths to avoid re-processing
   const visited = new Set<string>();
 
-  // Step 2: Parse the focus file first
+  // Step 1: Parse the focus file first
   const focusParsed = await parseFile(rootPath, focusFile);
   if (!focusParsed) {
     console.error(`[DocumentGraph] Failed to parse focus file: ${focusFile}`);
@@ -591,20 +618,9 @@ export async function buildGraphData(options: BuildOptions): Promise<GraphData> 
 
   // Add OUTGOING linked files to queue (focus file links to these)
   for (const link of focusParsed.internalLinks) {
-    if (!visited.has(link) && existingFiles.has(link)) {
+    if (!visited.has(link)) {
       queue.push({ path: link, depth: 1 });
       visited.add(link);
-    }
-  }
-
-  // Add INCOMING linked files to queue (these files link to focus file)
-  const incomingLinks = reverseIndex.get(focusFile);
-  if (incomingLinks) {
-    for (const incomingFile of incomingLinks) {
-      if (!visited.has(incomingFile)) {
-        queue.push({ path: incomingFile, depth: 1 });
-        visited.add(incomingFile);
-      }
     }
   }
 
@@ -620,7 +636,7 @@ export async function buildGraphData(options: BuildOptions): Promise<GraphData> 
     });
   }
 
-  // Step 3: BFS traversal to discover connected documents (bidirectionally)
+  // Step 2: BFS traversal to discover connected documents (outgoing links only - instant)
   let filesProcessed = 1;
   let totalInternalLinks = focusParsed.internalLinks.length;
   let totalExternalLinks = focusParsed.externalLinks.length;
@@ -655,20 +671,9 @@ export async function buildGraphData(options: BuildOptions): Promise<GraphData> 
     // Add OUTGOING linked files to queue (if not at max depth)
     if (depth < maxDepth) {
       for (const link of parsed.internalLinks) {
-        if (!visited.has(link) && existingFiles.has(link)) {
+        if (!visited.has(link)) {
           queue.push({ path: link, depth: depth + 1 });
           visited.add(link);
-        }
-      }
-
-      // Add INCOMING linked files to queue (backlinks)
-      const incoming = reverseIndex.get(path);
-      if (incoming) {
-        for (const incomingFile of incoming) {
-          if (!visited.has(incomingFile)) {
-            queue.push({ path: incomingFile, depth: depth + 1 });
-            visited.add(incomingFile);
-          }
         }
       }
     }
@@ -682,7 +687,7 @@ export async function buildGraphData(options: BuildOptions): Promise<GraphData> 
   const parsedFiles = Array.from(parsedFileMap.values());
   const loadedPaths = new Set(parsedFileMap.keys());
 
-  console.log('[DocumentGraph] BFS traversal complete:', {
+  console.log('[DocumentGraph] BFS traversal complete (outgoing only):', {
     focusFile,
     filesLoaded: parsedFiles.length,
     maxDepth,
@@ -700,7 +705,7 @@ export async function buildGraphData(options: BuildOptions): Promise<GraphData> 
   for (const file of parsedFiles) {
     const nodeId = `doc-${file.relativePath}`;
 
-    // Identify broken links
+    // Identify broken links (links to files that don't exist or weren't loaded)
     const brokenLinks = file.allInternalLinkPaths.filter((link) => !loadedPaths.has(link) && !visited.has(link));
 
     // Create document node
@@ -797,6 +802,154 @@ export async function buildGraphData(options: BuildOptions): Promise<GraphData> 
     );
   }
 
+  // Create the lazy backlink scanner function
+  // This scans all markdown files in the background to find files that link TO our loaded documents
+  const startBacklinkScan = (
+    onUpdate: (data: BacklinkUpdateData) => void,
+    onComplete: () => void
+  ): (() => void) => {
+    let aborted = false;
+
+    const runScan = async () => {
+      console.log('[DocumentGraph] Starting background backlink scan...');
+      const scanStart = perfMetrics.start();
+
+      try {
+        // Scan all markdown files in the directory
+        const allFiles = await scanMarkdownFiles(rootPath);
+        const totalFiles = allFiles.length;
+
+        console.log(`[DocumentGraph] Backlink scan: found ${totalFiles} markdown files to check`);
+
+        // Track which new nodes/edges we discover
+        const newNodes: GraphNode[] = [];
+        const newEdges: GraphEdge[] = [];
+        const discoveredBacklinkFiles = new Set<string>();
+
+        let filesScanned = 0;
+        let batchNewNodes: GraphNode[] = [];
+        let batchNewEdges: GraphEdge[] = [];
+
+        for (const filePath of allFiles) {
+          if (aborted) {
+            console.log('[DocumentGraph] Backlink scan aborted');
+            return;
+          }
+
+          // Skip files we already have in the graph
+          if (loadedPaths.has(filePath)) {
+            filesScanned++;
+            continue;
+          }
+
+          // Parse just the links from this file
+          const entry = await parseFileLinksOnly(rootPath, filePath);
+          if (!entry) {
+            filesScanned++;
+            continue;
+          }
+
+          // Check if any of its outgoing links point to our loaded documents
+          const linksToLoadedDocs = entry.outgoingLinks.filter(link => loadedPaths.has(link));
+
+          if (linksToLoadedDocs.length > 0 && !discoveredBacklinkFiles.has(filePath)) {
+            discoveredBacklinkFiles.add(filePath);
+
+            // Parse the full file to get stats for the node
+            const parsed = await parseFile(rootPath, filePath);
+            if (parsed) {
+              const nodeId = `doc-${filePath}`;
+
+              // Create node for this backlink source
+              const newNode: GraphNode = {
+                id: nodeId,
+                type: 'documentNode',
+                data: {
+                  nodeType: 'document',
+                  ...parsed.stats,
+                },
+              };
+              batchNewNodes.push(newNode);
+              newNodes.push(newNode);
+
+              // Create edges for each link to our loaded documents
+              for (const targetPath of linksToLoadedDocs) {
+                const targetNodeId = `doc-${targetPath}`;
+                const newEdge: GraphEdge = {
+                  id: `edge-${nodeId}-${targetNodeId}`,
+                  source: nodeId,
+                  target: targetNodeId,
+                  type: 'default',
+                };
+                batchNewEdges.push(newEdge);
+                newEdges.push(newEdge);
+              }
+            }
+          }
+
+          filesScanned++;
+
+          // Yield to event loop and send updates periodically
+          if (filesScanned % BATCH_SIZE_BEFORE_YIELD === 0) {
+            await yieldToEventLoop();
+
+            // If we have new nodes/edges, send an update
+            if (batchNewNodes.length > 0 || batchNewEdges.length > 0) {
+              onUpdate({
+                newNodes: batchNewNodes,
+                newEdges: batchNewEdges,
+                filesScanned,
+                totalFiles,
+                currentFile: filePath,
+              });
+              batchNewNodes = [];
+              batchNewEdges = [];
+            }
+          }
+        }
+
+        // Send any remaining updates
+        if (batchNewNodes.length > 0 || batchNewEdges.length > 0) {
+          onUpdate({
+            newNodes: batchNewNodes,
+            newEdges: batchNewEdges,
+            filesScanned,
+            totalFiles,
+          });
+        }
+
+        const scanTime = perfMetrics.end(scanStart, 'buildGraphData:backlinkScan', {
+          totalFiles,
+          newNodesFound: newNodes.length,
+          newEdgesFound: newEdges.length,
+        });
+
+        console.log(`[DocumentGraph] Backlink scan complete in ${scanTime.toFixed(0)}ms:`, {
+          filesScanned,
+          newNodesFound: newNodes.length,
+          newEdgesFound: newEdges.length,
+        });
+
+        if (!aborted) {
+          onComplete();
+        }
+      } catch (error) {
+        console.error('[DocumentGraph] Backlink scan failed:', error);
+        if (!aborted) {
+          onComplete();
+        }
+      }
+    };
+
+    // Start the scan asynchronously
+    runScan();
+
+    // Return abort function
+    return () => {
+      aborted = true;
+    };
+  };
+
   return {
     nodes: documentNodes,
     edges: internalEdges,
@@ -805,6 +958,8 @@ export async function buildGraphData(options: BuildOptions): Promise<GraphData> 
     hasMore,
     cachedExternalData,
     internalLinkCount,
+    backlinksLoading: true,
+    startBacklinkScan,
   };
 }
 

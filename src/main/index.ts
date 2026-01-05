@@ -1394,6 +1394,56 @@ function setupIpcHandlers() {
     }
   });
 
+  // Rename a file or folder
+  ipcMain.handle('fs:rename', async (_, oldPath: string, newPath: string) => {
+    try {
+      await fs.rename(oldPath, newPath);
+      return { success: true };
+    } catch (error) {
+      throw new Error(`Failed to rename: ${error}`);
+    }
+  });
+
+  // Delete a file or folder (with recursive option for folders)
+  ipcMain.handle('fs:delete', async (_, targetPath: string, options?: { recursive?: boolean }) => {
+    try {
+      const stat = await fs.stat(targetPath);
+      if (stat.isDirectory()) {
+        await fs.rm(targetPath, { recursive: options?.recursive ?? true, force: true });
+      } else {
+        await fs.unlink(targetPath);
+      }
+      return { success: true };
+    } catch (error) {
+      throw new Error(`Failed to delete: ${error}`);
+    }
+  });
+
+  // Count items in a directory (for delete confirmation)
+  ipcMain.handle('fs:countItems', async (_, dirPath: string) => {
+    try {
+      let fileCount = 0;
+      let folderCount = 0;
+
+      const countRecursive = async (dir: string) => {
+        const entries = await fs.readdir(dir, { withFileTypes: true });
+        for (const entry of entries) {
+          if (entry.isDirectory()) {
+            folderCount++;
+            await countRecursive(path.join(dir, entry.name));
+          } else {
+            fileCount++;
+          }
+        }
+      };
+
+      await countRecursive(dirPath);
+      return { fileCount, folderCount };
+    } catch (error) {
+      throw new Error(`Failed to count items: ${error}`);
+    }
+  });
+
   // Fetch image from URL and return as base64 data URL (avoids CORS issues)
   ipcMain.handle('fs:fetchImageAsBase64', async (_, url: string) => {
     try {
