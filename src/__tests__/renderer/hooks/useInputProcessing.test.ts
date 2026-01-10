@@ -718,6 +718,93 @@ describe('useInputProcessing', () => {
     });
   });
 
+  describe('read-only mode suffix', () => {
+    it('appends read-only instruction suffix when tab is in read-only mode', async () => {
+      const readOnlyTab = createMockTab({ readOnlyMode: true });
+      const session = createMockSession({
+        aiTabs: [readOnlyTab],
+        activeTabId: readOnlyTab.id,
+      });
+      const deps = createDeps({
+        activeSession: session,
+        sessionsRef: { current: [session] },
+        inputValue: 'explain this code',
+      });
+      const { result } = renderHook(() => useInputProcessing(deps));
+
+      await act(async () => {
+        await result.current.processInput();
+      });
+
+      // Verify spawn was called with the read-only suffix appended
+      expect(window.maestro.process.spawn).toHaveBeenCalled();
+      const spawnCall = (window.maestro.process.spawn as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(spawnCall.prompt).toContain('explain this code');
+      expect(spawnCall.prompt).toContain('IMPORTANT: You are in read-only/plan mode. Do NOT write a plan file. Instead, return your plan directly to the user in beautiful markdown formatting.');
+      expect(spawnCall.readOnlyMode).toBe(true);
+    });
+
+    it('appends read-only instruction suffix when Auto Run is active without worktree (read-only tab)', async () => {
+      const runningBatchState: BatchRunState = {
+        ...defaultBatchState,
+        isRunning: true,
+        worktreeActive: false,
+      };
+      mockGetBatchState.mockReturnValue(runningBatchState);
+
+      // Use a read-only tab so the message executes immediately (not queued)
+      const readOnlyTab = createMockTab({ readOnlyMode: true });
+      const session = createMockSession({
+        aiTabs: [readOnlyTab],
+        activeTabId: readOnlyTab.id,
+      });
+      const deps = createDeps({
+        activeSession: session,
+        sessionsRef: { current: [session] },
+        inputValue: 'what does this function do',
+        activeBatchRunState: runningBatchState,
+      });
+      const { result } = renderHook(() => useInputProcessing(deps));
+
+      await act(async () => {
+        await result.current.processInput();
+      });
+
+      // Verify spawn was called with read-only suffix (Auto Run without worktree forces read-only)
+      expect(window.maestro.process.spawn).toHaveBeenCalled();
+      const spawnCall = (window.maestro.process.spawn as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(spawnCall.prompt).toContain('what does this function do');
+      expect(spawnCall.prompt).toContain('IMPORTANT: You are in read-only/plan mode');
+      expect(spawnCall.readOnlyMode).toBe(true);
+    });
+
+    it('does not append read-only suffix when in normal write mode', async () => {
+      // Use a tab WITH agentSessionId to skip system prompt prepending
+      const writeTab = createMockTab({ readOnlyMode: false, agentSessionId: 'existing-session-123' });
+      const session = createMockSession({
+        aiTabs: [writeTab],
+        activeTabId: writeTab.id,
+      });
+      const deps = createDeps({
+        activeSession: session,
+        sessionsRef: { current: [session] },
+        inputValue: 'fix this bug',
+      });
+      const { result } = renderHook(() => useInputProcessing(deps));
+
+      await act(async () => {
+        await result.current.processInput();
+      });
+
+      // Verify spawn was called WITHOUT the read-only suffix
+      expect(window.maestro.process.spawn).toHaveBeenCalled();
+      const spawnCall = (window.maestro.process.spawn as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(spawnCall.prompt).toBe('fix this bug');
+      expect(spawnCall.prompt).not.toContain('read-only/plan mode');
+      expect(spawnCall.readOnlyMode).toBeFalsy();
+    });
+  });
+
   describe('command history tracking', () => {
     it('adds slash command to aiCommandHistory', async () => {
       const customCommands: CustomAICommand[] = [

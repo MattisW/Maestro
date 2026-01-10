@@ -56,8 +56,10 @@ interface SessionAccumulator {
   tabStatuses?: Map<string, 'idle' | 'busy'>;
   // Usage stats (accumulated)
   usageDeltas?: Map<string | null, UsageStats>; // key = tabId or null for session-level
-  // Context percentage (only last one matters)
+  // Context percentage (only last one matters, uses high water mark unless reset)
   contextUsage?: number;
+  // Force context reset (bypasses high water mark)
+  forceContextReset?: boolean;
   // Tabs to mark as delivered
   deliveredTabs?: Set<string>;
   // Cycle metrics (accumulated)
@@ -79,8 +81,10 @@ export interface BatchedUpdater {
   setTabStatus: (sessionId: string, tabId: string, status: 'idle' | 'busy') => void;
   /** Update usage stats (batched, accumulated) */
   updateUsage: (sessionId: string, tabId: string | null, usage: UsageStats) => void;
-  /** Update context window percentage (batched, last wins) */
+  /** Update context window percentage (batched, high water mark - never decreases) */
   updateContextUsage: (sessionId: string, percentage: number) => void;
+  /** Reset context window percentage to a specific value (bypasses high water mark) */
+  resetContextUsage: (sessionId: string, percentage: number) => void;
   /** Mark user message as delivered (batched) */
   markDelivered: (sessionId: string, tabId: string) => void;
   /** Update bytes received in current cycle (batched, accumulated) */
@@ -350,9 +354,13 @@ export function useBatchedSessionUpdates(
           }
         }
 
-        // Apply context usage
+        // Apply context usage (high water mark - never decrease during a session)
+        // Context usage should only go down through explicit reset (e.g., after compaction)
         if (acc.contextUsage !== undefined) {
-          updatedSession = { ...updatedSession, contextUsage: acc.contextUsage };
+          const newContextUsage = acc.forceContextReset
+            ? acc.contextUsage  // Force reset bypasses high water mark
+            : Math.max(updatedSession.contextUsage || 0, acc.contextUsage);
+          updatedSession = { ...updatedSession, contextUsage: newContextUsage };
         }
 
         // Apply delivered markers
@@ -521,6 +529,14 @@ export function useBatchedSessionUpdates(
   const updateContextUsage = useCallback((sessionId: string, percentage: number) => {
     const acc = getAccumulator(sessionId);
     acc.contextUsage = percentage;
+    // Don't set forceContextReset - this uses high water mark behavior
+    hasPendingRef.current = true;
+  }, [getAccumulator]);
+
+  const resetContextUsage = useCallback((sessionId: string, percentage: number) => {
+    const acc = getAccumulator(sessionId);
+    acc.contextUsage = percentage;
+    acc.forceContextReset = true; // Bypass high water mark
     hasPendingRef.current = true;
   }, [getAccumulator]);
 
@@ -565,6 +581,7 @@ export function useBatchedSessionUpdates(
     setTabStatus,
     updateUsage,
     updateContextUsage,
+    resetContextUsage,
     markDelivered,
     updateCycleBytes,
     updateCycleTokens,
@@ -579,6 +596,7 @@ export function useBatchedSessionUpdates(
     setTabStatus,
     updateUsage,
     updateContextUsage,
+    resetContextUsage,
     markDelivered,
     updateCycleBytes,
     updateCycleTokens,

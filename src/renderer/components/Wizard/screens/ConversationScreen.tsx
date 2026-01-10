@@ -31,7 +31,7 @@ import {
   createAssistantMessage,
 } from '../services/conversationManager';
 import type { WizardError } from '../services/wizardErrorDetection';
-import { AUTO_RUN_FOLDER_NAME } from '../services/phaseGenerator';
+import { AUTO_RUN_FOLDER_NAME, wizardDebugLogger } from '../services/phaseGenerator';
 import { getNextFillerPhrase } from '../services/fillerPhrases';
 import { ScreenReaderAnnouncement } from '../ScreenReaderAnnouncement';
 
@@ -1188,6 +1188,13 @@ export function ConversationScreen({ theme, showThinking, setShowThinking }: Con
   }, [setConversationError]);
 
   /**
+   * Handle debug log download
+   */
+  const handleDownloadDebugLogs = useCallback(() => {
+    wizardDebugLogger.downloadLogs();
+  }, []);
+
+  /**
    * Handle request for new filler phrase (called every 5 seconds while waiting)
    */
   const handleRequestNewPhrase = useCallback(() => {
@@ -1401,6 +1408,14 @@ export function ConversationScreen({ theme, showThinking, setShowThinking }: Con
                 </button>
               )}
             </div>
+            {/* Debug logs download link */}
+            <button
+              onClick={handleDownloadDebugLogs}
+              className="mt-3 text-xs underline hover:opacity-80 transition-opacity cursor-pointer"
+              style={{ color: theme.colors.textDim }}
+            >
+              (Debug Logs)
+            </button>
           </div>
         )}
 

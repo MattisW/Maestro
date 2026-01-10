@@ -106,26 +106,80 @@ Continue with implementation.`);
     });
 
     describe('token count fallback check', () => {
-      it('should allow summarization when logs have >= 10k tokens', () => {
-        // 10,000 tokens * 4 chars/token = 40,000 chars
-        const logsWithManyTokens = createLogsWithTokenCount(10000);
+      it('should allow summarization when logs have >= 2k tokens', () => {
+        // 2,000 tokens * 4 chars/token = 8,000 chars
+        const logsWithManyTokens = createLogsWithTokenCount(2000);
         expect(service.canSummarize(0, logsWithManyTokens)).toBe(true);
       });
 
-      it('should allow summarization when logs have > 10k tokens', () => {
-        const logsWithManyTokens = createLogsWithTokenCount(15000);
+      it('should allow summarization when logs have > 2k tokens', () => {
+        const logsWithManyTokens = createLogsWithTokenCount(5000);
         expect(service.canSummarize(0, logsWithManyTokens)).toBe(true);
       });
 
-      it('should deny summarization when logs have < 10k tokens and usage < 25%', () => {
-        const logsWithFewTokens = createLogsWithTokenCount(5000);
+      it('should deny summarization when logs have < 2k tokens, usage < 25%, and < 8 entries', () => {
+        const logsWithFewTokens = createLogsWithTokenCount(500);
         expect(service.canSummarize(0, logsWithFewTokens)).toBe(false);
       });
 
       it('should prioritize context usage check over token count', () => {
         // Even with few tokens, if usage is high enough, allow it
-        const logsWithFewTokens = createLogsWithTokenCount(1000);
+        const logsWithFewTokens = createLogsWithTokenCount(500);
         expect(service.canSummarize(30, logsWithFewTokens)).toBe(true);
+      });
+    });
+
+    describe('log entry count fallback check', () => {
+      it('should allow summarization when >= 8 meaningful log entries exist', () => {
+        // Create 8 meaningful log entries (user/AI messages)
+        const logs = [
+          createMockLog({ source: 'user', text: 'msg1' }),
+          createMockLog({ source: 'ai', text: 'msg2' }),
+          createMockLog({ source: 'user', text: 'msg3' }),
+          createMockLog({ source: 'ai', text: 'msg4' }),
+          createMockLog({ source: 'user', text: 'msg5' }),
+          createMockLog({ source: 'ai', text: 'msg6' }),
+          createMockLog({ source: 'user', text: 'msg7' }),
+          createMockLog({ source: 'ai', text: 'msg8' }),
+        ];
+        // Even with very low token count and 0% usage, 8 entries should allow compaction
+        expect(service.canSummarize(0, logs)).toBe(true);
+      });
+
+      it('should count stdout as meaningful (AI responses)', () => {
+        const logs = [
+          createMockLog({ source: 'user', text: 'msg1' }),
+          createMockLog({ source: 'stdout', text: 'msg2' }),
+          createMockLog({ source: 'user', text: 'msg3' }),
+          createMockLog({ source: 'stdout', text: 'msg4' }),
+          createMockLog({ source: 'user', text: 'msg5' }),
+          createMockLog({ source: 'stdout', text: 'msg6' }),
+          createMockLog({ source: 'user', text: 'msg7' }),
+          createMockLog({ source: 'stdout', text: 'msg8' }),
+        ];
+        expect(service.canSummarize(0, logs)).toBe(true);
+      });
+
+      it('should not count system/error/thinking logs as meaningful', () => {
+        const logs = [
+          createMockLog({ source: 'user', text: 'msg1' }),
+          createMockLog({ source: 'ai', text: 'msg2' }),
+          createMockLog({ source: 'system', text: 'sys1' }),
+          createMockLog({ source: 'system', text: 'sys2' }),
+          createMockLog({ source: 'error', text: 'err1' }),
+          createMockLog({ source: 'thinking', text: 'think1' }),
+          createMockLog({ source: 'user', text: 'msg3' }),
+        ];
+        // Only 4 meaningful entries (user x3, ai x1), less than 8
+        expect(service.canSummarize(0, logs)).toBe(false);
+      });
+
+      it('should deny when < 8 meaningful entries, < 2k tokens, and < 25% usage', () => {
+        const logs = [
+          createMockLog({ source: 'user', text: 'short' }),
+          createMockLog({ source: 'ai', text: 'reply' }),
+        ];
+        expect(service.canSummarize(0, logs)).toBe(false);
       });
     });
 

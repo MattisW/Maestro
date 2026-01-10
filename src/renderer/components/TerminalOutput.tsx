@@ -1126,11 +1126,19 @@ export const TerminalOutput = memo(forwardRef<HTMLDivElement, TerminalOutputProp
     });
   }, [theme]);
 
-  // In AI mode, use the active tab's logs
-  const activeTab = session.inputMode === 'ai' ? getActiveTab(session) : undefined;
-  const activeLogs: LogEntry[] = session.inputMode === 'ai'
-    ? (activeTab?.logs ?? [])
-    : session.shellLogs;
+  // PERF: Memoize active tab lookup to avoid O(n) .find() on every render
+  const activeTab = useMemo(
+    () => session.inputMode === 'ai' ? getActiveTab(session) : undefined,
+    [session.inputMode, session.aiTabs, session.activeTabId]
+  );
+
+  // PERF: Memoize activeLogs to provide stable reference for collapsedLogs dependency
+  const activeLogs = useMemo(
+    (): LogEntry[] => session.inputMode === 'ai'
+      ? (activeTab?.logs ?? [])
+      : session.shellLogs,
+    [session.inputMode, activeTab?.logs, session.shellLogs]
+  );
 
   // In AI mode, collapse consecutive non-user entries into single response blocks
   // This provides a cleaner view where each user message gets one response
@@ -1175,7 +1183,7 @@ export const TerminalOutput = memo(forwardRef<HTMLDivElement, TerminalOutputProp
     flushResponseGroup();
 
     return result;
-  }, [activeLogs, session.inputMode, markdownEditMode]);
+  }, [activeLogs, session.inputMode]);
 
   // PERF: Debounce search query to avoid filtering on every keystroke
   const debouncedSearchQuery = useDebouncedValue(outputSearchQuery, 150);
@@ -1227,7 +1235,8 @@ export const TerminalOutput = memo(forwardRef<HTMLDivElement, TerminalOutputProp
     }
   }, [activeTabId, filteredLogs.length, onScrollPositionChange, onAtBottomChange]);
 
-  const handleScroll = useThrottledCallback(handleScrollInner, 4);
+  // PERF: Throttle at 16ms (60fps) instead of 4ms to reduce state updates during scroll
+  const handleScroll = useThrottledCallback(handleScrollInner, 16);
 
   // Restore read state when switching tabs
   useEffect(() => {

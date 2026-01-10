@@ -332,10 +332,14 @@ export const MainPanel = React.memo(forwardRef<MainPanelHandle, MainPanelProps>(
 
   // Get the active tab for header display
   // The header should show the active tab's data (UUID, name, cost, context), not session-level data
-  // Directly find the active tab without memoization to ensure it updates on every render
-  const activeTab = activeSession?.aiTabs?.find(tab => tab.id === activeSession.activeTabId)
-    ?? activeSession?.aiTabs?.[0]
-    ?? null;
+  // PERF: Memoize the lookup to avoid O(n) search on every render - will still update when
+  // aiTabs array or activeTabId changes (which happens when tabs change, not on every keystroke)
+  const activeTab = useMemo(
+    () => activeSession?.aiTabs?.find(tab => tab.id === activeSession.activeTabId)
+      ?? activeSession?.aiTabs?.[0]
+      ?? null,
+    [activeSession?.aiTabs, activeSession?.activeTabId]
+  );
   const activeTabError = activeTab?.agentError;
 
   // Resolve the configured context window from session override or agent settings.
@@ -405,7 +409,9 @@ export const MainPanel = React.memo(forwardRef<MainPanelHandle, MainPanelProps>(
     return Math.min(Math.round((contextTokens / activeTabContextWindow) * 100), 100);
   }, [activeTab?.usageStats, activeTabContextWindow]);
 
-  // PERF: Track panel width for responsive widget hiding with throttled updates
+  // PERF: Track panel width for responsive widget hiding with threshold-based updates
+  // Only update state when width crosses a meaningful threshold (20px) to prevent
+  // unnecessary re-renders during window resize animations
   useEffect(() => {
     const header = headerRef.current;
     if (!header) return;
@@ -413,11 +419,14 @@ export const MainPanel = React.memo(forwardRef<MainPanelHandle, MainPanelProps>(
     // Get initial width immediately, but only if it's a reasonable value
     // (protects against measuring during layout/animation when width might be 0)
     const initialWidth = header.offsetWidth;
+    let lastSetWidth = 0;
     if (initialWidth > 100) {
       setPanelWidth(initialWidth);
+      lastSetWidth = initialWidth;
     }
 
-    // Throttle resize updates to avoid layout thrashing during animations
+    // Threshold for triggering state updates - prevents flicker during resize
+    const WIDTH_THRESHOLD = 20;
     let rafId: number | null = null;
     let pendingWidth: number | null = null;
 
@@ -428,12 +437,14 @@ export const MainPanel = React.memo(forwardRef<MainPanelHandle, MainPanelProps>(
           pendingWidth = entry.contentRect.width;
         }
       }
-      // Use requestAnimationFrame to batch updates
+      // Use requestAnimationFrame to batch updates, but only if change exceeds threshold
       if (rafId === null && pendingWidth !== null) {
         rafId = requestAnimationFrame(() => {
-          if (pendingWidth !== null) {
+          if (pendingWidth !== null && Math.abs(pendingWidth - lastSetWidth) >= WIDTH_THRESHOLD) {
             setPanelWidth(pendingWidth);
+            lastSetWidth = pendingWidth;
           }
+          pendingWidth = null;
           rafId = null;
         });
       }

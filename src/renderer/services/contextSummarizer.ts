@@ -58,9 +58,18 @@ const TARGET_COMPACTED_TOKENS = 40000;
 /**
  * Minimum estimated tokens to allow summarization when context usage is unknown.
  * This serves as a fallback when the agent doesn't report context usage percentage.
- * 10k tokens is roughly 40k characters, indicating a substantial conversation.
+ * 2k tokens is roughly 8k characters - a reasonable conversation threshold.
+ * Lowered from 10k to handle cases where the context gauge resets to 0 but
+ * there's still substantial content worth compacting.
  */
-const MIN_TOKENS_FOR_SUMMARIZATION = 10000;
+const MIN_TOKENS_FOR_SUMMARIZATION = 2000;
+
+/**
+ * Minimum number of meaningful log entries to allow summarization.
+ * This is a third fallback when both context usage % and token estimation are low.
+ * 8 entries typically means ~4 user/AI exchanges, which is worth compacting.
+ */
+const MIN_LOG_ENTRIES_FOR_SUMMARIZATION = 8;
 
 /**
  * Maximum recursion depth for consolidation passes.
@@ -352,12 +361,15 @@ Please provide a comprehensive but compacted summary of the above conversation, 
 
   /**
    * Check if a session has enough context to warrant summarization.
-   * Summarization is allowed when EITHER:
-   * 1. Context usage percentage is above the minimum threshold, OR
-   * 2. Estimated token count from logs exceeds the minimum token threshold
+   * Summarization is allowed when ANY of these conditions are met:
+   * 1. Context usage percentage is above the minimum threshold (25%), OR
+   * 2. Estimated token count from logs exceeds the minimum token threshold (2k), OR
+   * 3. Number of meaningful log entries exceeds the minimum (8 entries)
    *
-   * The second condition handles cases where the agent doesn't report context usage
-   * but the conversation is large enough to warrant compaction.
+   * Multiple fallbacks handle cases where:
+   * - The agent doesn't report context usage percentage
+   * - The context gauge resets to 0 when the context fills
+   * - The conversation has many short messages
    *
    * @param contextUsage - The current context usage percentage (0-100)
    * @param logs - Optional array of log entries to estimate tokens from
@@ -369,11 +381,20 @@ Please provide a comprehensive but compacted summary of the above conversation, 
       return true;
     }
 
-    // Fallback check: estimate tokens from logs if provided
+    // Fallback checks require logs
     if (logs && logs.length > 0) {
+      // Fallback 1: estimate tokens from logs
       const formattedContext = formatLogsForGrooming(logs);
       const estimatedTokens = estimateTextTokenCount(formattedContext);
       if (estimatedTokens >= MIN_TOKENS_FOR_SUMMARIZATION) {
+        return true;
+      }
+
+      // Fallback 2: count meaningful log entries (user and AI messages)
+      const meaningfulLogs = logs.filter(log =>
+        log.source === 'user' || log.source === 'ai' || log.source === 'stdout'
+      );
+      if (meaningfulLogs.length >= MIN_LOG_ENTRIES_FOR_SUMMARIZATION) {
         return true;
       }
     }

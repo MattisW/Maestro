@@ -375,10 +375,16 @@ describe('InputArea', () => {
       expect(toggle).toHaveTextContent('History');
     });
 
-    it('renders ThinkingStatusPill when sessions exist', () => {
+    it('renders ThinkingStatusPill when sessions are thinking', () => {
+      // ThinkingStatusPill only renders when there are thinking sessions (state: 'busy', busySource: 'ai')
+      const thinkingSession = createMockSession({
+        inputMode: 'ai',
+        state: 'busy',
+        busySource: 'ai',
+      });
       const props = createDefaultProps({
-        session: createMockSession({ inputMode: 'ai' }),
-        sessions: [createMockSession()],
+        session: thinkingSession,
+        sessions: [thinkingSession],
       });
       render(<InputArea {...props} />);
 

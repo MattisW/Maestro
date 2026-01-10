@@ -122,6 +122,7 @@ describe('InlineWizardContext', () => {
         agentSessionId: null,
         subfolderName: null,
         subfolderPath: null,
+        autoRunFolderPath: null,
       });
     });
   });
@@ -302,6 +303,7 @@ describe('InlineWizardContext', () => {
         agentSessionId: null,
         subfolderName: null,
         subfolderPath: null,
+        autoRunFolderPath: null,
       });
     });
   });

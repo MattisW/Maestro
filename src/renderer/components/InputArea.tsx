@@ -70,7 +70,7 @@ interface InputAreaProps {
   atMentionSuggestions?: Array<{ value: string; type: 'file' | 'folder'; displayText: string; fullPath: string; source?: 'project' | 'autorun' }>;
   selectedAtMentionIndex?: number;
   setSelectedAtMentionIndex?: (index: number) => void;
-  // ThinkingStatusPill props
+  // ThinkingStatusPill props - sessions is used to compute thinkingSessions
   sessions?: Session[];
   namedSessions?: Record<string, string>;
   onSessionClick?: (sessionId: string, tabId?: string) => void;
@@ -219,6 +219,12 @@ export const InputArea = React.memo(function InputArea(props: InputAreaProps) {
   // Filter slash commands based on input and current mode
   const isTerminalMode = session.inputMode === 'terminal';
 
+  // PERF: Precompute thinkingSessions to avoid O(n) filter in ThinkingStatusPill on every keystroke
+  const thinkingSessions = useMemo(
+    () => sessions.filter(s => s.state === 'busy' && s.busySource === 'ai'),
+    [sessions]
+  );
+
   // Get the appropriate command history based on current mode
   // Fall back to legacy commandHistory for sessions created before the split
   const legacyHistory: string[] = (session as any).commandHistory || [];
@@ -229,8 +235,9 @@ export const InputArea = React.memo(function InputArea(props: InputAreaProps) {
     : (aiHistory.length > 0 ? aiHistory : legacyHistory);
 
   // Use the slash commands passed from App.tsx (already includes custom + Claude commands)
-  // Memoize filtered slash commands to avoid filtering on every render
-  const inputValueLower = inputValue.toLowerCase();
+  // PERF: Memoize both the lowercase conversion and filtered results to avoid
+  // recalculating on every render - inputValue changes on every keystroke
+  const inputValueLower = useMemo(() => inputValue.toLowerCase(), [inputValue]);
   const filteredSlashCommands = useMemo(() => {
     return slashCommands.filter(cmd => {
       // Check if command is only available in terminal mode
@@ -347,10 +354,10 @@ export const InputArea = React.memo(function InputArea(props: InputAreaProps) {
 
   return (
     <div className="relative p-4 border-t" style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.bgSidebar }}>
-      {/* ThinkingStatusPill - only show in AI mode */}
-      {session.inputMode === 'ai' && sessions.length > 0 && (
+      {/* ThinkingStatusPill - only show in AI mode when there are thinking sessions or AutoRun */}
+      {session.inputMode === 'ai' && (thinkingSessions.length > 0 || autoRunState?.isRunning) && (
         <ThinkingStatusPill
-          sessions={sessions}
+          thinkingSessions={thinkingSessions}
           theme={theme}
           onSessionClick={onSessionClick}
           namedSessions={namedSessions}

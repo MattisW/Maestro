@@ -16,7 +16,9 @@ function getWriteModeTab(session: Session): AITab | undefined {
 }
 
 interface ThinkingStatusPillProps {
-  sessions: Session[];
+  /** Pre-filtered array of sessions that are currently thinking (state === 'busy' && busySource === 'ai').
+   * PERF: Caller should memoize this to avoid O(n) filter on every render. */
+  thinkingSessions: Session[];
   theme: Theme;
   onSessionClick?: (sessionId: string, tabId?: string) => void;
   namedSessions?: Record<string, string>; // Claude session ID -> custom name
@@ -277,7 +279,7 @@ AutoRunPill.displayName = 'AutoRunPill';
  *
  * When AutoRun is active for the active session, shows AutoRunPill instead.
  */
-function ThinkingStatusPillInner({ sessions, theme, onSessionClick, namedSessions, autoRunState, activeSessionId, onStopAutoRun, onInterrupt }: ThinkingStatusPillProps) {
+function ThinkingStatusPillInner({ thinkingSessions, theme, onSessionClick, namedSessions, autoRunState, activeSessionId, onStopAutoRun, onInterrupt }: ThinkingStatusPillProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   // If AutoRun is active for the current session, show the AutoRun pill instead
@@ -285,11 +287,7 @@ function ThinkingStatusPillInner({ sessions, theme, onSessionClick, namedSession
     return <AutoRunPill theme={theme} autoRunState={autoRunState} onStop={onStopAutoRun} />;
   }
 
-  // Filter to only busy sessions with AI source
-  const thinkingSessions = sessions.filter(
-    s => s.state === 'busy' && s.busySource === 'ai'
-  );
-
+  // thinkingSessions is pre-filtered by caller (PERF optimization)
   if (thinkingSessions.length === 0) {
     return null;
   }
@@ -498,6 +496,8 @@ function ThinkingStatusPillInner({ sessions, theme, onSessionClick, namedSession
 }
 
 // Memoized export
+// PERF: thinkingSessions is pre-filtered by caller, so comparator is O(n) on thinking sessions only,
+// not O(n) on ALL sessions. This avoids the expensive filter on every keystroke.
 export const ThinkingStatusPill = memo(ThinkingStatusPillInner, (prevProps, nextProps) => {
   // Check autoRunState changes first (highest priority)
   const prevAutoRun = prevProps.autoRunState;
@@ -521,9 +521,9 @@ export const ThinkingStatusPill = memo(ThinkingStatusPillInner, (prevProps, next
   // Check if activeSessionId changed - this affects which session shows as primary
   if (prevProps.activeSessionId !== nextProps.activeSessionId) return false;
 
-  // Check if thinking sessions have changed
-  const prevThinking = prevProps.sessions.filter(s => s.state === 'busy' && s.busySource === 'ai');
-  const nextThinking = nextProps.sessions.filter(s => s.state === 'busy' && s.busySource === 'ai');
+  // thinkingSessions is pre-filtered by caller - just compare directly
+  const prevThinking = prevProps.thinkingSessions;
+  const nextThinking = nextProps.thinkingSessions;
 
   if (prevThinking.length !== nextThinking.length) return false;
 

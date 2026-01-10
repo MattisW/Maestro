@@ -12,6 +12,17 @@ If you need to create the working folder, do so.
 
 ---
 
+## CRITICAL: Response Format Requirement
+
+**Your response MUST begin with a specific, actionable synopsis of what you accomplished.**
+
+- GOOD examples: "Added pagination to the user list component", "Fixed authentication timeout bug in login.ts", "Refactored database queries to use prepared statements"
+- BAD examples: "The task is complete", "Task completed successfully", "Done", "Finished the task"
+
+The synopsis is displayed in the History panel and must describe the actual work done, not just that work was done.
+
+---
+
 ## Structured Output Artifacts
 
 When creating documentation, research notes, reports, or any knowledge artifacts (not source code), use **structured Markdown** by default:
@@ -72,7 +83,7 @@ docs/
 
 5. Completion + Reporting
     - Mark the task as completed by changing "- [ ]" to "- [x]".
-    - CRITICAL: Your FIRST sentence MUST be a specific synopsis of what you accomplished (e.g., "Added pagination to the user list component" or "Refactored auth middleware to use JWT tokens"). Never start with generic phrases like "Task completed successfully" - always lead with the specific work done.
+    - Begin your response with the specific synopsis (see "Response Format Requirement" above).
     - Follow with any relevant details about:
       - Implementation approach or key decisions made
       - Why the task was intentionally skipped (if applicable)

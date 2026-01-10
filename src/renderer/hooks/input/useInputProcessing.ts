@@ -684,6 +684,11 @@ export function useInputProcessing(deps: UseInputProcessingDeps): UseInputProces
           let effectivePrompt =
             hasImages && hasNoText ? DEFAULT_IMAGE_ONLY_PROMPT : capturedInputValue;
 
+          // For read-only mode, append instruction to return plan in response instead of writing files
+          if (isReadOnly) {
+            effectivePrompt += '\n\n---\n\nIMPORTANT: You are in read-only/plan mode. Do NOT write a plan file. Instead, return your plan directly to the user in beautiful markdown formatting.';
+          }
+
           // Check for pending merged context that needs to be injected
           // This happens when a user merged context from another tab/session
           const pendingMergedContext = freshActiveTab?.pendingMergedContext;

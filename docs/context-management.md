@@ -136,11 +136,12 @@ When your conversation approaches context limits, you can compress it while pres
 Compaction uses a multi-pass approach to handle conversations of any size:
 
 **Eligibility Check:**
-Compaction requires either:
+Compaction requires any one of these conditions:
 - Context usage ≥ 25% (as reported by the agent), OR
-- Estimated conversation size ≥ 10,000 tokens (~40k characters)
+- Estimated conversation size ≥ 2,000 tokens (~8k characters), OR
+- At least 8 meaningful messages (user and AI exchanges)
 
-The second condition handles cases where the agent doesn't report context usage but the conversation is clearly large enough to benefit from compaction.
+Multiple fallbacks ensure compaction is available even when the context gauge resets to 0 (which can happen when context fills up) — as long as there's meaningful conversation history, you can compact it.
 
 **Single-Pass Compaction (< 50k tokens):**
 For smaller conversations, the entire context is sent to a fresh AI agent in batch mode, which returns a compressed summary.

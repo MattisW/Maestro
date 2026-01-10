@@ -99,46 +99,21 @@ describe('ThinkingStatusPill', () => {
   });
 
   describe('render conditions', () => {
-    it('renders null when no sessions are provided', () => {
+    it('renders null when no thinking sessions are provided', () => {
       const { container } = render(
         <ThinkingStatusPill
-          sessions={[]}
+          thinkingSessions={[]}
           theme={mockTheme}
         />
       );
       expect(container.firstChild).toBeNull();
     });
 
-    it('renders null when no sessions are thinking', () => {
-      const idleSession = createMockSession({ state: 'idle' });
-      const { container } = render(
-        <ThinkingStatusPill
-          sessions={[idleSession]}
-          theme={mockTheme}
-        />
-      );
-      expect(container.firstChild).toBeNull();
-    });
-
-    it('renders null when session is busy but not from AI source', () => {
-      const busyNonAI = createMockSession({
-        state: 'busy',
-        busySource: 'terminal', // Not AI
-      });
-      const { container } = render(
-        <ThinkingStatusPill
-          sessions={[busyNonAI]}
-          theme={mockTheme}
-        />
-      );
-      expect(container.firstChild).toBeNull();
-    });
-
-    it('renders thinking pill when session is busy with AI source', () => {
+    it('renders thinking pill when thinking sessions are provided', () => {
       const thinkingSession = createThinkingSession();
       render(
         <ThinkingStatusPill
-          sessions={[thinkingSession]}
+          thinkingSessions={[thinkingSession]}
           theme={mockTheme}
         />
       );
@@ -153,7 +128,7 @@ describe('ThinkingStatusPill', () => {
       const session = createThinkingSession({ currentCycleTokens: 500 });
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
         />
       );
@@ -164,7 +139,7 @@ describe('ThinkingStatusPill', () => {
       const session = createThinkingSession({ currentCycleTokens: 1000 });
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
         />
       );
@@ -175,7 +150,7 @@ describe('ThinkingStatusPill', () => {
       const session = createThinkingSession({ currentCycleTokens: 2500 });
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
         />
       );
@@ -186,7 +161,7 @@ describe('ThinkingStatusPill', () => {
       const session = createThinkingSession({ currentCycleTokens: 15700 });
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
         />
       );
@@ -197,7 +172,7 @@ describe('ThinkingStatusPill', () => {
       const session = createThinkingSession({ currentCycleTokens: 0 });
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
         />
       );
@@ -211,7 +186,7 @@ describe('ThinkingStatusPill', () => {
       const session = createThinkingSession({ thinkingStartTime: startTime });
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
         />
       );
@@ -224,7 +199,7 @@ describe('ThinkingStatusPill', () => {
       const session = createThinkingSession({ thinkingStartTime: startTime });
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
         />
       );
@@ -236,7 +211,7 @@ describe('ThinkingStatusPill', () => {
       const session = createThinkingSession({ thinkingStartTime: startTime });
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
         />
       );
@@ -248,7 +223,7 @@ describe('ThinkingStatusPill', () => {
       const session = createThinkingSession({ thinkingStartTime: startTime });
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
         />
       );
@@ -270,7 +245,7 @@ describe('ThinkingStatusPill', () => {
 
       const { unmount } = render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
         />
       );
@@ -290,7 +265,7 @@ describe('ThinkingStatusPill', () => {
       });
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
           namedSessions={{ 'abc12345-def6': 'Custom Name' }}
         />
@@ -311,7 +286,7 @@ describe('ThinkingStatusPill', () => {
       });
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
         />
       );
@@ -332,7 +307,7 @@ describe('ThinkingStatusPill', () => {
       });
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
         />
       );
@@ -350,7 +325,7 @@ describe('ThinkingStatusPill', () => {
       });
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
         />
       );
@@ -366,7 +341,7 @@ describe('ThinkingStatusPill', () => {
       const session = createThinkingSession({ name: 'Primary Session' });
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
         />
       );
@@ -379,7 +354,7 @@ describe('ThinkingStatusPill', () => {
       const session = createThinkingSession();
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
         />
       );
@@ -392,7 +367,7 @@ describe('ThinkingStatusPill', () => {
       const session = createThinkingSession({ currentCycleTokens: 100 });
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
         />
       );
@@ -403,7 +378,7 @@ describe('ThinkingStatusPill', () => {
       const session = createThinkingSession();
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
         />
       );
@@ -417,7 +392,7 @@ describe('ThinkingStatusPill', () => {
       });
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
         />
       );
@@ -439,7 +414,7 @@ describe('ThinkingStatusPill', () => {
       });
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
           onSessionClick={onSessionClick}
         />
@@ -470,7 +445,7 @@ describe('ThinkingStatusPill', () => {
       });
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
           onSessionClick={onSessionClick}
         />
@@ -489,7 +464,7 @@ describe('ThinkingStatusPill', () => {
       const session = createThinkingSession();
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
           onInterrupt={() => {}}
         />
@@ -501,7 +476,7 @@ describe('ThinkingStatusPill', () => {
       const session = createThinkingSession();
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
         />
       );
@@ -513,7 +488,7 @@ describe('ThinkingStatusPill', () => {
       const session = createThinkingSession();
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
           onInterrupt={onInterrupt}
         />
@@ -527,7 +502,7 @@ describe('ThinkingStatusPill', () => {
       const session = createThinkingSession();
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
           onInterrupt={() => {}}
         />
@@ -545,7 +520,7 @@ describe('ThinkingStatusPill', () => {
       ];
       render(
         <ThinkingStatusPill
-          sessions={sessions}
+          thinkingSessions={sessions}
           theme={mockTheme}
         />
       );
@@ -560,7 +535,7 @@ describe('ThinkingStatusPill', () => {
       ];
       render(
         <ThinkingStatusPill
-          sessions={sessions}
+          thinkingSessions={sessions}
           theme={mockTheme}
         />
       );
@@ -574,7 +549,7 @@ describe('ThinkingStatusPill', () => {
       ];
       render(
         <ThinkingStatusPill
-          sessions={sessions}
+          thinkingSessions={sessions}
           theme={mockTheme}
         />
       );
@@ -593,7 +568,7 @@ describe('ThinkingStatusPill', () => {
       ];
       render(
         <ThinkingStatusPill
-          sessions={sessions}
+          thinkingSessions={sessions}
           theme={mockTheme}
         />
       );
@@ -616,7 +591,7 @@ describe('ThinkingStatusPill', () => {
       ];
       render(
         <ThinkingStatusPill
-          sessions={sessions}
+          thinkingSessions={sessions}
           theme={mockTheme}
         />
       );
@@ -642,7 +617,7 @@ describe('ThinkingStatusPill', () => {
       ];
       render(
         <ThinkingStatusPill
-          sessions={sessions}
+          thinkingSessions={sessions}
           theme={mockTheme}
           onSessionClick={onSessionClick}
         />
@@ -667,7 +642,7 @@ describe('ThinkingStatusPill', () => {
       ];
       render(
         <ThinkingStatusPill
-          sessions={sessions}
+          thinkingSessions={sessions}
           theme={mockTheme}
         />
       );
@@ -690,7 +665,7 @@ describe('ThinkingStatusPill', () => {
       ];
       render(
         <ThinkingStatusPill
-          sessions={sessions}
+          thinkingSessions={sessions}
           theme={mockTheme}
         />
       );
@@ -718,7 +693,7 @@ describe('ThinkingStatusPill', () => {
       };
       render(
         <ThinkingStatusPill
-          sessions={sessions}
+          thinkingSessions={sessions}
           theme={mockTheme}
           autoRunState={autoRunState}
         />
@@ -740,7 +715,7 @@ describe('ThinkingStatusPill', () => {
       };
       render(
         <ThinkingStatusPill
-          sessions={[]}
+          thinkingSessions={[]}
           theme={mockTheme}
           autoRunState={autoRunState}
         />
@@ -763,7 +738,7 @@ describe('ThinkingStatusPill', () => {
       };
       render(
         <ThinkingStatusPill
-          sessions={[]}
+          thinkingSessions={[]}
           theme={mockTheme}
           autoRunState={autoRunState}
         />
@@ -786,7 +761,7 @@ describe('ThinkingStatusPill', () => {
       };
       render(
         <ThinkingStatusPill
-          sessions={[]}
+          thinkingSessions={[]}
           theme={mockTheme}
           autoRunState={autoRunState}
           onStopAutoRun={() => {}}
@@ -810,7 +785,7 @@ describe('ThinkingStatusPill', () => {
       };
       render(
         <ThinkingStatusPill
-          sessions={[]}
+          thinkingSessions={[]}
           theme={mockTheme}
           autoRunState={autoRunState}
           onStopAutoRun={onStopAutoRun}
@@ -834,7 +809,7 @@ describe('ThinkingStatusPill', () => {
       };
       render(
         <ThinkingStatusPill
-          sessions={[]}
+          thinkingSessions={[]}
           theme={mockTheme}
           autoRunState={autoRunState}
           onStopAutoRun={() => {}}
@@ -860,7 +835,7 @@ describe('ThinkingStatusPill', () => {
       };
       render(
         <ThinkingStatusPill
-          sessions={[]}
+          thinkingSessions={[]}
           theme={mockTheme}
           autoRunState={autoRunState}
           onStopAutoRun={() => {}}
@@ -884,7 +859,7 @@ describe('ThinkingStatusPill', () => {
       };
       render(
         <ThinkingStatusPill
-          sessions={[]}
+          thinkingSessions={[]}
           theme={mockTheme}
           autoRunState={autoRunState}
         />
@@ -908,7 +883,7 @@ describe('ThinkingStatusPill', () => {
       };
       render(
         <ThinkingStatusPill
-          sessions={[thinkingSession]}
+          thinkingSessions={[thinkingSession]}
           theme={mockTheme}
           autoRunState={autoRunState}
         />
@@ -934,7 +909,7 @@ describe('ThinkingStatusPill', () => {
       });
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
         />
       );
@@ -954,7 +929,7 @@ describe('ThinkingStatusPill', () => {
       });
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
         />
       );
@@ -968,7 +943,7 @@ describe('ThinkingStatusPill', () => {
       const session = createThinkingSession();
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
         />
       );
@@ -990,7 +965,7 @@ describe('ThinkingStatusPill', () => {
       };
       render(
         <ThinkingStatusPill
-          sessions={[]}
+          thinkingSessions={[]}
           theme={mockTheme}
           autoRunState={autoRunState}
         />
@@ -1003,7 +978,7 @@ describe('ThinkingStatusPill', () => {
       const session = createThinkingSession();
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
           onInterrupt={() => {}}
         />
@@ -1016,7 +991,7 @@ describe('ThinkingStatusPill', () => {
       const session = createThinkingSession({ name: 'Accent Test', agentSessionId: 'test-id-1234' });
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
         />
       );
@@ -1033,7 +1008,7 @@ describe('ThinkingStatusPill', () => {
     it('re-renders when autoRunState.isRunning changes', () => {
       const { rerender } = render(
         <ThinkingStatusPill
-          sessions={[]}
+          thinkingSessions={[]}
           theme={mockTheme}
           autoRunState={{ isRunning: false } as BatchRunState}
         />
@@ -1044,7 +1019,7 @@ describe('ThinkingStatusPill', () => {
 
       rerender(
         <ThinkingStatusPill
-          sessions={[]}
+          thinkingSessions={[]}
           theme={mockTheme}
           autoRunState={{
             isRunning: true,
@@ -1065,7 +1040,7 @@ describe('ThinkingStatusPill', () => {
 
       const { rerender } = render(
         <ThinkingStatusPill
-          sessions={[session1]}
+          thinkingSessions={[session1]}
           theme={mockTheme}
         />
       );
@@ -1074,7 +1049,7 @@ describe('ThinkingStatusPill', () => {
 
       rerender(
         <ThinkingStatusPill
-          sessions={[session1, session2]}
+          thinkingSessions={[session1, session2]}
           theme={mockTheme}
         />
       );
@@ -1087,7 +1062,7 @@ describe('ThinkingStatusPill', () => {
 
       const { rerender } = render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
         />
       );
@@ -1096,7 +1071,7 @@ describe('ThinkingStatusPill', () => {
 
       rerender(
         <ThinkingStatusPill
-          sessions={[{ ...session, currentCycleTokens: 1500 }]}
+          thinkingSessions={[{ ...session, currentCycleTokens: 1500 }]}
           theme={mockTheme}
         />
       );
@@ -1113,14 +1088,14 @@ describe('ThinkingStatusPill', () => {
 
       const { rerender } = render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
         />
       );
 
       rerender(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={newTheme}
         />
       );
@@ -1140,7 +1115,7 @@ describe('ThinkingStatusPill', () => {
 
       const { rerender } = render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
           namedSessions={{}}
         />
@@ -1152,7 +1127,7 @@ describe('ThinkingStatusPill', () => {
 
       rerender(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
           namedSessions={{ abc12345: 'Custom Name' }}
         />
@@ -1172,7 +1147,7 @@ describe('ThinkingStatusPill', () => {
       });
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
         />
       );
@@ -1188,7 +1163,7 @@ describe('ThinkingStatusPill', () => {
       });
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
         />
       );
@@ -1204,7 +1179,7 @@ describe('ThinkingStatusPill', () => {
       });
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
         />
       );
@@ -1217,7 +1192,7 @@ describe('ThinkingStatusPill', () => {
       const session = createThinkingSession({ name: '🎼 Maestro Session' });
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
         />
       );
@@ -1231,7 +1206,7 @@ describe('ThinkingStatusPill', () => {
       });
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
         />
       );
@@ -1243,7 +1218,7 @@ describe('ThinkingStatusPill', () => {
       const session = createThinkingSession({ currentCycleTokens: 999999 });
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
         />
       );
@@ -1254,7 +1229,7 @@ describe('ThinkingStatusPill', () => {
       const session = createThinkingSession({ name: 'Empty Tabs Session', aiTabs: [] });
       render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
         />
       );
@@ -1263,16 +1238,15 @@ describe('ThinkingStatusPill', () => {
       expect(elements.length).toBeGreaterThanOrEqual(1);
     });
 
-    it('handles mixed busy and idle sessions', () => {
-      const sessions = [
-        createMockSession({ id: 'idle-1', name: 'Idle 1', state: 'idle' }),
+    it('handles multiple thinking sessions', () => {
+      // thinkingSessions should only contain pre-filtered thinking sessions
+      const thinkingSessions = [
         createThinkingSession({ id: 'busy-1', name: 'Busy 1' }),
-        createMockSession({ id: 'idle-2', name: 'Idle 2', state: 'idle' }),
         createThinkingSession({ id: 'busy-2', name: 'Busy 2' }),
       ];
       render(
         <ThinkingStatusPill
-          sessions={sessions}
+          thinkingSessions={thinkingSessions}
           theme={mockTheme}
         />
       );
@@ -1287,7 +1261,7 @@ describe('ThinkingStatusPill', () => {
       const session = createThinkingSession();
       const { rerender } = render(
         <ThinkingStatusPill
-          sessions={[session]}
+          thinkingSessions={[session]}
           theme={mockTheme}
         />
       );
@@ -1296,7 +1270,7 @@ describe('ThinkingStatusPill', () => {
       for (let i = 0; i < 10; i++) {
         rerender(
           <ThinkingStatusPill
-            sessions={[{ ...session, currentCycleTokens: i * 100 }]}
+            thinkingSessions={[{ ...session, currentCycleTokens: i * 100 }]}
             theme={mockTheme}
           />
         );
@@ -1319,7 +1293,7 @@ describe('ThinkingStatusPill', () => {
       const thinkingSession = createThinkingSession();
       const { rerender, container } = render(
         <ThinkingStatusPill
-          sessions={[thinkingSession]}
+          thinkingSessions={[thinkingSession]}
           theme={mockTheme}
         />
       );
@@ -1339,7 +1313,7 @@ describe('ThinkingStatusPill', () => {
 
       rerender(
         <ThinkingStatusPill
-          sessions={[thinkingSession]}
+          thinkingSessions={[thinkingSession]}
           theme={newTheme}
         />
       );
@@ -1351,17 +1325,17 @@ describe('ThinkingStatusPill', () => {
 
     it('should re-render when autoRunState changes', () => {
       // This test ensures the memo comparator handles autoRunState correctly
-      const idleSession = createMockSession();
+      // thinkingSessions should be empty when no sessions are thinking
 
-      // Start without AutoRun
+      // Start without AutoRun and no thinking sessions
       const { rerender } = render(
         <ThinkingStatusPill
-          sessions={[idleSession]}
+          thinkingSessions={[]}
           theme={mockTheme}
         />
       );
 
-      // Should not show anything when no busy sessions and no autoRun
+      // Should not show anything when no thinking sessions and no autoRun
       expect(screen.queryByText(/thinking/i)).not.toBeInTheDocument();
 
       // Add autoRunState
@@ -1376,7 +1350,7 @@ describe('ThinkingStatusPill', () => {
 
       rerender(
         <ThinkingStatusPill
-          sessions={[idleSession]}
+          thinkingSessions={[]}
           theme={mockTheme}
           autoRunState={autoRunState}
         />
@@ -1394,7 +1368,7 @@ describe('ThinkingStatusPill', () => {
 
       const { rerender } = render(
         <ThinkingStatusPill
-          sessions={[thinkingSession]}
+          thinkingSessions={[thinkingSession]}
           theme={mockTheme}
           namedSessions={{}}
         />
@@ -1406,7 +1380,7 @@ describe('ThinkingStatusPill', () => {
       // Update namedSessions with a custom name for this Claude session
       rerender(
         <ThinkingStatusPill
-          sessions={[thinkingSession]}
+          thinkingSessions={[thinkingSession]}
           theme={mockTheme}
           namedSessions={{ 'claude-abc123': 'Custom Named Session' }}
         />
