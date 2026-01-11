@@ -282,14 +282,16 @@ export const InputArea = React.memo(function InputArea(props: InputAreaProps) {
       .slice(0, 10);
   }, [currentCommandHistory, commandHistoryFilterLower]);
 
-  // Auto-resize textarea when inputValue changes externally (e.g., tab switch)
+  // Auto-resize textarea when switching tabs
   // This ensures the textarea height matches the content when switching between tabs
+  // PERF: Only depend on activeTabId, NOT inputValue - inputValue changes on every keystroke
+  // and would cause expensive layout reflow (scrollHeight access) on each character typed
   useEffect(() => {
     if (inputRef.current) {
       inputRef.current.style.height = 'auto';
       inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 112)}px`;
     }
-  }, [inputValue, inputRef]);
+  }, [session.activeTabId, inputRef]);
 
   // Show summarization progress overlay when active for this tab
   if (isSummarizing && session.inputMode === 'ai' && onCancelSummarize) {

@@ -259,13 +259,18 @@ export function useBatchProcessor({
    * receive state updates without waiting for React's render cycle.
    */
   const broadcastAutoRunState = useCallback((sessionId: string, state: BatchRunState | null) => {
-    if (state && (state.isRunning || state.completedTasks > 0)) {
+    if (state && (state.isRunning || state.completedTasks > 0 || state.completedTasksAcrossAllDocs > 0)) {
       window.maestro.web.broadcastAutoRunState(sessionId, {
         isRunning: state.isRunning,
         totalTasks: state.totalTasks,
         completedTasks: state.completedTasks,
         currentTaskIndex: state.currentTaskIndex,
         isStopping: state.isStopping,
+        // Multi-document progress fields
+        totalDocuments: state.documents?.length ?? 0,
+        currentDocumentIndex: state.currentDocumentIndex,
+        totalTasksAcrossAllDocs: state.totalTasksAcrossAllDocs,
+        completedTasksAcrossAllDocs: state.completedTasksAcrossAllDocs,
       });
     } else {
       // When not running and no completed tasks, broadcast null to clear the state

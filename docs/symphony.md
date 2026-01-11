@@ -77,6 +77,11 @@ Click **Create Agent** and Maestro will:
 ### Active Tab
 
 View your in-progress Symphony sessions:
+
+![Active Contributions](./screenshots/symphony-active.png)
+
+Each active contribution shows:
+
 - Status indicators (Running, Paused, Creating PR, etc.)
 - Progress bar showing documents completed vs. total
 - Current document being processed

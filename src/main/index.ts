@@ -1019,6 +1019,11 @@ function setupIpcHandlers() {
     completedTasks: number;
     currentTaskIndex: number;
     isStopping?: boolean;
+    // Multi-document progress fields
+    totalDocuments?: number;
+    currentDocumentIndex?: number;
+    totalTasksAcrossAllDocs?: number;
+    completedTasksAcrossAllDocs?: number;
   } | null) => {
     if (webServer) {
       // Always call broadcastAutoRunState - it stores the state for new clients

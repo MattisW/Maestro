@@ -343,6 +343,11 @@ contextBridge.exposeInMainWorld('maestro', {
       completedTasks: number;
       currentTaskIndex: number;
       isStopping?: boolean;
+      // Multi-document progress fields
+      totalDocuments?: number;
+      currentDocumentIndex?: number;
+      totalTasksAcrossAllDocs?: number;
+      completedTasksAcrossAllDocs?: number;
     } | null) =>
       ipcRenderer.invoke('web:broadcastAutoRunState', sessionId, state),
     // Broadcast tab changes to web clients (for tab sync)

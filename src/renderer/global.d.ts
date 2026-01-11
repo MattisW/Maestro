@@ -252,6 +252,11 @@ interface MaestroAPI {
       completedTasks: number;
       currentTaskIndex: number;
       isStopping?: boolean;
+      // Multi-document progress fields
+      totalDocuments?: number;
+      currentDocumentIndex?: number;
+      totalTasksAcrossAllDocs?: number;
+      completedTasksAcrossAllDocs?: number;
     } | null) => Promise<void>;
     broadcastTabsChange: (sessionId: string, aiTabs: Array<{
       id: string;

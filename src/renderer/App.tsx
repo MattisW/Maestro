@@ -38,6 +38,7 @@ import {
   // Settings
   useSettings,
   useDebouncedPersistence,
+  useDebouncedValue,
   // Session management
   useActivityTracker,
   useHandsOnTimeTracker,
@@ -2865,9 +2866,7 @@ function MaestroConsoleInner() {
   // Keyboard navigation state
   const [selectedSidebarIndex, setSelectedSidebarIndex] = useState(0);
   // Note: activeSession is now provided by SessionContext
-  const activeTabForError = useMemo(() => (
-    activeSession ? getActiveTab(activeSession) : null
-  ), [activeSession]);
+  // Note: activeTab is memoized later at line ~3795 - use that for all tab operations
 
   // Discover slash commands when a session becomes active and doesn't have them yet
   // Fetches custom Claude commands from .claude/commands/ directories (fast, file system read)
@@ -3790,7 +3789,12 @@ You are taking over this conversation. Based on the context above, provide a bri
   // For AI mode: use active tab's inputValue (stored per-tab)
   // For terminal mode: use local state (shared across tabs)
   const isAiMode = activeSession?.inputMode === 'ai';
-  const activeTab = activeSession ? getActiveTab(activeSession) : undefined;
+  // PERF: Memoize activeTab lookup to avoid O(n) .find() on every keystroke
+  // This is THE canonical activeTab for the component - use this instead of calling getActiveTab()
+  const activeTab = useMemo(
+    () => activeSession ? getActiveTab(activeSession) : undefined,
+    [activeSession?.aiTabs, activeSession?.activeTabId]
+  );
   const isResumingSession = !!activeTab?.agentSessionId;
   const canAttachImages = useMemo(() => {
     if (!activeSession || activeSession.inputMode !== 'ai') return false;
@@ -3895,12 +3899,11 @@ You are taking over this conversation. Based on the context above, provide a bri
 
   // Images are stored per-tab and only used in AI mode
   // Get staged images from the active tab
+  // PERF: Use memoized activeTab instead of calling getActiveTab again
   const stagedImages = useMemo(() => {
     if (!activeSession || activeSession.inputMode !== 'ai') return [];
-    const activeTab = getActiveTab(activeSession);
     return activeTab?.stagedImages || [];
-     
-  }, [activeSession?.aiTabs, activeSession?.activeTabId, activeSession?.inputMode]);
+  }, [activeTab?.stagedImages, activeSession?.inputMode]);
 
   // Set staged images on the active tab
   const setStagedImages = useCallback((imagesOrUpdater: string[] | ((prev: string[]) => string[])) => {
@@ -3975,22 +3978,25 @@ You are taking over this conversation. Based on the context above, provide a bri
   const activeSessionInputMode = activeSession?.inputMode;
 
   // Tab completion suggestions (must be after inputValue is defined)
-  // PERF: Depend on specific session properties, not the entire activeSession object
+  // PERF: Only debounce when menu is open to avoid unnecessary state updates during normal typing
+  const debouncedInputForTabCompletion = useDebouncedValue(tabCompletionOpen ? inputValue : '', 50);
   const tabCompletionSuggestions = useMemo(() => {
     if (!tabCompletionOpen || !activeSessionId || activeSessionInputMode !== 'terminal') {
       return [];
     }
-    return getTabCompletionSuggestions(inputValue, tabCompletionFilter);
-  }, [tabCompletionOpen, activeSessionId, activeSessionInputMode, inputValue, tabCompletionFilter, getTabCompletionSuggestions]);
+    return getTabCompletionSuggestions(debouncedInputForTabCompletion, tabCompletionFilter);
+  }, [tabCompletionOpen, activeSessionId, activeSessionInputMode, debouncedInputForTabCompletion, tabCompletionFilter, getTabCompletionSuggestions]);
 
   // @ mention suggestions for AI mode
-  // PERF: Depend on specific session properties, not the entire activeSession object
+  // PERF: Only debounce when menu is open to avoid unnecessary state updates during normal typing
+  // When menu is closed, pass empty string to skip debounce hook overhead entirely
+  const debouncedAtMentionFilter = useDebouncedValue(atMentionOpen ? atMentionFilter : '', 100);
   const atMentionSuggestions = useMemo(() => {
     if (!atMentionOpen || !activeSessionId || activeSessionInputMode !== 'ai') {
       return [];
     }
-    return getAtMentionSuggestions(atMentionFilter);
-  }, [atMentionOpen, activeSessionId, activeSessionInputMode, atMentionFilter, getAtMentionSuggestions]);
+    return getAtMentionSuggestions(debouncedAtMentionFilter);
+  }, [atMentionOpen, activeSessionId, activeSessionInputMode, debouncedAtMentionFilter, getAtMentionSuggestions]);
 
   // Sync file tree selection to match tab completion suggestion
   // This highlights the corresponding file/folder in the right panel when navigating tab completion
@@ -6207,7 +6213,8 @@ You are taking over this conversation. Based on the context above, provide a bri
   }, [activeSession?.id, activeSession?.autoRunFolderPath, activeSession?.autoRunSelectedFile, activeSession?.sshRemoteId, activeSession?.sessionSshRemoteConfig?.remoteId, loadTaskCounts]);
 
   // Auto-scroll logs
-  const activeTabLogs = activeSession ? getActiveTab(activeSession)?.logs : undefined;
+  // PERF: Use memoized activeTab instead of calling getActiveTab() again
+  const activeTabLogs = activeTab?.logs;
   useEffect(() => {
     logsEndRef.current?.scrollIntoView({ behavior: 'instant' });
   }, [activeTabLogs, activeSession?.shellLogs, activeSession?.inputMode]);
@@ -8569,17 +8576,31 @@ You are taking over this conversation. Based on the context above, provide a bri
 
   const handleDisableWorktreeConfig = useCallback(() => {
     if (!activeSession) return;
-    setSessions(prev => prev.map(s =>
-      s.id === activeSession.id
-        ? { ...s, worktreeConfig: undefined, worktreeParentPath: undefined }
-        : s
-    ));
+
+    // Count worktree children that will be removed
+    const worktreeChildCount = sessions.filter(s => s.parentSessionId === activeSession.id).length;
+
+    setSessions(prev => prev
+      // Remove all worktree children of this parent
+      .filter(s => s.parentSessionId !== activeSession.id)
+      // Clear worktree config on the parent
+      .map(s =>
+        s.id === activeSession.id
+          ? { ...s, worktreeConfig: undefined, worktreeParentPath: undefined }
+          : s
+      )
+    );
+
+    const childMessage = worktreeChildCount > 0
+      ? ` Removed ${worktreeChildCount} worktree sub-agent${worktreeChildCount > 1 ? 's' : ''}.`
+      : '';
+
     addToast({
       type: 'success',
       title: 'Worktrees Disabled',
-      message: 'Worktree configuration cleared for this agent.',
+      message: `Worktree configuration cleared for this agent.${childMessage}`,
     });
-  }, [activeSession, addToast]);
+  }, [activeSession, sessions, addToast]);
 
   const handleCreateWorktreeFromConfig = useCallback(async (branchName: string, basePath: string) => {
     if (!activeSession || !basePath) {
@@ -9716,11 +9737,11 @@ You are taking over this conversation. Based on the context above, provide a bri
         setPromptComposerStagedImages={activeGroupChatId ? setGroupChatStagedImages : (canAttachImages ? setStagedImages : undefined)}
         onPromptImageAttachBlocked={activeGroupChatId || !blockCodexResumeImages ? undefined : showImageAttachBlockedNotice}
         onPromptOpenLightbox={handleSetLightboxImage}
-        promptTabSaveToHistory={activeGroupChatId ? false : (activeSession ? getActiveTab(activeSession)?.saveToHistory ?? false : false)}
+        promptTabSaveToHistory={activeGroupChatId ? false : (activeTab?.saveToHistory ?? false)}
         onPromptToggleTabSaveToHistory={activeGroupChatId ? undefined : handlePromptToggleTabSaveToHistory}
-        promptTabReadOnlyMode={activeGroupChatId ? groupChatReadOnlyMode : (activeSession ? getActiveTab(activeSession)?.readOnlyMode ?? false : false)}
+        promptTabReadOnlyMode={activeGroupChatId ? groupChatReadOnlyMode : (activeTab?.readOnlyMode ?? false)}
         onPromptToggleTabReadOnlyMode={handlePromptToggleTabReadOnlyMode}
-        promptTabShowThinking={activeGroupChatId ? false : (activeSession ? getActiveTab(activeSession)?.showThinking ?? false : false)}
+        promptTabShowThinking={activeGroupChatId ? false : (activeTab?.showThinking ?? false)}
         onPromptToggleTabShowThinking={activeGroupChatId ? undefined : handlePromptToggleTabShowThinking}
         promptSupportsThinking={!activeGroupChatId && hasActiveSessionCapability('supportsThinkingDisplay')}
         promptEnterToSend={enterToSendAI}
@@ -10629,8 +10650,8 @@ You are taking over this conversation. Based on the context above, provide a bri
             setPreviewFile(filePreviewHistory[index]);
           }
         }}
-        onClearAgentError={activeTabForError?.agentError && activeSession ? () => handleClearAgentError(activeSession.id, activeTabForError.id) : undefined}
-        onShowAgentErrorModal={activeTabForError?.agentError && activeSession ? () => setAgentErrorModalSessionId(activeSession.id) : undefined}
+        onClearAgentError={activeTab?.agentError && activeSession ? () => handleClearAgentError(activeSession.id, activeTab.id) : undefined}
+        onShowAgentErrorModal={activeTab?.agentError && activeSession ? () => setAgentErrorModalSessionId(activeSession.id) : undefined}
         showFlashNotification={(message: string) => {
           setSuccessFlashNotification(message);
           setTimeout(() => setSuccessFlashNotification(null), 2000);

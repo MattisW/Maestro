@@ -95,6 +95,11 @@ export interface AutoRunState {
   completedTasks: number;
   currentTaskIndex: number;
   isStopping?: boolean;
+  // Multi-document progress fields
+  totalDocuments?: number;           // Total number of documents in the run
+  currentDocumentIndex?: number;     // Current document being processed (0-based)
+  totalTasksAcrossAllDocs?: number;  // Total tasks across all documents
+  completedTasksAcrossAllDocs?: number; // Completed tasks across all documents
 }
 
 /**
