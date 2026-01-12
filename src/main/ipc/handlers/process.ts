@@ -20,6 +20,7 @@ import { buildSshCommand } from '../../utils/ssh-command-builder';
 import type { SshRemoteConfig } from '../../../shared/types';
 import { powerManager } from '../../power-manager';
 import { MaestroSettings } from './persistence';
+import { getAgentCapabilities } from '../../agent-capabilities';
 
 const LOG_CONTEXT = '[ProcessManager]';
 
@@ -108,42 +109,46 @@ export function registerProcessHandlers(deps: ProcessHandlerDependencies): void 
 				const processManager = requireProcessManager(getProcessManager);
 				const agentDetector = requireDependency(getAgentDetector, 'Agent detector');
 
-				// Get agent definition to access config options and argument builders
-				const agent = await agentDetector.getAgent(config.toolType);
-				// Use INFO level on Windows for better visibility in logs
-				const isWindows = process.platform === 'win32';
-				const logFn = isWindows ? logger.info.bind(logger) : logger.debug.bind(logger);
-				logFn(`Spawn config received`, LOG_CONTEXT, {
-					platform: process.platform,
-					configToolType: config.toolType,
-					configCommand: config.command,
-					agentId: agent?.id,
-					agentCommand: agent?.command,
-					agentPath: agent?.path,
-					agentPathExtension: agent?.path ? require('path').extname(agent.path) : 'none',
-					hasAgentSessionId: !!config.agentSessionId,
-					hasPrompt: !!config.prompt,
-					promptLength: config.prompt?.length,
-					// On Windows, show prompt preview to help debug truncation issues
-					promptPreview:
-						config.prompt && isWindows
-							? {
-									first50: config.prompt.substring(0, 50),
-									last50: config.prompt.substring(Math.max(0, config.prompt.length - 50)),
-									containsHash: config.prompt.includes('#'),
-									containsNewline: config.prompt.includes('\n'),
-								}
-							: undefined,
-				});
-				let finalArgs = buildAgentArgs(agent, {
-					baseArgs: config.args,
-					prompt: config.prompt,
-					cwd: config.cwd,
-					readOnlyMode: config.readOnlyMode,
-					modelId: config.modelId,
-					yoloMode: config.yoloMode,
-					agentSessionId: config.agentSessionId,
-				});
+      // Get agent definition to access config options and argument builders
+      const agent = await agentDetector.getAgent(config.toolType);
+      // Use INFO level on Windows for better visibility in logs
+      const isWindows = process.platform === 'win32';
+      const logFn = isWindows ? logger.info.bind(logger) : logger.debug.bind(logger);
+      logFn(`Spawn config received`, LOG_CONTEXT, {
+        platform: process.platform,
+        configToolType: config.toolType,
+        configCommand: config.command,
+        agentId: agent?.id,
+        agentCommand: agent?.command,
+        agentPath: agent?.path,
+        agentPathExtension: agent?.path ? require('path').extname(agent.path) : 'none',
+        hasAgentSessionId: !!config.agentSessionId,
+        hasPrompt: !!config.prompt,
+        promptLength: config.prompt?.length,
+        // On Windows, show prompt preview to help debug truncation issues
+        promptPreview: config.prompt && isWindows ? {
+          first50: config.prompt.substring(0, 50),
+          last50: config.prompt.substring(Math.max(0, config.prompt.length - 50)),
+          containsHash: config.prompt.includes('#'),
+          containsNewline: config.prompt.includes('\n'),
+        } : undefined,
+        // SSH remote config logging
+        hasSessionSshRemoteConfig: !!config.sessionSshRemoteConfig,
+        sessionSshRemoteConfig: config.sessionSshRemoteConfig ? {
+          enabled: config.sessionSshRemoteConfig.enabled,
+          remoteId: config.sessionSshRemoteConfig.remoteId,
+          hasWorkingDirOverride: !!config.sessionSshRemoteConfig.workingDirOverride,
+        } : null,
+      });
+      let finalArgs = buildAgentArgs(agent, {
+        baseArgs: config.args,
+        prompt: config.prompt,
+        cwd: config.cwd,
+        readOnlyMode: config.readOnlyMode,
+        modelId: config.modelId,
+        yoloMode: config.yoloMode,
+        agentSessionId: config.agentSessionId,
+      });
 
 				// ========================================================================
 				// Apply agent config options and session overrides
@@ -252,21 +257,31 @@ export function registerProcessHandlers(deps: ProcessHandlerDependencies): void 
 					});
 				}
 
-				// ========================================================================
-				// SSH Remote Execution: Detect and wrap command for remote execution
-				// Terminal sessions are always local (they need PTY for shell interaction)
-				// ========================================================================
-				let sshRemoteUsed: SshRemoteConfig | null = null;
+      // ========================================================================
+      // SSH Remote Execution: Detect and wrap command for remote execution
+      // Terminal sessions are always local (they need PTY for shell interaction)
+      // ========================================================================
+      let sshRemoteUsed: SshRemoteConfig | null = null;
+      let shouldSendPromptViaStdin = false;
 
-				// Only consider SSH remote for non-terminal AI agent sessions
-				// SSH is session-level ONLY - no agent-level or global defaults
-				if (config.toolType !== 'terminal' && config.sessionSshRemoteConfig) {
-					// Session-level SSH config provided - resolve and use it
-					logger.debug(`Using session-level SSH config`, LOG_CONTEXT, {
-						sessionId: config.sessionId,
-						enabled: config.sessionSshRemoteConfig.enabled,
-						remoteId: config.sessionSshRemoteConfig.remoteId,
-					});
+      // Only consider SSH remote for non-terminal AI agent sessions
+      // SSH is session-level ONLY - no agent-level or global defaults
+      // Log SSH evaluation on Windows for debugging
+      if (isWindows) {
+        logger.info(`Evaluating SSH remote config`, LOG_CONTEXT, {
+          toolType: config.toolType,
+          isTerminal: config.toolType === 'terminal',
+          hasSessionSshRemoteConfig: !!config.sessionSshRemoteConfig,
+          willUseSsh: config.toolType !== 'terminal' && !!config.sessionSshRemoteConfig,
+        });
+      }
+      if (config.toolType !== 'terminal' && config.sessionSshRemoteConfig) {
+        // Session-level SSH config provided - resolve and use it
+        logger.info(`Using session-level SSH config`, LOG_CONTEXT, {
+          sessionId: config.sessionId,
+          enabled: config.sessionSshRemoteConfig.enabled,
+          remoteId: config.sessionSshRemoteConfig.remoteId,
+        });
 
 					// Resolve effective SSH remote configuration
 					const sshStoreAdapter = createSshRemoteStoreAdapter(settingsStore);
@@ -278,19 +293,31 @@ export function registerProcessHandlers(deps: ProcessHandlerDependencies): void 
 						// SSH remote is configured - wrap the command for remote execution
 						sshRemoteUsed = sshResult.config;
 
-						// For SSH execution, we need to include the prompt in the args here
-						// because ProcessManager.spawn() won't add it (we pass prompt: undefined for SSH)
-						// Use promptArgs if available (e.g., OpenCode -p), otherwise use positional arg
-						let sshArgs = finalArgs;
-						if (config.prompt) {
-							if (agent?.promptArgs) {
-								sshArgs = [...finalArgs, ...agent.promptArgs(config.prompt)];
-							} else if (agent?.noPromptSeparator) {
-								sshArgs = [...finalArgs, config.prompt];
-							} else {
-								sshArgs = [...finalArgs, '--', config.prompt];
-							}
-						}
+          // For SSH execution with stream-json capable agents (like Claude Code),
+          // we send the prompt via stdin instead of as a CLI arg to avoid command
+          // line length limits and escaping issues. For other agents, we include
+          // the prompt in the args as before.
+          const capabilities = getAgentCapabilities(config.toolType);
+          let sshArgs = finalArgs;
+
+          if (config.prompt) {
+            // If agent supports stream-json input, send prompt via stdin
+            // ProcessManager will detect this and send the prompt as a JSON message
+            if (capabilities.supportsStreamJsonInput) {
+              shouldSendPromptViaStdin = true;
+              // Add --input-format stream-json flag so Claude knows to read from stdin
+              sshArgs = [...finalArgs, '--input-format', 'stream-json'];
+            } else {
+              // For agents that don't support stream-json, add prompt to args
+              if (agent?.promptArgs) {
+                sshArgs = [...finalArgs, ...agent.promptArgs(config.prompt)];
+              } else if (agent?.noPromptSeparator) {
+                sshArgs = [...finalArgs, config.prompt];
+              } else {
+                sshArgs = [...finalArgs, '--', config.prompt];
+              }
+            }
+          }
 
 						// Build the SSH command that wraps the agent execution
 						//
@@ -312,51 +339,53 @@ export function registerProcessHandlers(deps: ProcessHandlerDependencies): void 
 						commandToSpawn = sshCommand.command;
 						argsToSpawn = sshCommand.args;
 
-						logger.info(`SSH remote execution configured`, LOG_CONTEXT, {
-							sessionId: config.sessionId,
-							toolType: config.toolType,
-							remoteName: sshResult.config.name,
-							remoteHost: sshResult.config.host,
-							source: sshResult.source,
-							localCommand: config.command,
-							remoteCommand: remoteCommand,
-							customPath: config.sessionCustomPath || null,
-							hasCustomEnvVars:
-								!!effectiveCustomEnvVars && Object.keys(effectiveCustomEnvVars).length > 0,
-							sshCommand: `${sshCommand.command} ${sshCommand.args.join(' ')}`,
-						});
-					}
-				}
+          logger.info(`SSH remote execution configured`, LOG_CONTEXT, {
+            sessionId: config.sessionId,
+            toolType: config.toolType,
+            remoteName: sshResult.config.name,
+            remoteHost: sshResult.config.host,
+            source: sshResult.source,
+            localCommand: config.command,
+            remoteCommand: remoteCommand,
+            customPath: config.sessionCustomPath || null,
+            hasCustomEnvVars: !!effectiveCustomEnvVars && Object.keys(effectiveCustomEnvVars).length > 0,
+            sshCommand: `${sshCommand.command} ${sshCommand.args.join(' ')}`,
+            promptViaStdin: shouldSendPromptViaStdin,
+          });
+        }
+      }
 
-				const result = processManager.spawn({
-					...config,
-					command: commandToSpawn,
-					args: argsToSpawn,
-					// When using SSH, use user's home directory as local cwd
-					// The remote working directory is embedded in the SSH command itself
-					// This fixes ENOENT errors when session.cwd is a remote-only path
-					cwd: sshRemoteUsed ? os.homedir() : config.cwd,
-					// When using SSH, disable PTY (SSH provides its own terminal handling)
-					// and env vars are passed via the remote command string
-					requiresPty: sshRemoteUsed ? false : agent?.requiresPty,
-					// When using SSH, the prompt was already added to sshArgs above before
-					// building the SSH command, so don't let ProcessManager add it again
-					prompt: sshRemoteUsed ? undefined : config.prompt,
-					shell: shellToUse,
-					shellArgs: shellArgsStr, // Shell-specific CLI args (for terminal sessions)
-					shellEnvVars: shellEnvVars, // Shell-specific env vars (for terminal sessions)
-					contextWindow, // Pass configured context window to process manager
-					// When using SSH, env vars are passed in the remote command string, not locally
-					customEnvVars: sshRemoteUsed ? undefined : effectiveCustomEnvVars,
-					imageArgs: agent?.imageArgs, // Function to build image CLI args (for Codex, OpenCode)
-					promptArgs: agent?.promptArgs, // Function to build prompt args (e.g., ['-p', prompt] for OpenCode)
-					noPromptSeparator: agent?.noPromptSeparator, // Some agents don't support '--' before prompt
-					// Stats tracking: use cwd as projectPath if not explicitly provided
-					projectPath: config.cwd,
-					// SSH remote context (for SSH-specific error messages)
-					sshRemoteId: sshRemoteUsed?.id,
-					sshRemoteHost: sshRemoteUsed?.host,
-				});
+      const result = processManager.spawn({
+        ...config,
+        command: commandToSpawn,
+        args: argsToSpawn,
+        // When using SSH, use user's home directory as local cwd
+        // The remote working directory is embedded in the SSH command itself
+        // This fixes ENOENT errors when session.cwd is a remote-only path
+        cwd: sshRemoteUsed ? os.homedir() : config.cwd,
+        // When using SSH, disable PTY (SSH provides its own terminal handling)
+        // and env vars are passed via the remote command string
+        requiresPty: sshRemoteUsed ? false : agent?.requiresPty,
+        // When using SSH with stream-json capable agents, pass the prompt so
+        // ProcessManager can send it via stdin. For other SSH cases, prompt was
+        // already added to sshArgs, so pass undefined to prevent double-adding.
+        prompt: sshRemoteUsed && shouldSendPromptViaStdin ? config.prompt : sshRemoteUsed ? undefined : config.prompt,
+        shell: shellToUse,
+        shellArgs: shellArgsStr,         // Shell-specific CLI args (for terminal sessions)
+        shellEnvVars: shellEnvVars,      // Shell-specific env vars (for terminal sessions)
+        contextWindow, // Pass configured context window to process manager
+        // When using SSH, env vars are passed in the remote command string, not locally
+        customEnvVars: sshRemoteUsed ? undefined : effectiveCustomEnvVars,
+        imageArgs: agent?.imageArgs,     // Function to build image CLI args (for Codex, OpenCode)
+        promptArgs: agent?.promptArgs,   // Function to build prompt args (e.g., ['-p', prompt] for OpenCode)
+        noPromptSeparator: agent?.noPromptSeparator, // Some agents don't support '--' before prompt
+        // Stats tracking: use cwd as projectPath if not explicitly provided
+        projectPath: config.cwd,
+        // SSH remote context (for SSH-specific error messages)
+        sshRemoteConfig: sshRemoteUsed,
+        sshRemoteId: sshRemoteUsed?.id,
+        sshRemoteHost: sshRemoteUsed?.host,
+      });
 
 				logger.info(`Process spawned successfully`, LOG_CONTEXT, {
 					sessionId: config.sessionId,

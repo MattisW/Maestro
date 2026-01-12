@@ -29,14 +29,20 @@ import { wizardDebugLogger } from './phaseGenerator';
  * Configuration for starting a conversation
  */
 export interface ConversationConfig {
-	/** The agent type to use for the conversation */
-	agentType: ToolType;
-	/** The working directory for the agent */
-	directoryPath: string;
-	/** Project name (used in system prompt) */
-	projectName: string;
-	/** Existing Auto Run documents (when continuing from previous session) */
-	existingDocs?: ExistingDocument[];
+  /** The agent type to use for the conversation */
+  agentType: ToolType;
+  /** The working directory for the agent */
+  directoryPath: string;
+  /** Project name (used in system prompt) */
+  projectName: string;
+  /** Existing Auto Run documents (when continuing from previous session) */
+  existingDocs?: ExistingDocument[];
+  /** SSH remote configuration for remote agent execution */
+  sessionSshRemoteConfig?: {
+    enabled: boolean;
+    remoteId: string | null;
+    workingDirOverride?: string;
+  };
 }
 
 /**
@@ -84,34 +90,40 @@ export interface ConversationCallbacks {
  * State of an active conversation session
  */
 interface ConversationSession {
-	/** Unique session ID for this wizard conversation */
-	sessionId: string;
-	/** The agent type */
-	agentType: ToolType;
-	/** Working directory */
-	directoryPath: string;
-	/** Project name */
-	projectName: string;
-	/** Whether the agent process is active */
-	isActive: boolean;
-	/** System prompt used for this session */
-	systemPrompt: string;
-	/** Accumulated output buffer for parsing */
-	outputBuffer: string;
-	/** Resolve function for pending message */
-	pendingResolve?: (result: SendMessageResult) => void;
-	/** Callbacks for the conversation */
-	callbacks?: ConversationCallbacks;
-	/** Cleanup function for data listener */
-	dataListenerCleanup?: () => void;
-	/** Cleanup function for exit listener */
-	exitListenerCleanup?: () => void;
-	/** Cleanup function for thinking chunk listener */
-	thinkingListenerCleanup?: () => void;
-	/** Cleanup function for tool execution listener */
-	toolExecutionListenerCleanup?: () => void;
-	/** Timeout ID for response timeout (for cleanup) */
-	responseTimeoutId?: NodeJS.Timeout;
+  /** Unique session ID for this wizard conversation */
+  sessionId: string;
+  /** The agent type */
+  agentType: ToolType;
+  /** Working directory */
+  directoryPath: string;
+  /** Project name */
+  projectName: string;
+  /** Whether the agent process is active */
+  isActive: boolean;
+  /** System prompt used for this session */
+  systemPrompt: string;
+  /** Accumulated output buffer for parsing */
+  outputBuffer: string;
+  /** Resolve function for pending message */
+  pendingResolve?: (result: SendMessageResult) => void;
+  /** Callbacks for the conversation */
+  callbacks?: ConversationCallbacks;
+  /** Cleanup function for data listener */
+  dataListenerCleanup?: () => void;
+  /** Cleanup function for exit listener */
+  exitListenerCleanup?: () => void;
+  /** Cleanup function for thinking chunk listener */
+  thinkingListenerCleanup?: () => void;
+  /** Cleanup function for tool execution listener */
+  toolExecutionListenerCleanup?: () => void;
+  /** Timeout ID for response timeout (for cleanup) */
+  responseTimeoutId?: NodeJS.Timeout;
+  /** SSH remote configuration for remote execution */
+  sessionSshRemoteConfig?: {
+    enabled: boolean;
+    remoteId: string | null;
+    workingDirOverride?: string;
+  };
 }
 
 /**
@@ -154,25 +166,28 @@ class ConversationManager {
 			existingDocs: config.existingDocs,
 		});
 
-		this.session = {
-			sessionId,
-			agentType: config.agentType,
-			directoryPath: config.directoryPath,
-			projectName: config.projectName,
-			isActive: true,
-			systemPrompt,
-			outputBuffer: '',
-		};
+    this.session = {
+      sessionId,
+      agentType: config.agentType,
+      directoryPath: config.directoryPath,
+      projectName: config.projectName,
+      isActive: true,
+      systemPrompt,
+      outputBuffer: '',
+      sessionSshRemoteConfig: config.sessionSshRemoteConfig,
+    };
 
-		// Log conversation start
-		wizardDebugLogger.log('info', 'Conversation started', {
-			sessionId,
-			agentType: config.agentType,
-			directoryPath: config.directoryPath,
-			projectName: config.projectName,
-			hasExistingDocs: !!config.existingDocs,
-			existingDocsCount: config.existingDocs?.length || 0,
-		});
+    // Log conversation start
+    wizardDebugLogger.log('info', 'Conversation started', {
+      sessionId,
+      agentType: config.agentType,
+      directoryPath: config.directoryPath,
+      projectName: config.projectName,
+      hasExistingDocs: !!config.existingDocs,
+      existingDocsCount: config.existingDocs?.length || 0,
+      hasRemoteSsh: !!config.sessionSshRemoteConfig?.enabled,
+      remoteId: config.sessionSshRemoteConfig?.remoteId || null,
+    });
 
 		return sessionId;
 	}
@@ -217,20 +232,61 @@ class ConversationManager {
 		// Notify sending
 		callbacks?.onSending?.();
 
-		try {
-			// Get the agent configuration
-			const agent = await window.maestro.agents.get(this.session.agentType);
-			if (!agent || !agent.available) {
-				const error = `Agent ${this.session.agentType} is not available`;
-				wizardDebugLogger.log('error', 'Agent not available', {
-					agentType: this.session.agentType,
-					agent: agent ? { available: agent.available } : null,
-				});
-				return {
-					success: false,
-					error,
-				};
-			}
+    try {
+      // Get the agent configuration
+      // Pass SSH remote ID if SSH is enabled for this session
+      const sshRemoteId = this.session.sessionSshRemoteConfig?.enabled
+        ? this.session.sessionSshRemoteConfig.remoteId
+        : undefined;
+
+      wizardDebugLogger.log('info', 'Fetching agent configuration', {
+        agentType: this.session.agentType,
+        sessionId: this.session.sessionId,
+        hasRemoteSsh: !!this.session.sessionSshRemoteConfig?.enabled,
+        remoteId: this.session.sessionSshRemoteConfig?.remoteId || null,
+        passingSshRemoteId: sshRemoteId || null,
+      });
+
+      const agent = await window.maestro.agents.get(this.session.agentType, sshRemoteId || undefined);
+
+      // Log to main process (writes to maestro-debug.log on Windows)
+      console.log('[Wizard] Agent fetch result:', {
+        agentType: this.session.agentType,
+        agentExists: !!agent,
+        agentAvailable: agent?.available,
+        agentPath: agent?.path,
+        agentCommand: agent?.command,
+        hasRemoteSsh: !!this.session.sessionSshRemoteConfig?.enabled,
+      });
+
+      if (!agent || !agent.available) {
+        const error = `Agent ${this.session.agentType} is not available`;
+
+        // Log detailed info about why agent is unavailable
+        console.error('[Wizard] Agent not available - Details:', {
+          agentType: this.session.agentType,
+          agentExists: !!agent,
+          agentAvailable: agent?.available,
+          agentPath: agent?.path,
+          agentError: (agent as any)?.error,
+          sessionSshConfig: this.session.sessionSshRemoteConfig,
+        });
+
+        wizardDebugLogger.log('error', 'Agent not available', {
+          agentType: this.session.agentType,
+          agent: agent ? {
+            available: agent.available,
+            path: agent.path,
+            error: (agent as any).error
+          } : null,
+        });
+        return {
+          success: false,
+          error,
+        };
+      }
+
+      console.log('[Wizard] Agent is available, building prompt...');
 
 			// Build the full prompt with conversation context
 			const fullPrompt = this.buildPromptWithContext(userMessage, conversationHistory);
@@ -480,44 +536,48 @@ class ConversationManager {
 			// This is critical for packaged Electron apps where PATH may not include agent locations
 			const commandToUse = agent.path || agent.command;
 
-			wizardDebugLogger.log('spawn', 'Calling process.spawn', {
-				sessionId: this.session!.sessionId,
-				command: commandToUse,
-				agentPath: agent.path,
-				agentCommand: agent.command,
-				args: argsForSpawn,
-				cwd: this.session!.directoryPath,
-			});
+      wizardDebugLogger.log('spawn', 'Calling process.spawn', {
+        sessionId: this.session!.sessionId,
+        command: commandToUse,
+        agentPath: agent.path,
+        agentCommand: agent.command,
+        args: argsForSpawn,
+        cwd: this.session!.directoryPath,
+        hasRemoteSsh: !!this.session!.sessionSshRemoteConfig?.enabled,
+        remoteId: this.session!.sessionSshRemoteConfig?.remoteId || null,
+      });
 
-			window.maestro.process
-				.spawn({
-					sessionId: this.session!.sessionId,
-					toolType: this.session!.agentType,
-					cwd: this.session!.directoryPath,
-					command: commandToUse,
-					args: argsForSpawn,
-					prompt: prompt,
-				})
-				.then(() => {
-					wizardDebugLogger.log('spawn', 'Agent process spawned successfully', {
-						sessionId: this.session?.sessionId,
-					});
-					// Notify that we're receiving
-					this.session?.callbacks?.onReceiving?.();
-				})
-				.catch((error: Error) => {
-					wizardDebugLogger.log('error', 'Failed to spawn agent process', {
-						sessionId: this.session?.sessionId,
-						error: error.message,
-					});
-					this.cleanupListeners();
-					resolve({
-						success: false,
-						error: `Failed to spawn agent: ${error.message}`,
-					});
-				});
-		});
-	}
+      window.maestro.process
+        .spawn({
+          sessionId: this.session!.sessionId,
+          toolType: this.session!.agentType,
+          cwd: this.session!.directoryPath,
+          command: commandToUse,
+          args: argsForSpawn,
+          prompt: prompt,
+          sessionSshRemoteConfig: this.session!.sessionSshRemoteConfig,
+        })
+        .then(() => {
+          wizardDebugLogger.log('spawn', 'Agent process spawned successfully', {
+            sessionId: this.session?.sessionId,
+          });
+          // Notify that we're receiving
+          this.session?.callbacks?.onReceiving?.();
+        })
+        .catch((error: Error) => {
+          wizardDebugLogger.log('error', 'Failed to spawn agent process', {
+            sessionId: this.session?.sessionId,
+            error: error.message,
+          });
+          this.cleanupListeners();
+          resolve({
+            success: false,
+            error: `Failed to spawn agent: ${error.message}`,
+          });
+        });
+    });
+  }
+
 
 	/**
 	 * Build CLI args for the agent based on its type and capabilities.

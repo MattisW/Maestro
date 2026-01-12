@@ -18,16 +18,22 @@ import {
  * Configuration for document generation
  */
 export interface GenerationConfig {
-	/** Agent type to use for generation */
-	agentType: ToolType;
-	/** Working directory for the agent */
-	directoryPath: string;
-	/** Project name from wizard */
-	projectName: string;
-	/** Full conversation history from project discovery */
-	conversationHistory: WizardMessage[];
-	/** Optional subfolder within Auto Run Docs (e.g., "Initiation") */
-	subfolder?: string;
+  /** Agent type to use for generation */
+  agentType: ToolType;
+  /** Working directory for the agent */
+  directoryPath: string;
+  /** Project name from wizard */
+  projectName: string;
+  /** Full conversation history from project discovery */
+  conversationHistory: WizardMessage[];
+  /** Optional subfolder within Auto Run Docs (e.g., "Initiation") */
+  subfolder?: string;
+  /** SSH remote configuration for remote agent execution */
+  sessionSshRemoteConfig?: {
+    enabled: boolean;
+    remoteId: string | null;
+    workingDirOverride?: string;
+  };
 }
 
 /**
@@ -1054,47 +1060,50 @@ class PhaseGenerator {
 			// This is critical for packaged Electron apps where PATH may not include agent locations
 			const commandToUse = agent.path || agent.command;
 
-			wizardDebugLogger.log('spawn', 'Calling process.spawn', {
-				sessionId,
-				toolType: config.agentType,
-				cwd: config.directoryPath,
-				command: commandToUse,
-				agentPath: agent.path,
-				agentCommand: agent.command,
-				argsCount: argsForSpawn.length,
-				promptLength: prompt.length,
-			});
-			window.maestro.process
-				.spawn({
-					sessionId,
-					toolType: config.agentType,
-					cwd: config.directoryPath,
-					command: commandToUse,
-					args: argsForSpawn,
-					prompt,
-				})
-				.then(() => {
-					console.log('[PhaseGenerator] Agent spawned successfully');
-					wizardDebugLogger.log('spawn', 'Agent spawned successfully', { sessionId });
-				})
-				.catch((error: Error) => {
-					console.error('[PhaseGenerator] Spawn failed:', error.message);
-					wizardDebugLogger.log('error', 'Spawn failed', {
-						errorMessage: error.message,
-						errorStack: error.stack,
-					});
-					clearTimeout(timeoutId);
-					this.cleanup();
-					if (fileWatcherCleanup) {
-						fileWatcherCleanup();
-					}
-					resolve({
-						success: false,
-						error: `Failed to spawn agent: ${error.message}`,
-					});
-				});
-		});
-	}
+      wizardDebugLogger.log('spawn', 'Calling process.spawn', {
+        sessionId,
+        toolType: config.agentType,
+        cwd: config.directoryPath,
+        command: commandToUse,
+        agentPath: agent.path,
+        agentCommand: agent.command,
+        argsCount: argsForSpawn.length,
+        promptLength: prompt.length,
+        hasRemoteSsh: !!config.sessionSshRemoteConfig?.enabled,
+        remoteId: config.sessionSshRemoteConfig?.remoteId || null,
+      });
+      window.maestro.process
+        .spawn({
+          sessionId,
+          toolType: config.agentType,
+          cwd: config.directoryPath,
+          command: commandToUse,
+          args: argsForSpawn,
+          prompt,
+          sessionSshRemoteConfig: config.sessionSshRemoteConfig,
+        })
+        .then(() => {
+          console.log('[PhaseGenerator] Agent spawned successfully');
+          wizardDebugLogger.log('spawn', 'Agent spawned successfully', { sessionId });
+        })
+        .catch((error: Error) => {
+          console.error('[PhaseGenerator] Spawn failed:', error.message);
+          wizardDebugLogger.log('error', 'Spawn failed', {
+            errorMessage: error.message,
+            errorStack: error.stack,
+          });
+          clearTimeout(timeoutId);
+          this.cleanup();
+          if (fileWatcherCleanup) {
+            fileWatcherCleanup();
+          }
+          resolve({
+            success: false,
+            error: `Failed to spawn agent: ${error.message}`,
+          });
+        });
+    });
+  }
 
 	/**
 	 * Read documents from the Auto Run Docs folder on disk

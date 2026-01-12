@@ -237,37 +237,41 @@ export async function buildSshCommand(
 		env: Object.keys(mergedEnv).length > 0 ? mergedEnv : undefined,
 	});
 
-	// Wrap the command to execute via the user's login shell.
-	// $SHELL -ilc ensures the user's full PATH (including homebrew, nvm, etc.) is available.
-	// -i forces interactive mode (critical for .bashrc to not bail out)
-	// -l loads login profile for PATH
-	// -c executes the command
-	// Using $SHELL respects the user's configured shell (bash, zsh, etc.)
-	//
-	// WHY -i IS CRITICAL:
-	// On Ubuntu (and many Linux distros), .bashrc has a guard at the top:
-	//   case $- in *i*) ;; *) return;; esac
-	// This checks if the shell is interactive before running. Without -i,
-	// .bashrc exits early and user PATH additions (like ~/.local/bin) never load.
-	// The -i flag sets 'i' in $-, allowing .bashrc to run fully.
-	//
-	// CRITICAL: When Node.js spawn() passes this to SSH without shell:true, SSH runs
-	// the command through the remote's default shell. The key is escaping:
-	// 1. Double quotes around the command are NOT escaped - they delimit the -c argument
-	// 2. $ signs inside the command MUST be escaped as \$ so they defer to the login shell
-	//    (shellEscapeForDoubleQuotes handles this)
-	// 3. Single quotes inside the command pass through unchanged
-	//
-	// Example transformation for spawn():
-	//   Input:  cd '/path' && MYVAR='value' claude --print
-	//   After escaping: cd '/path' && MYVAR='value' claude --print (no $ to escape here)
-	//   Wrapped: $SHELL -ilc "cd '/path' && MYVAR='value' claude --print"
-	//   SSH receives this as one argument, passes to remote shell
-	//   Remote shell expands $SHELL, executes: /bin/zsh -ilc "cd '/path' ..."
-	//   The login shell runs with full PATH from ~/.zprofile AND ~/.bashrc
-	const escapedCommand = shellEscapeForDoubleQuotes(remoteCommand);
-	const wrappedCommand = `$SHELL -ilc "${escapedCommand}"`;
-	args.push(wrappedCommand);
+  // Wrap the command to execute via the user's login shell.
+  // We use bash -lc to ensure the user's full PATH (including homebrew, nvm, etc.) is available.
+  // -l loads login profile for PATH (sources /etc/profile, ~/.bash_profile, etc.)
+  // -c executes the command
+  //
+  // IMPORTANT: We don't use -i (interactive) flag because:
+  // 1. It can cause issues with shells that check if stdin is a TTY
+  // 2. When using -tt flag, the shell already thinks it's interactive enough
+  // 3. On Ubuntu, we work around the "case $- in *i*)" guard by sourcing ~/.bashrc explicitly
+  //
+  // For bash specifically, we source ~/.bashrc to ensure user PATH additions are loaded.
+  // This handles the common Ubuntu pattern where .bashrc has:
+  //   case $- in *i*) ;; *) return;; esac
+  // By explicitly sourcing it, we bypass this guard.
+  //
+  // CRITICAL: When Node.js spawn() passes this to SSH without shell:true, SSH runs
+  // the command through the remote's default shell. The key is escaping:
+  // 1. Double quotes around the command are NOT escaped - they delimit the -c argument
+  // 2. $ signs inside the command MUST be escaped as \$ so they defer to the login shell
+  //    (shellEscapeForDoubleQuotes handles this)
+  // 3. Single quotes inside the command pass through unchanged
+  //
+  // Example transformation for spawn():
+  //   Input:  cd '/path' && MYVAR='value' claude --print
+  //   After escaping: cd '/path' && MYVAR='value' claude --print (no $ to escape here)
+  //   Wrapped: bash -lc "source ~/.bashrc 2>/dev/null; cd '/path' && MYVAR='value' claude --print"
+  //   SSH receives this as one argument, passes to remote shell
+  //   The login shell runs with full PATH from /etc/profile, ~/.bash_profile, AND ~/.bashrc
+  const escapedCommand = shellEscapeForDoubleQuotes(remoteCommand);
+  // Source login/profile files first so PATH modifications made in
+  // ~/.bash_profile or ~/.profile are available for non-interactive
+  // remote commands, then source ~/.bashrc to cover interactive
+  // additions that might also be present.
+  const wrappedCommand = `bash -lc "source ~/.bash_profile 2>/dev/null || source ~/.profile 2>/dev/null; source ~/.bashrc 2>/dev/null; ${escapedCommand}"`;
+  args.push(wrappedCommand);
 
 	// Debug logging to trace the exact command being built
 	logger.info('Built SSH command', '[ssh-command-builder]', {

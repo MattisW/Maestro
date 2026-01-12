@@ -680,12 +680,13 @@ export function ConversationScreen({
 				// Fetch existing docs if continuing from previous session
 				const existingDocs = await fetchExistingDocs();
 
-				await conversationManager.startConversation({
-					agentType: state.selectedAgent,
-					directoryPath: state.directoryPath,
-					projectName: state.agentName || 'My Project',
-					existingDocs: existingDocs.length > 0 ? existingDocs : undefined,
-				});
+        await conversationManager.startConversation({
+          agentType: state.selectedAgent,
+          directoryPath: state.directoryPath,
+          projectName: state.agentName || 'My Project',
+          existingDocs: existingDocs.length > 0 ? existingDocs : undefined,
+          sessionSshRemoteConfig: state.sessionSshRemoteConfig,
+        });
 
 				if (mounted) {
 					setConversationStarted(true);
@@ -1061,13 +1062,14 @@ export function ConversationScreen({
 					}
 				}
 
-				await conversationManager.startConversation({
-					agentType: state.selectedAgent,
-					directoryPath: state.directoryPath,
-					projectName: state.agentName || 'My Project',
-					existingDocs: existingDocs.length > 0 ? existingDocs : undefined,
-				});
-			}
+        await conversationManager.startConversation({
+          agentType: state.selectedAgent,
+          directoryPath: state.directoryPath,
+          projectName: state.agentName || 'My Project',
+          existingDocs: existingDocs.length > 0 ? existingDocs : undefined,
+          sessionSshRemoteConfig: state.sessionSshRemoteConfig,
+        });
+      }
 
 			// Send message and wait for response
 			const result = await conversationManager.sendMessage(
