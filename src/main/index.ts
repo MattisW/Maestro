@@ -2104,6 +2104,8 @@ function setupIpcHandlers() {
         githubUsername?: string;
         twitterHandle?: string;
         linkedinHandle?: string;
+        discordUsername?: string;
+        blueskyHandle?: string;
         badgeLevel: number;
         badgeName: string;
         cumulativeTimeMs: number;
