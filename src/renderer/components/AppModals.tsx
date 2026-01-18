@@ -791,8 +791,6 @@ export interface AppUtilityModalsProps {
   autoRunSelectedDocument: string | null;
   autoRunCompletedTaskCount: number;
   onAutoRunResetTasks: () => void;
-  // OpenSpec commands
-  onInjectOpenSpecPrompt?: (prompt: string) => void;
 
   // Gist publishing (for QuickActionsModal)
   isFilePreviewOpen: boolean;
@@ -975,8 +973,6 @@ export function AppUtilityModals({
   isFilePreviewOpen,
   ghCliAvailable,
   onPublishGist,
-  // OpenSpec commands
-  onInjectOpenSpecPrompt,
   // Document Graph - quick re-open last graph
   lastGraphFocusFile,
   onOpenLastDocumentGraph,
@@ -1127,7 +1123,6 @@ export function AppUtilityModals({
           isFilePreviewOpen={isFilePreviewOpen}
           ghCliAvailable={ghCliAvailable}
           onPublishGist={onPublishGist}
-          onInjectOpenSpecPrompt={onInjectOpenSpecPrompt}
           onOpenPlaybookExchange={onOpenMarketplace}
           lastGraphFocusFile={lastGraphFocusFile}
           onOpenLastDocumentGraph={onOpenLastDocumentGraph}
@@ -1839,8 +1834,6 @@ export interface AppModalsProps {
   isFilePreviewOpen: boolean;
   ghCliAvailable: boolean;
   onPublishGist?: () => void;
-  // OpenSpec commands
-  onInjectOpenSpecPrompt?: (prompt: string) => void;
   // Document Graph - quick re-open last graph
   lastGraphFocusFile?: string;
   onOpenLastDocumentGraph?: () => void;
@@ -2131,8 +2124,6 @@ export function AppModals(props: AppModalsProps) {
     isFilePreviewOpen,
     ghCliAvailable,
     onPublishGist,
-    // OpenSpec commands
-    onInjectOpenSpecPrompt,
     // Document Graph - quick re-open last graph
     lastGraphFocusFile,
     onOpenLastDocumentGraph,
@@ -2433,7 +2424,6 @@ export function AppModals(props: AppModalsProps) {
         isFilePreviewOpen={isFilePreviewOpen}
         ghCliAvailable={ghCliAvailable}
         onPublishGist={onPublishGist}
-        onInjectOpenSpecPrompt={onInjectOpenSpecPrompt}
         lastGraphFocusFile={lastGraphFocusFile}
         onOpenLastDocumentGraph={onOpenLastDocumentGraph}
         lightboxImage={lightboxImage}

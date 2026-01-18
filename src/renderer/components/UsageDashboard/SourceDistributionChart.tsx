@@ -242,7 +242,7 @@ export function SourceDistributionChart({
       className="p-4 rounded-lg"
       style={{ backgroundColor: theme.colors.bgMain }}
       role="figure"
-      aria-label={`Source distribution chart showing ${metricMode === 'count' ? 'query counts' : 'duration'} breakdown between Interactive and Auto Run sources.`}
+      aria-label={`Session type chart showing ${metricMode === 'count' ? 'query counts' : 'duration'} breakdown between Interactive and Auto Run sessions.`}
     >
       {/* Header with title and metric toggle */}
       <div className="flex items-center justify-between mb-4">
@@ -250,7 +250,7 @@ export function SourceDistributionChart({
           className="text-sm font-medium"
           style={{ color: theme.colors.textMain }}
         >
-          Source Distribution
+          Session Type
         </h3>
         <div className="flex items-center gap-2">
           <span

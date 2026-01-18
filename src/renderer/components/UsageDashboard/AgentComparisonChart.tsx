@@ -157,7 +157,7 @@ export function AgentComparisonChart({ data, theme, colorBlindMode = false }: Ag
       className="p-4 rounded-lg"
       style={{ backgroundColor: theme.colors.bgMain }}
       role="figure"
-      aria-label={`Agent comparison chart showing query counts and duration by agent type. ${agentData.length} agents displayed.`}
+      aria-label={`Provider comparison chart showing query counts and duration by provider type. ${agentData.length} providers displayed.`}
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
@@ -165,7 +165,7 @@ export function AgentComparisonChart({ data, theme, colorBlindMode = false }: Ag
           className="text-sm font-medium"
           style={{ color: theme.colors.textMain }}
         >
-          Agent Comparison
+          Provider Comparison
         </h3>
       </div>
 

@@ -22,6 +22,7 @@ import { SourceDistributionChart } from './SourceDistributionChart';
 import { LocationDistributionChart } from './LocationDistributionChart';
 import { PeakHoursChart } from './PeakHoursChart';
 import { DurationTrendsChart } from './DurationTrendsChart';
+import { AgentUsageChart } from './AgentUsageChart';
 import { AutoRunStats } from './AutoRunStats';
 import { SessionStats } from './SessionStats';
 import { EmptyState } from './EmptyState';
@@ -35,7 +36,7 @@ import { PERFORMANCE_THRESHOLDS } from '../../../shared/performance-metrics';
 
 // Section IDs for keyboard navigation
 const OVERVIEW_SECTIONS = ['summary-cards', 'agent-comparison', 'source-distribution', 'location-distribution', 'peak-hours', 'activity-heatmap', 'duration-trends'] as const;
-const AGENTS_SECTIONS = ['session-stats', 'agent-comparison'] as const;
+const AGENTS_SECTIONS = ['session-stats', 'agent-comparison', 'agent-usage'] as const;
 const ACTIVITY_SECTIONS = ['activity-heatmap', 'duration-trends'] as const;
 const AUTORUN_SECTIONS = ['autorun-stats'] as const;
 
@@ -326,9 +327,10 @@ export function UsageDashboardModal({
   const getSectionLabel = useCallback((sectionId: SectionId): string => {
     const labels: Record<SectionId, string> = {
       'summary-cards': 'Summary Cards',
-      'session-stats': 'Session Statistics',
-      'agent-comparison': 'Agent Comparison Chart',
-      'source-distribution': 'Source Distribution Chart',
+      'session-stats': 'Agent Statistics',
+      'agent-comparison': 'Provider Comparison Chart',
+      'agent-usage': 'Agent Usage Chart',
+      'source-distribution': 'Session Type Chart',
       'location-distribution': 'Location Distribution Chart',
       'peak-hours': 'Peak Hours Chart',
       'activity-heatmap': 'Activity Heatmap',
@@ -822,12 +824,12 @@ export function UsageDashboardModal({
 
               {viewMode === 'agents' && (
                 <>
-                  {/* Session Statistics */}
+                  {/* Agent Statistics */}
                   <div
                     ref={setSectionRef('session-stats')}
                     tabIndex={0}
                     role="region"
-                    aria-label="Session Statistics"
+                    aria-label={getSectionLabel('session-stats')}
                     onKeyDown={(e) => handleSectionKeyDown(e, 'session-stats')}
                     className="outline-none rounded-lg transition-shadow dashboard-section-enter"
                     style={{
@@ -836,12 +838,12 @@ export function UsageDashboardModal({
                     }}
                     data-testid="section-session-stats"
                   >
-                    <ChartErrorBoundary theme={theme} chartName="Session Statistics">
+                    <ChartErrorBoundary theme={theme} chartName="Agent Statistics">
                       <SessionStats sessions={sessions} theme={theme} colorBlindMode={colorBlindMode} />
                     </ChartErrorBoundary>
                   </div>
 
-                  {/* Agent-focused view */}
+                  {/* Provider Comparison */}
                   <div
                     ref={setSectionRef('agent-comparison')}
                     tabIndex={0}
@@ -850,14 +852,34 @@ export function UsageDashboardModal({
                     onKeyDown={(e) => handleSectionKeyDown(e, 'agent-comparison')}
                     className="outline-none rounded-lg transition-shadow dashboard-section-enter"
                     style={{
-                      minHeight: '400px',
+                      minHeight: '180px',
                       boxShadow: focusedSection === 'agent-comparison' ? `0 0 0 2px ${theme.colors.accent}` : 'none',
                       animationDelay: '100ms',
                     }}
                     data-testid="section-agent-comparison"
                   >
-                    <ChartErrorBoundary theme={theme} chartName="Agent Comparison">
+                    <ChartErrorBoundary theme={theme} chartName="Provider Comparison">
                       <AgentComparisonChart data={data} theme={theme} colorBlindMode={colorBlindMode} />
+                    </ChartErrorBoundary>
+                  </div>
+
+                  {/* Agent Usage Over Time */}
+                  <div
+                    ref={setSectionRef('agent-usage')}
+                    tabIndex={0}
+                    role="region"
+                    aria-label={getSectionLabel('agent-usage')}
+                    onKeyDown={(e) => handleSectionKeyDown(e, 'agent-usage')}
+                    className="outline-none rounded-lg transition-shadow dashboard-section-enter"
+                    style={{
+                      minHeight: '280px',
+                      boxShadow: focusedSection === 'agent-usage' ? `0 0 0 2px ${theme.colors.accent}` : 'none',
+                      animationDelay: '200ms',
+                    }}
+                    data-testid="section-agent-usage"
+                  >
+                    <ChartErrorBoundary theme={theme} chartName="Agent Usage">
+                      <AgentUsageChart data={data} timeRange={timeRange} theme={theme} colorBlindMode={colorBlindMode} />
                     </ChartErrorBoundary>
                   </div>
                 </>

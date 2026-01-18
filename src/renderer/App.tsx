@@ -11951,24 +11951,6 @@ You are taking over this conversation. Based on the context above, provide a bri
 		() => setEnterToSendAI(!enterToSendAI),
 		[enterToSendAI]
 	);
-	// OpenSpec command injection - sets prompt content into input field
-	const handleInjectOpenSpecPrompt = useCallback(
-		(prompt: string) => {
-			if (activeGroupChatId) {
-				// Update group chat draft
-				setGroupChats(prev =>
-					prev.map(c =>
-						c.id === activeGroupChatId ? { ...c, draftMessage: prompt } : c
-					)
-				);
-			} else {
-				setInputValue(prompt);
-			}
-			// Focus the input so user can edit/send the injected prompt
-			setTimeout(() => inputRef.current?.focus(), 0);
-		},
-		[activeGroupChatId, setInputValue]
-	);
 
 	// QuickActionsModal stable callbacks
 	const handleQuickActionsRenameTab = useCallback(() => {
@@ -12816,7 +12798,6 @@ You are taking over this conversation. Based on the context above, provide a bri
 					isFilePreviewOpen={previewFile !== null}
 					ghCliAvailable={ghCliAvailable}
 					onPublishGist={() => setGistPublishModalOpen(true)}
-					onInjectOpenSpecPrompt={handleInjectOpenSpecPrompt}
 					lastGraphFocusFile={lastGraphFocusFilePath}
 					onOpenLastDocumentGraph={() => {
 						if (lastGraphFocusFilePath) {

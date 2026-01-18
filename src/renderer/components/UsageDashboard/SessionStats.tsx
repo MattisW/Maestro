@@ -187,7 +187,7 @@ export function SessionStats({ sessions, theme, colorBlindMode = false }: Sessio
           className="text-sm font-medium mb-4"
           style={{ color: theme.colors.textMain }}
         >
-          Session Statistics
+          Agent Statistics
         </h3>
         <div
           className="flex items-center justify-center h-24"
@@ -208,7 +208,7 @@ export function SessionStats({ sessions, theme, colorBlindMode = false }: Sessio
         className="text-sm font-medium mb-4"
         style={{ color: theme.colors.textMain }}
       >
-        Session Statistics
+        Agent Statistics
       </h3>
 
       {/* Summary Cards */}

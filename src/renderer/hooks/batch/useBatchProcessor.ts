@@ -219,8 +219,11 @@ export function useBatchProcessor({
   sessionsRef.current = sessions;
 
   // Ref to track latest batchRunStates for time tracking callback
-  const batchRunStatesRef = useRef(batchRunStates);
-  batchRunStatesRef.current = batchRunStates;
+  // NOTE: Do NOT auto-sync with batchRunStates on every render!
+  // The dispatch wrapper updates this ref synchronously after each action.
+  // Auto-syncing can reset the ref to stale React state when batches are pending,
+  // causing the "0 of N tasks completed" regression. See commit 01eca193.
+  const batchRunStatesRef = useRef<Record<string, BatchRunState>>(batchRunStates);
 
   // Ref to track latest updateBatchStateAndBroadcast for async callbacks (fixes HMR stale closure)
   const updateBatchStateAndBroadcastRef = useRef<typeof updateBatchStateAndBroadcast | null>(null);
