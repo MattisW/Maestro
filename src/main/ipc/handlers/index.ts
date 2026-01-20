@@ -142,6 +142,11 @@ export interface HandlerDependencies {
 /**
  * Register all IPC handlers.
  * Call this once during app initialization.
+ *
+ * Note: registerWebHandlers is NOT called here because it requires access to
+ * module-level webServer state with getter/setter functions for proper lifecycle
+ * management (create, start, stop). The web handlers are registered separately
+ * in main/index.ts where the webServer variable is defined.
  */
 export function registerAllHandlers(deps: HandlerDependencies): void {
 	registerGitHandlers({
