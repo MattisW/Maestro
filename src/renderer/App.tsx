@@ -1017,11 +1017,13 @@ function MaestroConsoleInner() {
 			}
 
 			// Sessions must have aiTabs - if missing, this is a data corruption issue
+			// Create a default tab to prevent crashes when code calls .find() on aiTabs
 			if (!session.aiTabs || session.aiTabs.length === 0) {
 				console.error(
-					'[restoreSession] Session has no aiTabs - data corruption, skipping:',
+					'[restoreSession] Session has no aiTabs - data corruption, creating default tab:',
 					session.id
 				);
+				const defaultTabId = generateId();
 				return {
 					...session,
 					aiPid: -1,
@@ -1029,6 +1031,27 @@ function MaestroConsoleInner() {
 					state: 'error' as SessionState,
 					isLive: false,
 					liveUrl: undefined,
+					aiTabs: [
+						{
+							id: defaultTabId,
+							agentSessionId: null,
+							name: null,
+							state: 'idle' as const,
+							logs: [
+								{
+									id: generateId(),
+									timestamp: Date.now(),
+									source: 'system' as const,
+									text: '⚠️ Session data was corrupted and has been recovered with a new tab.',
+								},
+							],
+							starred: false,
+							inputValue: '',
+							stagedImages: [],
+							createdAt: Date.now(),
+						},
+					],
+					activeTabId: defaultTabId,
 				};
 			}
 
