@@ -27,6 +27,17 @@ export const REGEX_AI_SUFFIX = /-ai-[^-]+$/;
 export const REGEX_AI_TAB_ID = /-ai-([^-]+)$/;
 
 // ============================================================================
+// Buffer Size Limits
+// ============================================================================
+
+/**
+ * Maximum buffer size for group chat output (10MB).
+ * Prevents memory exhaustion from extremely large outputs.
+ * Larger than process-manager's 100KB because group chat conversations can be lengthy.
+ */
+export const MAX_GROUP_CHAT_BUFFER_SIZE = 10 * 1024 * 1024; // 10MB
+
+// ============================================================================
 // Debug Logging (Performance Optimization)
 // ============================================================================
 // Debug logs in hot paths (data handlers) are disabled in production to avoid
@@ -38,6 +49,20 @@ export const DEBUG_GROUP_CHAT =
 export function debugLog(prefix: string, message: string, ...args: unknown[]): void {
 	if (DEBUG_GROUP_CHAT) {
 		console.log(`[${prefix}] ${message}`, ...args);
+	}
+}
+
+/**
+ * Lazy debug logging - accepts a callback to avoid string construction costs in production.
+ * Use this for expensive string operations (e.g., JSON.stringify, template literals with computations).
+ *
+ * @example
+ * // Instead of: debugLog('Parser', `Parsed ${items.length} items: ${JSON.stringify(items)}`)
+ * // Use: debugLogLazy('Parser', () => `Parsed ${items.length} items: ${JSON.stringify(items)}`)
+ */
+export function debugLogLazy(prefix: string, messageFn: () => string, ...args: unknown[]): void {
+	if (DEBUG_GROUP_CHAT) {
+		console.log(`[${prefix}] ${messageFn()}`, ...args);
 	}
 }
 

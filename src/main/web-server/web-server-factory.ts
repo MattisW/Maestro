@@ -9,6 +9,8 @@ import { getThemeById } from '../themes';
 import { getHistoryManager } from '../history-manager';
 import { logger } from '../utils/logger';
 import type { ProcessManager } from '../process-manager';
+import type { StoredSession } from '../stores/types';
+import type { Group } from '../../shared/types';
 
 /** Store interface for settings */
 interface SettingsStore {
@@ -59,11 +61,11 @@ export function createWebServerFactory(deps: WebServerFactoryDependencies) {
 
 		// Set up callback for web server to fetch sessions list
 		server.setGetSessionsCallback(() => {
-			const sessions = sessionsStore.get('sessions', []) as any[];
-			const groups = groupsStore.get('groups', []) as any[];
-			return sessions.map((s: any) => {
+			const sessions = sessionsStore.get<StoredSession[]>('sessions', []);
+			const groups = groupsStore.get<Group[]>('groups', []);
+			return sessions.map((s) => {
 				// Find the group for this session
-				const group = s.groupId ? groups.find((g: any) => g.id === s.groupId) : null;
+				const group = s.groupId ? groups.find((g) => g.id === s.groupId) : null;
 
 				// Extract last AI response for mobile preview (first 3 lines, max 500 chars)
 				// Use active tab's logs as the source of truth
@@ -136,8 +138,8 @@ export function createWebServerFactory(deps: WebServerFactoryDependencies) {
 		// Set up callback for web server to fetch single session details
 		// Optional tabId param allows fetching logs for a specific tab (avoids race conditions)
 		server.setGetSessionDetailCallback((sessionId: string, tabId?: string) => {
-			const sessions = sessionsStore.get('sessions', []) as any[];
-			const session = sessions.find((s: any) => s.id === sessionId);
+			const sessions = sessionsStore.get<StoredSession[]>('sessions', []);
+			const session = sessions.find((s) => s.id === sessionId);
 			if (!session) return null;
 
 			// Get the requested tab's logs (or active tab if no tabId provided)
@@ -218,8 +220,8 @@ export function createWebServerFactory(deps: WebServerFactoryDependencies) {
 			}
 
 			// Get the session's current inputMode to determine which process to write to
-			const sessions = sessionsStore.get('sessions', []) as any[];
-			const session = sessions.find((s: any) => s.id === sessionId);
+			const sessions = sessionsStore.get<StoredSession[]>('sessions', []);
+			const session = sessions.find((s) => s.id === sessionId);
 			if (!session) {
 				logger.warn(`Session ${sessionId} not found for writeToSession`, 'WebServer');
 				return false;
@@ -247,8 +249,8 @@ export function createWebServerFactory(deps: WebServerFactoryDependencies) {
 				}
 
 				// Look up the session to get Claude session ID for logging
-				const sessions = sessionsStore.get('sessions', []) as any[];
-				const session = sessions.find((s: any) => s.id === sessionId);
+				const sessions = sessionsStore.get<StoredSession[]>('sessions', []);
+				const session = sessions.find((s) => s.id === sessionId);
 				const agentSessionId = session?.agentSessionId || 'none';
 
 				// Forward to renderer - it will handle spawn, state, and everything else
