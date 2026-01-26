@@ -375,6 +375,9 @@ function MaestroConsoleInner() {
 		setTourOpen,
 		tourFromWizard,
 		setTourFromWizard,
+		// Symphony Modal
+		symphonyModalOpen,
+		setSymphonyModalOpen,
 	} = useModalContext();
 
 	// --- MOBILE LANDSCAPE MODE (reading-only view) ---
@@ -12026,6 +12029,7 @@ You are taking over this conversation. Based on the context above, provide a bri
 		setLogViewerOpen,
 		setProcessMonitorOpen,
 		setUsageDashboardOpen,
+		setSymphonyModalOpen,
 		setGroups,
 		setSessions,
 		setRenameInstanceModalOpen,
