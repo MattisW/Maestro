@@ -11386,6 +11386,7 @@ You are taking over this conversation. Based on the context above, provide a bri
 		rightPanelRef,
 		setFuzzyFileSearchOpen,
 		setMarketplaceModalOpen,
+		setSymphonyModalOpen,
 		setShowNewGroupChatModal,
 		deleteGroupChatWithConfirmation,
 		// Group chat context
@@ -12479,6 +12480,7 @@ You are taking over this conversation. Based on the context above, provide a bri
 					getDocumentTaskCount={getDocumentTaskCount}
 					onAutoRunRefresh={handleAutoRunRefresh}
 					onOpenMarketplace={handleOpenMarketplace}
+					onOpenSymphony={() => setSymphonyModalOpen(true)}
 					tabSwitcherOpen={tabSwitcherOpen}
 					onCloseTabSwitcher={handleCloseTabSwitcher}
 					onTabSelect={handleUtilityTabSelect}

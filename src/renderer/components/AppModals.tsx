@@ -806,6 +806,9 @@ export interface AppUtilityModalsProps {
 	lastGraphFocusFile?: string;
 	onOpenLastDocumentGraph?: () => void;
 
+	// Symphony
+	onOpenSymphony?: () => void;
+
 	// LightboxModal
 	lightboxImage: string | null;
 	lightboxImages: string[];
@@ -995,6 +998,8 @@ export function AppUtilityModals({
 	// Document Graph - quick re-open last graph
 	lastGraphFocusFile,
 	onOpenLastDocumentGraph,
+	// Symphony
+	onOpenSymphony,
 	// LightboxModal
 	lightboxImage,
 	lightboxImages,
@@ -1145,6 +1150,7 @@ export function AppUtilityModals({
 					onOpenPlaybookExchange={onOpenMarketplace}
 					lastGraphFocusFile={lastGraphFocusFile}
 					onOpenLastDocumentGraph={onOpenLastDocumentGraph}
+					onOpenSymphony={onOpenSymphony}
 				/>
 			)}
 
@@ -1898,6 +1904,8 @@ export interface AppModalsProps {
 	getDocumentTaskCount: (filename: string) => Promise<number>;
 	onAutoRunRefresh: () => Promise<void>;
 	onOpenMarketplace?: () => void;
+	// Symphony
+	onOpenSymphony?: () => void;
 	tabSwitcherOpen: boolean;
 	onCloseTabSwitcher: () => void;
 	onTabSelect: (tabId: string) => void;
@@ -2210,6 +2218,8 @@ export function AppModals(props: AppModalsProps) {
 		getDocumentTaskCount,
 		onAutoRunRefresh,
 		onOpenMarketplace,
+		// Symphony
+		onOpenSymphony,
 		tabSwitcherOpen,
 		onCloseTabSwitcher,
 		onTabSelect,
@@ -2511,6 +2521,7 @@ export function AppModals(props: AppModalsProps) {
 				getDocumentTaskCount={getDocumentTaskCount}
 				onAutoRunRefresh={onAutoRunRefresh}
 				onOpenMarketplace={onOpenMarketplace}
+				onOpenSymphony={onOpenSymphony}
 				tabSwitcherOpen={tabSwitcherOpen}
 				onCloseTabSwitcher={onCloseTabSwitcher}
 				onTabSelect={onTabSelect}
