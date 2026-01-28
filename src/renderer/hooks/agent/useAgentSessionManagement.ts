@@ -1,5 +1,5 @@
 import { useCallback, useRef } from 'react';
-import type { Session, LogEntry, UsageStats } from '../../types';
+import type { Session, LogEntry, UsageStats, ThinkingMode } from '../../types';
 import { createTab, getActiveTab } from '../../utils/tabHelpers';
 import { generateId } from '../../utils/ids';
 import type { RightPanelHandle } from '../../components/RightPanel';
@@ -40,7 +40,7 @@ export interface UseAgentSessionManagementDeps {
 	/** Default value for saveToHistory on new tabs */
 	defaultSaveToHistory: boolean;
 	/** Default value for showThinking on new tabs */
-	defaultShowThinking: boolean;
+	defaultShowThinking: ThinkingMode;
 }
 
 /**

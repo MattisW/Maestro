@@ -130,6 +130,7 @@ import type {
 	OpenSpecCommand,
 	LeaderboardRegistration,
 	CustomAICommand,
+	ThinkingMode,
 } from './types';
 import { THEMES } from './constants/themes';
 import { generateId } from './utils/ids';
@@ -3041,8 +3042,8 @@ function MaestroConsoleInner() {
 									const targetTab = updatedTabs.find((t) => t.id === chunkTabId);
 									if (!targetTab) continue;
 
-									// Only append if thinking is enabled for this tab
-									if (!targetTab.showThinking) continue;
+									// Only append if thinking is enabled for this tab (on or sticky)
+									if (!targetTab.showThinking || targetTab.showThinking === 'off') continue;
 
 									// Skip malformed content that looks like concatenated tool names
 									// This can happen if the stream parser receives malformed output
@@ -3201,7 +3202,8 @@ function MaestroConsoleInner() {
 						if (s.id !== actualSessionId) return s;
 
 						const targetTab = s.aiTabs.find((t) => t.id === tabId);
-						if (!targetTab?.showThinking) return s; // Only show if thinking enabled
+						// Only show if thinking enabled (on or sticky)
+						if (!targetTab?.showThinking || targetTab.showThinking === 'off') return s;
 
 						const toolLog: LogEntry = {
 							id: `tool-${Date.now()}-${toolEvent.toolName}`,
@@ -5268,6 +5270,12 @@ You are taking over this conversation. Based on the context above, provide a bri
 		if (!session) return;
 		const activeTab = getActiveTab(session);
 		if (!activeTab) return;
+		// Cycle through: off -> on -> sticky -> off
+		const cycleThinkingMode = (current: ThinkingMode | undefined): ThinkingMode => {
+			if (!current || current === 'off') return 'on';
+			if (current === 'on') return 'sticky';
+			return 'off'; // sticky -> off
+		};
 		setSessions((prev) =>
 			prev.map((s) => {
 				if (s.id !== activeSessionIdRef.current) return s;
@@ -5275,14 +5283,16 @@ You are taking over this conversation. Based on the context above, provide a bri
 					...s,
 					aiTabs: s.aiTabs.map((tab) => {
 						if (tab.id !== activeTab.id) return tab;
-						if (tab.showThinking) {
+						const newMode = cycleThinkingMode(tab.showThinking);
+						// When turning OFF, also clear any existing thinking/tool logs
+						if (newMode === 'off') {
 							return {
 								...tab,
-								showThinking: false,
+								showThinking: 'off',
 								logs: tab.logs.filter((l) => l.source !== 'thinking' && l.source !== 'tool'),
 							};
 						}
-						return { ...tab, showThinking: true };
+						return { ...tab, showThinking: newMode };
 					}),
 				};
 			})
@@ -6230,7 +6240,7 @@ You are taking over this conversation. Based on the context above, provide a bri
 					previousUIState: tabWizardState.previousUIState ?? {
 						readOnlyMode: false,
 						saveToHistory: true,
-						showThinking: false,
+						showThinking: 'off',
 					},
 					error: tabWizardState.error,
 					isGeneratingDocs: tabWizardState.isGeneratingDocs,
@@ -6499,7 +6509,7 @@ You are taking over this conversation. Based on the context above, provide a bri
 			const currentUIState: PreviousUIState = {
 				readOnlyMode: activeTab.readOnlyMode ?? false,
 				saveToHistory: activeTab.saveToHistory ?? true,
-				showThinking: activeTab.showThinking ?? false,
+				showThinking: activeTab.showThinking ?? 'off',
 			};
 
 			// Start the inline wizard with the argument text (natural language input)
@@ -11142,6 +11152,12 @@ You are taking over this conversation. Based on the context above, provide a bri
 		if (!activeSession) return;
 		const activeTab = getActiveTab(activeSession);
 		if (!activeTab) return;
+		// Cycle through: off -> on -> sticky -> off
+		const cycleThinkingMode = (current: ThinkingMode | undefined): ThinkingMode => {
+			if (!current || current === 'off') return 'on';
+			if (current === 'on') return 'sticky';
+			return 'off';
+		};
 		setSessions((prev) =>
 			prev.map((s) => {
 				if (s.id !== activeSession.id) return s;
@@ -11149,15 +11165,16 @@ You are taking over this conversation. Based on the context above, provide a bri
 					...s,
 					aiTabs: s.aiTabs.map((tab) => {
 						if (tab.id !== activeTab.id) return tab;
-						if (tab.showThinking) {
-							// Turn off - clear thinking logs
+						const newMode = cycleThinkingMode(tab.showThinking);
+						// When turning OFF, clear thinking logs
+						if (newMode === 'off') {
 							return {
 								...tab,
-								showThinking: false,
+								showThinking: 'off',
 								logs: tab.logs.filter((log) => log.source !== 'thinking'),
 							};
 						}
-						return { ...tab, showThinking: true };
+						return { ...tab, showThinking: newMode };
 					}),
 				};
 			})
@@ -11197,6 +11214,12 @@ You are taking over this conversation. Based on the context above, provide a bri
 	}, [activeSession]);
 	const handleQuickActionsToggleTabShowThinking = useCallback(() => {
 		if (activeSession?.inputMode === 'ai' && activeSession.activeTabId) {
+			// Cycle through: off -> on -> sticky -> off
+			const cycleThinkingMode = (current: ThinkingMode | undefined): ThinkingMode => {
+				if (!current || current === 'off') return 'on';
+				if (current === 'on') return 'sticky';
+				return 'off';
+			};
 			setSessions((prev) =>
 				prev.map((s) => {
 					if (s.id !== activeSession.id) return s;
@@ -11204,15 +11227,16 @@ You are taking over this conversation. Based on the context above, provide a bri
 						...s,
 						aiTabs: s.aiTabs.map((tab) => {
 							if (tab.id !== s.activeTabId) return tab;
+							const newMode = cycleThinkingMode(tab.showThinking);
 							// When turning OFF, clear any thinking/tool logs
-							if (tab.showThinking) {
+							if (newMode === 'off') {
 								return {
 									...tab,
-									showThinking: false,
+									showThinking: 'off',
 									logs: tab.logs.filter((l) => l.source !== 'thinking' && l.source !== 'tool'),
 								};
 							}
-							return { ...tab, showThinking: true };
+							return { ...tab, showThinking: newMode };
 						}),
 					};
 				})
@@ -12565,7 +12589,7 @@ You are taking over this conversation. Based on the context above, provide a bri
 						activeGroupChatId ? groupChatReadOnlyMode : (activeTab?.readOnlyMode ?? false)
 					}
 					onPromptToggleTabReadOnlyMode={handlePromptToggleTabReadOnlyMode}
-					promptTabShowThinking={activeGroupChatId ? false : (activeTab?.showThinking ?? false)}
+					promptTabShowThinking={activeGroupChatId ? 'off' : (activeTab?.showThinking ?? 'off')}
 					onPromptToggleTabShowThinking={
 						activeGroupChatId ? undefined : handlePromptToggleTabShowThinking
 					}

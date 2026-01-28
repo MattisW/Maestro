@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Session, AITab } from '../../types';
+import type { Session, AITab, ThinkingMode } from '../../types';
 import { getInitialRenameValue } from '../../utils/tabHelpers';
 
 /**
@@ -576,6 +576,12 @@ export function useMainKeyboardHandler(): UseMainKeyboardHandlerReturn {
 				}
 				if (ctx.isTabShortcut(e, 'toggleShowThinking')) {
 					e.preventDefault();
+					// Helper to cycle through thinking modes: off -> on -> sticky -> off
+					const cycleThinkingMode = (current: ThinkingMode | undefined): ThinkingMode => {
+						if (!current || current === 'off') return 'on';
+						if (current === 'on') return 'sticky';
+						return 'off'; // sticky -> off
+					};
 					ctx.setSessions((prev: Session[]) =>
 						prev.map((s: Session) => {
 							if (s.id !== ctx.activeSession!.id) return s;
@@ -597,16 +603,17 @@ export function useMainKeyboardHandler(): UseMainKeyboardHandlerReturn {
 											},
 										};
 									}
-									// Regular tab: toggle showThinking
+									// Regular tab: cycle showThinking through three states
+									const newMode = cycleThinkingMode(tab.showThinking);
 									// When turning OFF, also clear any existing thinking/tool logs
-									if (tab.showThinking) {
+									if (newMode === 'off') {
 										return {
 											...tab,
-											showThinking: false,
+											showThinking: 'off',
 											logs: tab.logs.filter((l) => l.source !== 'thinking' && l.source !== 'tool'),
 										};
 									}
-									return { ...tab, showThinking: true };
+									return { ...tab, showThinking: newMode };
 								}),
 							};
 						})

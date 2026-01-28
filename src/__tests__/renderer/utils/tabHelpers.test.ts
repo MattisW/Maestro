@@ -187,17 +187,21 @@ describe('tabHelpers', () => {
 		it('creates a tab with showThinking option', () => {
 			const session = createMockSession({ aiTabs: [] });
 
-			// Default should be false
+			// Default should be 'off'
 			const defaultResult = createTab(session);
-			expect(defaultResult.tab.showThinking).toBe(false);
+			expect(defaultResult.tab.showThinking).toBe('off');
 
-			// Explicit true
-			const trueResult = createTab(session, { showThinking: true });
-			expect(trueResult.tab.showThinking).toBe(true);
+			// Explicit 'on'
+			const trueResult = createTab(session, { showThinking: 'on' });
+			expect(trueResult.tab.showThinking).toBe('on');
 
-			// Explicit false
-			const falseResult = createTab(session, { showThinking: false });
-			expect(falseResult.tab.showThinking).toBe(false);
+			// Explicit 'off'
+			const falseResult = createTab(session, { showThinking: 'off' });
+			expect(falseResult.tab.showThinking).toBe('off');
+
+			// Explicit 'sticky'
+			const stickyResult = createTab(session, { showThinking: 'sticky' });
+			expect(stickyResult.tab.showThinking).toBe('sticky');
 		});
 
 		it('appends tab to existing tabs', () => {
@@ -1210,22 +1214,32 @@ describe('tabHelpers', () => {
 				projectRoot: '/project',
 				toolType: 'claude-code',
 				mergedLogs: [],
-				showThinking: true,
+				showThinking: 'on',
 			});
 
-			expect(sessionWithThinking.aiTabs[0].showThinking).toBe(true);
+			expect(sessionWithThinking.aiTabs[0].showThinking).toBe('on');
 
 			const { session: sessionWithoutThinking } = createMergedSession({
 				name: 'Without Thinking',
 				projectRoot: '/project',
 				toolType: 'claude-code',
 				mergedLogs: [],
-				showThinking: false,
+				showThinking: 'off',
 			});
 
-			expect(sessionWithoutThinking.aiTabs[0].showThinking).toBe(false);
+			expect(sessionWithoutThinking.aiTabs[0].showThinking).toBe('off');
 
-			// Default should be false
+			const { session: sessionWithSticky } = createMergedSession({
+				name: 'Sticky Thinking',
+				projectRoot: '/project',
+				toolType: 'claude-code',
+				mergedLogs: [],
+				showThinking: 'sticky',
+			});
+
+			expect(sessionWithSticky.aiTabs[0].showThinking).toBe('sticky');
+
+			// Default should be 'off'
 			const { session: sessionDefault } = createMergedSession({
 				name: 'Default Thinking',
 				projectRoot: '/project',
@@ -1233,7 +1247,7 @@ describe('tabHelpers', () => {
 				mergedLogs: [],
 			});
 
-			expect(sessionDefault.aiTabs[0].showThinking).toBe(false);
+			expect(sessionDefault.aiTabs[0].showThinking).toBe('off');
 		});
 
 		it('creates a session with terminal toolType sets correct inputMode', () => {
@@ -1340,7 +1354,7 @@ describe('tabHelpers', () => {
 					mode: null,
 					confidence: 0,
 					conversationHistory: [],
-					previousUIState: { readOnlyMode: false, saveToHistory: true, showThinking: false },
+					previousUIState: { readOnlyMode: false, saveToHistory: true, showThinking: 'off' },
 				},
 			});
 			expect(hasActiveWizard(tab)).toBe(false);
@@ -1354,7 +1368,7 @@ describe('tabHelpers', () => {
 					mode: 'new',
 					confidence: 50,
 					conversationHistory: [],
-					previousUIState: { readOnlyMode: false, saveToHistory: true, showThinking: false },
+					previousUIState: { readOnlyMode: false, saveToHistory: true, showThinking: 'off' },
 				},
 			});
 			expect(hasActiveWizard(tab)).toBe(true);
@@ -1368,7 +1382,7 @@ describe('tabHelpers', () => {
 					mode: 'iterate',
 					confidence: 75,
 					conversationHistory: [],
-					previousUIState: { readOnlyMode: false, saveToHistory: true, showThinking: false },
+					previousUIState: { readOnlyMode: false, saveToHistory: true, showThinking: 'off' },
 				},
 			});
 			expect(hasActiveWizard(tab)).toBe(true);

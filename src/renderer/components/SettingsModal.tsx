@@ -252,8 +252,8 @@ interface SettingsModalProps {
 	setEnterToSendTerminal: (value: boolean) => void;
 	defaultSaveToHistory: boolean;
 	setDefaultSaveToHistory: (value: boolean) => void;
-	defaultShowThinking: boolean;
-	setDefaultShowThinking: (value: boolean) => void;
+	defaultShowThinking: 'off' | 'on' | 'sticky';
+	setDefaultShowThinking: (value: 'off' | 'on' | 'sticky') => void;
 	osNotificationsEnabled: boolean;
 	setOsNotificationsEnabled: (value: boolean) => void;
 	audioFeedbackEnabled: boolean;
@@ -1382,16 +1382,39 @@ export const SettingsModal = memo(function SettingsModal(props: SettingsModalPro
 								theme={theme}
 							/>
 
-							{/* Default Thinking Toggle */}
-							<SettingCheckbox
-								icon={Brain}
-								sectionLabel="Default Thinking Toggle"
-								title='Enable "Thinking" by default for new tabs'
-								description="When enabled, new AI tabs will show streaming thinking/reasoning content as the AI works, instead of waiting for the final result"
-								checked={props.defaultShowThinking}
-								onChange={props.setDefaultShowThinking}
-								theme={theme}
-							/>
+							{/* Default Thinking Toggle - Three states: Off, On, Sticky */}
+							<div>
+								<label className="block text-xs font-bold opacity-70 uppercase mb-2 flex items-center gap-2">
+									<Brain className="w-3 h-3" />
+									Default Thinking Mode
+								</label>
+								<div
+									className="p-3 rounded border"
+									style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.bgMain }}
+								>
+									<div className="font-medium mb-1" style={{ color: theme.colors.textMain }}>
+										Show AI thinking/reasoning content for new tabs
+									</div>
+									<div className="text-sm opacity-60 mb-3" style={{ color: theme.colors.textDim }}>
+										{props.defaultShowThinking === 'off' &&
+											'Thinking is hidden - only final responses are shown'}
+										{props.defaultShowThinking === 'on' &&
+											'Thinking streams in real-time but clears when the response completes'}
+										{props.defaultShowThinking === 'sticky' &&
+											'Thinking streams in real-time and remains visible after the response completes'}
+									</div>
+									<ToggleButtonGroup
+										options={[
+											{ value: 'off' as const, label: 'Off' },
+											{ value: 'on' as const, label: 'On' },
+											{ value: 'sticky' as const, label: 'Sticky' },
+										]}
+										value={props.defaultShowThinking}
+										onChange={props.setDefaultShowThinking}
+										theme={theme}
+									/>
+								</div>
+							</div>
 
 							{/* Sleep Prevention */}
 							<div>

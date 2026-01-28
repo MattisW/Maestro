@@ -38,6 +38,7 @@ import type {
 	AgentError,
 	ToolType,
 	LeaderboardRegistration,
+	ThinkingMode,
 } from '../types';
 import type { FileNode } from '../types/fileTree';
 import type { WizardStep } from './Wizard/WizardContext';
@@ -884,7 +885,7 @@ export interface AppUtilityModalsProps {
 	onPromptToggleTabSaveToHistory?: () => void;
 	promptTabReadOnlyMode: boolean;
 	onPromptToggleTabReadOnlyMode: () => void;
-	promptTabShowThinking: boolean;
+	promptTabShowThinking: ThinkingMode;
 	onPromptToggleTabShowThinking?: () => void;
 	promptSupportsThinking: boolean;
 	promptEnterToSend: boolean;
@@ -1937,7 +1938,7 @@ export interface AppModalsProps {
 	onPromptToggleTabSaveToHistory?: () => void;
 	promptTabReadOnlyMode: boolean;
 	onPromptToggleTabReadOnlyMode: () => void;
-	promptTabShowThinking: boolean;
+	promptTabShowThinking: ThinkingMode;
 	onPromptToggleTabShowThinking?: () => void;
 	promptSupportsThinking: boolean;
 	promptEnterToSend: boolean;

@@ -12,6 +12,7 @@ import type {
 	LeaderboardRegistration,
 	ContextManagementSettings,
 	KeyboardMasteryStats,
+	ThinkingMode,
 } from '../../types';
 import { DEFAULT_CUSTOM_THEME_COLORS } from '../../constants/themes';
 import { DEFAULT_SHORTCUTS, TAB_SHORTCUTS, FIXED_SHORTCUTS } from '../../constants/shortcuts';
@@ -167,9 +168,9 @@ export interface UseSettingsReturn {
 	defaultSaveToHistory: boolean;
 	setDefaultSaveToHistory: (value: boolean) => void;
 
-	// Default thinking toggle
-	defaultShowThinking: boolean;
-	setDefaultShowThinking: (value: boolean) => void;
+	// Default thinking toggle (three states: 'off' | 'on' | 'sticky')
+	defaultShowThinking: ThinkingMode;
+	setDefaultShowThinking: (value: ThinkingMode) => void;
 	leftSidebarWidth: number;
 	rightPanelWidth: number;
 	markdownEditMode: boolean;
@@ -366,7 +367,7 @@ export function useSettings(): UseSettingsReturn {
 	const [enterToSendAI, setEnterToSendAIState] = useState(false); // AI mode defaults to Command+Enter
 	const [enterToSendTerminal, setEnterToSendTerminalState] = useState(true); // Terminal defaults to Enter
 	const [defaultSaveToHistory, setDefaultSaveToHistoryState] = useState(true); // History toggle defaults to on
-	const [defaultShowThinking, setDefaultShowThinkingState] = useState(false); // Thinking toggle defaults to off
+	const [defaultShowThinking, setDefaultShowThinkingState] = useState<ThinkingMode>('off'); // Thinking toggle defaults to off
 	const [leftSidebarWidth, setLeftSidebarWidthState] = useState(256);
 	const [rightPanelWidth, setRightPanelWidthState] = useState(384);
 	const [markdownEditMode, setMarkdownEditModeState] = useState(false);
@@ -558,7 +559,7 @@ export function useSettings(): UseSettingsReturn {
 		window.maestro.settings.set('defaultSaveToHistory', value);
 	}, []);
 
-	const setDefaultShowThinking = useCallback((value: boolean) => {
+	const setDefaultShowThinking = useCallback((value: ThinkingMode) => {
 		setDefaultShowThinkingState(value);
 		window.maestro.settings.set('defaultShowThinking', value);
 	}, []);
@@ -1338,8 +1339,16 @@ export function useSettings(): UseSettingsReturn {
 					setEnterToSendTerminalState(savedEnterToSendTerminal as boolean);
 				if (savedDefaultSaveToHistory !== undefined)
 					setDefaultSaveToHistoryState(savedDefaultSaveToHistory as boolean);
-				if (savedDefaultShowThinking !== undefined)
-					setDefaultShowThinkingState(savedDefaultShowThinking as boolean);
+				if (savedDefaultShowThinking !== undefined) {
+					// Support legacy boolean values: true -> 'on', false -> 'off'
+					const thinkingMode =
+						typeof savedDefaultShowThinking === 'boolean'
+							? savedDefaultShowThinking
+								? 'on'
+								: 'off'
+							: (savedDefaultShowThinking as ThinkingMode);
+					setDefaultShowThinkingState(thinkingMode);
+				}
 
 				if (savedLlmProvider !== undefined) setLlmProviderState(savedLlmProvider as LLMProvider);
 				if (savedModelSlug !== undefined) setModelSlugState(savedModelSlug as string);

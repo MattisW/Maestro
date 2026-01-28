@@ -3075,7 +3075,7 @@ describe('MainPanel', () => {
 				previousUIState: {
 					readOnlyMode: false,
 					saveToHistory: true,
-					showThinking: false,
+					showThinking: 'off',
 				},
 			});
 
@@ -3104,7 +3104,7 @@ describe('MainPanel', () => {
 				previousUIState: {
 					readOnlyMode: false,
 					saveToHistory: true,
-					showThinking: false,
+					showThinking: 'off',
 				},
 			});
 
@@ -3126,7 +3126,7 @@ describe('MainPanel', () => {
 				previousUIState: {
 					readOnlyMode: false,
 					saveToHistory: true,
-					showThinking: false,
+					showThinking: 'off',
 				},
 			});
 
@@ -3145,7 +3145,7 @@ describe('MainPanel', () => {
 				previousUIState: {
 					readOnlyMode: false,
 					saveToHistory: true,
-					showThinking: false,
+					showThinking: 'off',
 				},
 			});
 
@@ -3170,7 +3170,7 @@ describe('MainPanel', () => {
 					previousUIState: {
 						readOnlyMode: false,
 						saveToHistory: true,
-						showThinking: false,
+						showThinking: 'off',
 					},
 				},
 				{

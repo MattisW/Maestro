@@ -55,6 +55,8 @@ export interface InlineWizardMessage {
 	ready?: boolean;
 }
 
+import type { ThinkingMode } from '../types';
+
 /**
  * UI state to restore when wizard ends.
  * These settings are temporarily overridden during wizard mode.
@@ -62,7 +64,7 @@ export interface InlineWizardMessage {
 export interface PreviousUIState {
 	readOnlyMode: boolean;
 	saveToHistory: boolean;
-	showThinking: boolean;
+	showThinking: ThinkingMode;
 }
 
 /**

@@ -18,6 +18,7 @@ export type {
 	BatchDocumentEntry,
 	PlaybookDocumentEntry,
 	Playbook,
+	ThinkingMode,
 } from '../../shared/types';
 
 // Re-export Symphony types for session metadata
@@ -31,6 +32,7 @@ import type {
 	BatchDocumentEntry,
 	UsageStats,
 	ToolType,
+	ThinkingMode,
 } from '../../shared/types';
 
 // Re-export group chat types from shared location
@@ -79,7 +81,7 @@ export interface WizardMessage {
 export interface WizardPreviousUIState {
 	readOnlyMode: boolean;
 	saveToHistory: boolean;
-	showThinking: boolean;
+	showThinking: ThinkingMode;
 }
 
 /**
@@ -420,7 +422,7 @@ export interface AITab {
 	readOnlyMode?: boolean; // When true, agent operates in plan/read-only mode
 	saveToHistory?: boolean; // When true, synopsis is requested after each completion and saved to History
 	lastSynopsisTime?: number; // Timestamp of last synopsis generation (for time-window context in prompts)
-	showThinking?: boolean; // When true, show streaming thinking/reasoning content in real-time
+	showThinking?: ThinkingMode; // Controls thinking display: 'off' | 'on' (temporary) | 'sticky' (persistent)
 	awaitingSessionId?: boolean; // True when this tab sent a message and is awaiting its session ID
 	thinkingStartTime?: number; // Timestamp when tab started thinking (for elapsed time display)
 	scrollTop?: number; // Saved scroll position for this tab's output view

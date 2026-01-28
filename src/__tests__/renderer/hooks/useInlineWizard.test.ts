@@ -373,7 +373,7 @@ describe('useInlineWizard', () => {
 
 		describe('previousUIState preservation', () => {
 			it('should store and restore previousUIState', async () => {
-				const uiState = { readOnlyMode: true, saveToHistory: false, showThinking: true };
+				const uiState = { readOnlyMode: true, saveToHistory: false, showThinking: 'on' };
 
 				const { result } = renderHook(() => useInlineWizard());
 

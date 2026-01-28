@@ -1,7 +1,7 @@
 // Tab helper functions for AI multi-tab support
 // These helpers manage AITab state within Maestro sessions
 
-import { Session, AITab, ClosedTab, LogEntry, UsageStats, ToolType } from '../types';
+import { Session, AITab, ClosedTab, LogEntry, UsageStats, ToolType, ThinkingMode } from '../types';
 import { generateId } from './ids';
 
 /**
@@ -105,7 +105,7 @@ export interface CreateTabOptions {
 	starred?: boolean; // Whether session is starred
 	usageStats?: UsageStats; // Token usage stats
 	saveToHistory?: boolean; // Whether to save synopsis to history after completions
-	showThinking?: boolean; // Whether to show thinking/streaming content for this tab
+	showThinking?: ThinkingMode; // Thinking display mode: 'off' | 'on' (temporary) | 'sticky' (persistent)
 }
 
 /**
@@ -152,7 +152,7 @@ export function createTab(
 		starred = false,
 		usageStats,
 		saveToHistory = true,
-		showThinking = false,
+		showThinking = 'off',
 	} = options;
 
 	// Create the new tab with default values
@@ -782,8 +782,8 @@ export interface CreateMergedSessionOptions {
 	groupId?: string;
 	/** Whether to save completions to history (default: true) */
 	saveToHistory?: boolean;
-	/** Whether to show thinking/streaming content (default: false) */
-	showThinking?: boolean;
+	/** Thinking display mode: 'off' | 'on' (temporary) | 'sticky' (persistent) */
+	showThinking?: ThinkingMode;
 }
 
 /**
@@ -830,7 +830,7 @@ export function createMergedSession(
 		usageStats,
 		groupId,
 		saveToHistory = true,
-		showThinking = false,
+		showThinking = 'off',
 	} = options;
 
 	const sessionId = generateId();
