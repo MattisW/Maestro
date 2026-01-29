@@ -211,27 +211,42 @@ function getWindowsKnownPaths(binaryName: string): string[] {
 	const localAppData = process.env.LOCALAPPDATA || path.join(home, 'AppData', 'Local');
 	const programFiles = process.env.ProgramFiles || 'C:\\Program Files';
 
+	// Common path builders to reduce duplication across binary definitions
+	const npmGlobal = (bin: string) => [
+		path.join(appData, 'npm', `${bin}.cmd`),
+		path.join(localAppData, 'npm', `${bin}.cmd`),
+	];
+	const localBin = (bin: string) => [path.join(home, '.local', 'bin', `${bin}.exe`)];
+	const wingetLinks = (bin: string) => [
+		path.join(localAppData, 'Microsoft', 'WinGet', 'Links', `${bin}.exe`),
+		path.join(programFiles, 'WinGet', 'Links', `${bin}.exe`),
+	];
+	const goBin = (bin: string) => [path.join(home, 'go', 'bin', `${bin}.exe`)];
+	const pythonScripts = (bin: string) => [
+		path.join(appData, 'Python', 'Scripts', `${bin}.exe`),
+		path.join(localAppData, 'Programs', 'Python', 'Python312', 'Scripts', `${bin}.exe`),
+		path.join(localAppData, 'Programs', 'Python', 'Python311', 'Scripts', `${bin}.exe`),
+		path.join(localAppData, 'Programs', 'Python', 'Python310', 'Scripts', `${bin}.exe`),
+	];
+
 	// Define known installation paths for each binary, in priority order
 	// Prefer .exe (standalone installers) over .cmd (npm wrappers)
 	const knownPaths: Record<string, string[]> = {
 		claude: [
 			// PowerShell installer (primary method) - installs claude.exe
-			path.join(home, '.local', 'bin', 'claude.exe'),
+			...localBin('claude'),
 			// Winget installation
-			path.join(localAppData, 'Microsoft', 'WinGet', 'Links', 'claude.exe'),
-			path.join(programFiles, 'WinGet', 'Links', 'claude.exe'),
+			...wingetLinks('claude'),
 			// npm global installation - creates .cmd wrapper
-			path.join(appData, 'npm', 'claude.cmd'),
-			path.join(localAppData, 'npm', 'claude.cmd'),
+			...npmGlobal('claude'),
 			// WindowsApps (Microsoft Store style)
 			path.join(localAppData, 'Microsoft', 'WindowsApps', 'claude.exe'),
 		],
 		codex: [
 			// npm global installation (primary method for Codex)
-			path.join(appData, 'npm', 'codex.cmd'),
-			path.join(localAppData, 'npm', 'codex.cmd'),
+			...npmGlobal('codex'),
 			// Possible standalone in future
-			path.join(home, '.local', 'bin', 'codex.exe'),
+			...localBin('codex'),
 		],
 		opencode: [
 			// Scoop installation (recommended for OpenCode)
@@ -244,21 +259,17 @@ function getWindowsKnownPaths(binaryName: string): string[] {
 				'opencode.exe'
 			),
 			// Go install
-			path.join(home, 'go', 'bin', 'opencode.exe'),
+			...goBin('opencode'),
 			// npm (has known issues on Windows, but check anyway)
-			path.join(appData, 'npm', 'opencode.cmd'),
+			...npmGlobal('opencode'),
 		],
 		gemini: [
 			// npm global installation
-			path.join(appData, 'npm', 'gemini.cmd'),
-			path.join(localAppData, 'npm', 'gemini.cmd'),
+			...npmGlobal('gemini'),
 		],
 		aider: [
 			// pip installation
-			path.join(appData, 'Python', 'Scripts', 'aider.exe'),
-			path.join(localAppData, 'Programs', 'Python', 'Python312', 'Scripts', 'aider.exe'),
-			path.join(localAppData, 'Programs', 'Python', 'Python311', 'Scripts', 'aider.exe'),
-			path.join(localAppData, 'Programs', 'Python', 'Python310', 'Scripts', 'aider.exe'),
+			...pythonScripts('aider'),
 		],
 	};
 
@@ -310,34 +321,37 @@ function getUnixKnownPaths(binaryName: string): string[] {
 	// Get dynamic paths from Node version managers (nvm, fnm, volta, etc.)
 	const versionManagerPaths = detectNodeVersionManagerBinPaths();
 
+	// Common path builders to reduce duplication across binary definitions
+	const homebrew = (bin: string) => [`/opt/homebrew/bin/${bin}`, `/usr/local/bin/${bin}`];
+	const localBin = (bin: string) => [path.join(home, '.local', 'bin', bin)];
+	const npmGlobal = (bin: string) => [path.join(home, '.npm-global', 'bin', bin)];
+	const nodeVersionManagers = (bin: string) => versionManagerPaths.map((p) => path.join(p, bin));
+
 	// Define known installation paths for each binary, in priority order
 	const knownPaths: Record<string, string[]> = {
 		claude: [
-			// Claude Code default installation location (irm https://claude.ai/install.ps1 equivalent on macOS)
+			// Claude Code default installation location
 			path.join(home, '.claude', 'local', 'claude'),
 			// User local bin (pip, manual installs)
-			path.join(home, '.local', 'bin', 'claude'),
-			// Homebrew on Apple Silicon
-			'/opt/homebrew/bin/claude',
-			// Homebrew on Intel Mac
-			'/usr/local/bin/claude',
+			...localBin('claude'),
+			// Homebrew (Apple Silicon + Intel)
+			...homebrew('claude'),
 			// npm global with custom prefix
-			path.join(home, '.npm-global', 'bin', 'claude'),
+			...npmGlobal('claude'),
 			// User bin directory
 			path.join(home, 'bin', 'claude'),
-			// Add paths from Node version managers (nvm, fnm, volta, etc.)
-			...versionManagerPaths.map((p) => path.join(p, 'claude')),
+			// Node version managers (nvm, fnm, volta, etc.)
+			...nodeVersionManagers('claude'),
 		],
 		codex: [
 			// User local bin
-			path.join(home, '.local', 'bin', 'codex'),
+			...localBin('codex'),
 			// Homebrew paths
-			'/opt/homebrew/bin/codex',
-			'/usr/local/bin/codex',
+			...homebrew('codex'),
 			// npm global
-			path.join(home, '.npm-global', 'bin', 'codex'),
-			// Add paths from Node version managers (nvm, fnm, volta, etc.)
-			...versionManagerPaths.map((p) => path.join(p, 'codex')),
+			...npmGlobal('codex'),
+			// Node version managers (nvm, fnm, volta, etc.)
+			...nodeVersionManagers('codex'),
 		],
 		opencode: [
 			// OpenCode installer default location
@@ -345,29 +359,27 @@ function getUnixKnownPaths(binaryName: string): string[] {
 			// Go install location
 			path.join(home, 'go', 'bin', 'opencode'),
 			// User local bin
-			path.join(home, '.local', 'bin', 'opencode'),
+			...localBin('opencode'),
 			// Homebrew paths
-			'/opt/homebrew/bin/opencode',
-			'/usr/local/bin/opencode',
-			// Add paths from Node version managers (nvm, fnm, volta, etc.)
-			...versionManagerPaths.map((p) => path.join(p, 'opencode')),
+			...homebrew('opencode'),
+			// Node version managers (nvm, fnm, volta, etc.)
+			...nodeVersionManagers('opencode'),
 		],
 		gemini: [
 			// npm global paths
-			path.join(home, '.npm-global', 'bin', 'gemini'),
-			'/opt/homebrew/bin/gemini',
-			'/usr/local/bin/gemini',
-			// Add paths from Node version managers (nvm, fnm, volta, etc.)
-			...versionManagerPaths.map((p) => path.join(p, 'gemini')),
+			...npmGlobal('gemini'),
+			// Homebrew paths
+			...homebrew('gemini'),
+			// Node version managers (nvm, fnm, volta, etc.)
+			...nodeVersionManagers('gemini'),
 		],
 		aider: [
 			// pip installation
-			path.join(home, '.local', 'bin', 'aider'),
+			...localBin('aider'),
 			// Homebrew paths
-			'/opt/homebrew/bin/aider',
-			'/usr/local/bin/aider',
-			// Add paths from Node version managers (in case installed via npm)
-			...versionManagerPaths.map((p) => path.join(p, 'aider')),
+			...homebrew('aider'),
+			// Node version managers (in case installed via npm)
+			...nodeVersionManagers('aider'),
 		],
 	};
 
