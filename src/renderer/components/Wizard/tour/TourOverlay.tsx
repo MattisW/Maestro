@@ -358,6 +358,21 @@ export function TourOverlay({
             transform: translateY(0);
           }
         }
+
+        .tour-welcome-enter {
+          animation: tour-welcome-enter 0.3s ease-out;
+        }
+
+        @keyframes tour-welcome-enter {
+          from {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+          }
+        }
       `}</style>
 		</div>
 	);

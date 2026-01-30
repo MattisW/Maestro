@@ -30,7 +30,7 @@ export function TourWelcome({
 }: TourWelcomeProps): JSX.Element {
 	return (
 		<div
-			className="tour-step-tooltip rounded-xl shadow-2xl overflow-hidden tour-step-enter"
+			className="tour-step-tooltip rounded-xl shadow-2xl overflow-hidden tour-welcome-enter"
 			style={{
 				position: 'fixed',
 				top: '50%',
