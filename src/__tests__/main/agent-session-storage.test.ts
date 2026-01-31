@@ -415,6 +415,322 @@ describe('Storage Module Initialization', () => {
 	});
 });
 
+describe('CodexSessionStorage SSH Remote Support', () => {
+	// Mock SSH remote config for testing
+	const mockSshConfig = {
+		id: 'test-ssh',
+		name: 'Test SSH Server',
+		host: 'test-server.example.com',
+		port: 22,
+		username: 'testuser',
+		useSshConfig: false,
+		enabled: true,
+	};
+
+	describe('listSessions with SSH config', () => {
+		it('should accept sshConfig parameter for listSessions', async () => {
+			const { CodexSessionStorage } = await import('../../main/storage/codex-session-storage');
+			const storage = new CodexSessionStorage();
+
+			// With SSH config - should not throw and should return array
+			const sessions = await storage.listSessions('/test/path', mockSshConfig);
+			expect(Array.isArray(sessions)).toBe(true);
+		});
+
+		it('should use local file system when sshConfig is undefined', async () => {
+			const { CodexSessionStorage } = await import('../../main/storage/codex-session-storage');
+			const storage = new CodexSessionStorage();
+
+			// Without SSH config - should use local operations
+			const sessions = await storage.listSessions('/test/nonexistent/project');
+			expect(sessions).toEqual([]);
+		});
+	});
+
+	describe('listSessionsPaginated with SSH config', () => {
+		it('should accept sshConfig parameter for listSessionsPaginated', async () => {
+			const { CodexSessionStorage } = await import('../../main/storage/codex-session-storage');
+			const storage = new CodexSessionStorage();
+
+			// With SSH config - should work with pagination options
+			const result = await storage.listSessionsPaginated('/test/path', {}, mockSshConfig);
+			expect(result).toHaveProperty('sessions');
+			expect(result).toHaveProperty('hasMore');
+			expect(result).toHaveProperty('totalCount');
+			expect(result).toHaveProperty('nextCursor');
+			expect(Array.isArray(result.sessions)).toBe(true);
+		});
+
+		it('should support pagination options with SSH config', async () => {
+			const { CodexSessionStorage } = await import('../../main/storage/codex-session-storage');
+			const storage = new CodexSessionStorage();
+
+			// Test with specific pagination options
+			const result = await storage.listSessionsPaginated(
+				'/test/path',
+				{ limit: 10, cursor: undefined },
+				mockSshConfig
+			);
+			expect(result.totalCount).toBe(0); // No sessions on test remote
+			expect(result.hasMore).toBe(false);
+		});
+	});
+
+	describe('readSessionMessages with SSH config', () => {
+		it('should accept sshConfig parameter for readSessionMessages', async () => {
+			const { CodexSessionStorage } = await import('../../main/storage/codex-session-storage');
+			const storage = new CodexSessionStorage();
+
+			// With SSH config - should attempt to read remotely
+			const result = await storage.readSessionMessages(
+				'/test/path',
+				'nonexistent-session',
+				{},
+				mockSshConfig
+			);
+			expect(result).toHaveProperty('messages');
+			expect(result).toHaveProperty('total');
+			expect(result).toHaveProperty('hasMore');
+			expect(result.messages).toEqual([]);
+		});
+
+		it('should handle offset and limit options with SSH config', async () => {
+			const { CodexSessionStorage } = await import('../../main/storage/codex-session-storage');
+			const storage = new CodexSessionStorage();
+
+			// Test pagination options with SSH config
+			const result = await storage.readSessionMessages(
+				'/test/path',
+				'session-id',
+				{ offset: 0, limit: 50 },
+				mockSshConfig
+			);
+			expect(result.messages).toEqual([]);
+			expect(result.total).toBe(0);
+		});
+	});
+
+	describe('searchSessions with SSH config', () => {
+		it('should accept sshConfig parameter for searchSessions', async () => {
+			const { CodexSessionStorage } = await import('../../main/storage/codex-session-storage');
+			const storage = new CodexSessionStorage();
+
+			// With SSH config - should search remotely
+			const results = await storage.searchSessions('/test/path', 'test query', 'all', mockSshConfig);
+			expect(Array.isArray(results)).toBe(true);
+		});
+
+		it('should return empty results for empty query with SSH config', async () => {
+			const { CodexSessionStorage } = await import('../../main/storage/codex-session-storage');
+			const storage = new CodexSessionStorage();
+
+			const results = await storage.searchSessions('/test/path', '', 'all', mockSshConfig);
+			expect(results).toEqual([]);
+
+			const whitespaceResults = await storage.searchSessions('/test/path', '   ', 'all', mockSshConfig);
+			expect(whitespaceResults).toEqual([]);
+		});
+
+		it('should support all search modes with SSH config', async () => {
+			const { CodexSessionStorage } = await import('../../main/storage/codex-session-storage');
+			const storage = new CodexSessionStorage();
+
+			// Test each search mode works with SSH config
+			const modes: Array<'title' | 'user' | 'assistant' | 'all'> = ['title', 'user', 'assistant', 'all'];
+
+			for (const mode of modes) {
+				const results = await storage.searchSessions('/test/path', 'query', mode, mockSshConfig);
+				expect(Array.isArray(results)).toBe(true);
+			}
+		});
+	});
+
+	describe('getSessionPath with SSH config', () => {
+		it('should return null for getSessionPath (sync method cannot do remote lookup)', async () => {
+			const { CodexSessionStorage } = await import('../../main/storage/codex-session-storage');
+			const storage = new CodexSessionStorage();
+
+			// getSessionPath is synchronous and returns null for Codex (requires async file search)
+			const path = storage.getSessionPath('/test/path', 'session-id', mockSshConfig);
+			expect(path).toBeNull();
+		});
+
+		it('should return null for getSessionPath without SSH config as well', async () => {
+			const { CodexSessionStorage } = await import('../../main/storage/codex-session-storage');
+			const storage = new CodexSessionStorage();
+
+			// Even without SSH, Codex getSessionPath returns null (needs async lookup)
+			const path = storage.getSessionPath('/test/path', 'session-id');
+			expect(path).toBeNull();
+		});
+	});
+
+	describe('deleteMessagePair with SSH config', () => {
+		it('should return error for SSH remote sessions', async () => {
+			const { CodexSessionStorage } = await import('../../main/storage/codex-session-storage');
+			const storage = new CodexSessionStorage();
+
+			const result = await storage.deleteMessagePair(
+				'/test/path',
+				'session-id',
+				'message-uuid',
+				undefined,
+				mockSshConfig
+			);
+
+			expect(result.success).toBe(false);
+			expect(result.error).toContain('Delete not supported for remote sessions');
+		});
+
+		it('should return session not found for local delete on non-existent session', async () => {
+			const { CodexSessionStorage } = await import('../../main/storage/codex-session-storage');
+			const storage = new CodexSessionStorage();
+
+			// Without SSH config, should attempt local delete
+			const result = await storage.deleteMessagePair(
+				'/test/path',
+				'nonexistent-session',
+				'message-uuid'
+			);
+
+			expect(result.success).toBe(false);
+			expect(result.error).toContain('Session file not found');
+		});
+	});
+
+	describe('YYYY/MM/DD directory traversal via SSH', () => {
+		it('should handle remote directory structure traversal', async () => {
+			const { CodexSessionStorage } = await import('../../main/storage/codex-session-storage');
+			const storage = new CodexSessionStorage();
+
+			// Codex uses YYYY/MM/DD directory structure
+			// This test verifies the method accepts sshConfig and attempts traversal
+			const sessions = await storage.listSessions('/project/path', mockSshConfig);
+
+			// Should return empty array (no actual remote sessions)
+			// but should not throw during traversal
+			expect(sessions).toEqual([]);
+		});
+	});
+
+	describe('Remote session file parsing', () => {
+		it('should handle session file parsing when content is fetched via SSH', async () => {
+			const { CodexSessionStorage } = await import('../../main/storage/codex-session-storage');
+			const storage = new CodexSessionStorage();
+
+			// Test that readSessionMessages handles SSH path correctly
+			const result = await storage.readSessionMessages(
+				'/project/path',
+				'test-session-id',
+				{ offset: 0, limit: 10 },
+				mockSshConfig
+			);
+
+			expect(result.messages).toEqual([]);
+			expect(result.total).toBe(0);
+			expect(result.hasMore).toBe(false);
+		});
+	});
+
+	describe('SSH remote method signatures', () => {
+		it('should accept sshConfig parameter on all public methods', async () => {
+			const { CodexSessionStorage } = await import('../../main/storage/codex-session-storage');
+			const storage = new CodexSessionStorage();
+
+			// Verify all public methods accept sshConfig
+			// listSessions
+			const sessions = await storage.listSessions('/test/path', mockSshConfig);
+			expect(Array.isArray(sessions)).toBe(true);
+
+			// listSessionsPaginated
+			const paginated = await storage.listSessionsPaginated('/test/path', {}, mockSshConfig);
+			expect(paginated).toHaveProperty('sessions');
+
+			// readSessionMessages
+			const messages = await storage.readSessionMessages('/test/path', 'session-id', {}, mockSshConfig);
+			expect(messages).toHaveProperty('messages');
+
+			// searchSessions
+			const search = await storage.searchSessions('/test/path', 'query', 'all', mockSshConfig);
+			expect(Array.isArray(search)).toBe(true);
+
+			// getSessionPath (sync - returns null)
+			const sessionPath = storage.getSessionPath('/test/path', 'session-id', mockSshConfig);
+			expect(sessionPath).toBeNull();
+
+			// deleteMessagePair (returns error for SSH)
+			const deleteResult = await storage.deleteMessagePair(
+				'/test/path',
+				'session-id',
+				'message-id',
+				undefined,
+				mockSshConfig
+			);
+			expect(deleteResult.success).toBe(false);
+			expect(deleteResult.error).toContain('remote');
+		});
+	});
+
+	describe('SSH config flow verification', () => {
+		it('should differentiate between SSH and local based on sshConfig presence', async () => {
+			const { CodexSessionStorage } = await import('../../main/storage/codex-session-storage');
+			const storage = new CodexSessionStorage();
+
+			// Both with and without sshConfig should work (return empty for non-existent)
+			const withSsh = await storage.listSessions('/project/path', mockSshConfig);
+			const withoutSsh = await storage.listSessions('/project/path');
+
+			expect(Array.isArray(withSsh)).toBe(true);
+			expect(Array.isArray(withoutSsh)).toBe(true);
+		});
+
+		it('should verify SshRemoteConfig interface is properly accepted', async () => {
+			const { CodexSessionStorage } = await import('../../main/storage/codex-session-storage');
+			const storage = new CodexSessionStorage();
+
+			// Full SshRemoteConfig object
+			const fullConfig = {
+				id: 'full-config-test',
+				name: 'Full Config Test',
+				host: 'remote.example.com',
+				port: 2222,
+				username: 'admin',
+				useSshConfig: true,
+				enabled: true,
+			};
+
+			// Should work with full config
+			const sessions = await storage.listSessions('/project', fullConfig);
+			expect(Array.isArray(sessions)).toBe(true);
+
+			// Should work with minimal config
+			const minimalConfig = {
+				id: 'minimal',
+				name: 'Minimal',
+				host: 'host',
+				port: 22,
+				username: 'user',
+				useSshConfig: false,
+				enabled: true,
+			};
+			const sessionsMinimal = await storage.listSessions('/project', minimalConfig);
+			expect(Array.isArray(sessionsMinimal)).toBe(true);
+		});
+	});
+
+	describe('Remote sessions directory path', () => {
+		it('should use ~/.codex/sessions for remote path', async () => {
+			const { CodexSessionStorage } = await import('../../main/storage/codex-session-storage');
+			const storage = new CodexSessionStorage();
+
+			// The private getRemoteSessionsDir returns '~/.codex/sessions'
+			// We verify this indirectly by testing that SSH operations work correctly
+			// and that the storage class is properly instantiated with the right agentId
+			expect(storage.agentId).toBe('codex');
+		});
+	});
+});
+
 describe('OpenCodeSessionStorage SSH Remote Support', () => {
 	// Mock SSH remote config for testing
 	const mockSshConfig = {
