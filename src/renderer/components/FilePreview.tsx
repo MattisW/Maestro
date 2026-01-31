@@ -653,6 +653,16 @@ export const FilePreview = forwardRef<FilePreviewHandle, FilePreviewProps>(funct
 		return extractHeadings(file.content);
 	}, [isMarkdown, file?.content]);
 
+	const scrollMarkdownToBoundary = useCallback(
+		(direction: 'top' | 'bottom') => {
+			const container = markdownContainerRef.current;
+			if (!container) return;
+			const top = direction === 'top' ? 0 : container.scrollHeight;
+			container.scrollTo({ top, behavior: 'smooth' });
+		},
+		[]
+	);
+
 	// Memoize file tree indices to avoid O(n) traversal on every render
 	const fileTreeIndices = useMemo(() => {
 		if (fileTree && fileTree.length > 0) {
@@ -2103,7 +2113,21 @@ export const FilePreview = forwardRef<FilePreviewHandle, FilePreviewProps>(funct
 									</span>
 								</div>
 								{/* TOC Entries */}
-								<div className="overflow-y-auto p-1" style={{ maxHeight: 'calc(70vh - 40px)' }}>
+								<div className="overflow-y-auto px-1 pt-1 pb-2" style={{ maxHeight: 'calc(70vh - 40px)' }}>
+									<div className="px-1 py-1">
+										<button
+											onClick={() => {
+												scrollMarkdownToBoundary('top');
+												setShowTocOverlay(false);
+											}}
+											className="w-full px-2 py-1.5 text-left text-xs rounded hover:bg-white/10 transition-colors flex items-center gap-2"
+											style={{ color: theme.colors.textDim }}
+											title="Jump to top"
+										>
+											<ChevronUp className="w-3 h-3" />
+											<span>Top</span>
+										</button>
+									</div>
 									{tocEntries.map((entry, index) => {
 										// Get color based on heading level (match the prose styles)
 										const levelColors: Record<number, string> = {
@@ -2142,6 +2166,20 @@ export const FilePreview = forwardRef<FilePreviewHandle, FilePreviewProps>(funct
 											</button>
 										);
 									})}
+									<div className="px-1 py-1">
+										<button
+											onClick={() => {
+												scrollMarkdownToBoundary('bottom');
+												setShowTocOverlay(false);
+											}}
+											className="w-full px-2 py-1.5 text-left text-xs rounded hover:bg-white/10 transition-colors flex items-center gap-2"
+											style={{ color: theme.colors.textDim }}
+											title="Jump to bottom"
+										>
+											<ChevronDown className="w-3 h-3" />
+											<span>Bottom</span>
+										</button>
+									</div>
 								</div>
 							</div>
 						)}
