@@ -903,23 +903,44 @@ export function registerSymphonyHandlers({
 				}
 
 				// Fetch fresh data
-				const registry = await fetchRegistry();
+				try {
+					const registry = await fetchRegistry();
 
-				// Update cache
-				const newCache: SymphonyCache = {
-					...cache,
-					registry: {
-						data: registry,
-						fetchedAt: Date.now(),
-					},
-					issues: cache?.issues ?? {},
-				};
-				await writeCache(app, newCache);
+					// Update cache
+					const newCache: SymphonyCache = {
+						...cache,
+						registry: {
+							data: registry,
+							fetchedAt: Date.now(),
+						},
+						issues: cache?.issues ?? {},
+					};
+					await writeCache(app, newCache);
 
-				return {
-					registry,
-					fromCache: false,
-				};
+					return {
+						registry,
+						fromCache: false,
+					};
+				} catch (error) {
+					logger.warn('Failed to fetch Symphony registry from GitHub', LOG_CONTEXT, { error });
+
+					// Fallback to expired cache if available (better than showing nothing)
+					if (cache?.registry) {
+						const cacheAge = Date.now() - cache.registry.fetchedAt;
+						logger.info(
+							`Using expired cache as fallback (age: ${Math.round(cacheAge / 1000)}s)`,
+							LOG_CONTEXT
+						);
+						return {
+							registry: cache.registry.data,
+							fromCache: true,
+							cacheAge,
+						};
+					}
+
+					// No cache available - re-throw to show error to user
+					throw error;
+				}
 			}
 		)
 	);
@@ -948,26 +969,50 @@ export function registerSymphonyHandlers({
 				}
 
 				// Fetch fresh
-				const issues = await fetchIssues(repoSlug);
+				try {
+					const issues = await fetchIssues(repoSlug);
 
-				// Update cache
-				const newCache: SymphonyCache = {
-					...cache,
-					registry: cache?.registry,
-					issues: {
-						...cache?.issues,
-						[repoSlug]: {
-							data: issues,
-							fetchedAt: Date.now(),
+					// Update cache
+					const newCache: SymphonyCache = {
+						...cache,
+						registry: cache?.registry,
+						issues: {
+							...cache?.issues,
+							[repoSlug]: {
+								data: issues,
+								fetchedAt: Date.now(),
+							},
 						},
-					},
-				};
-				await writeCache(app, newCache);
+					};
+					await writeCache(app, newCache);
 
-				return {
-					issues,
-					fromCache: false,
-				};
+					return {
+						issues,
+						fromCache: false,
+					};
+				} catch (error) {
+					logger.warn('Failed to fetch Symphony issues from GitHub', LOG_CONTEXT, {
+						repoSlug,
+						error,
+					});
+
+					// Fallback to expired cache if available (better than showing nothing)
+					if (cached?.data) {
+						const cacheAge = Date.now() - cached.fetchedAt;
+						logger.info(
+							`Using expired issues cache as fallback (age: ${Math.round(cacheAge / 1000)}s)`,
+							LOG_CONTEXT
+						);
+						return {
+							issues: cached.data,
+							fromCache: true,
+							cacheAge,
+						};
+					}
+
+					// No cache available - re-throw to show error to user
+					throw error;
+				}
 			}
 		)
 	);
