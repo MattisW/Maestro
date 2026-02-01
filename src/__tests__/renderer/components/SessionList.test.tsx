@@ -758,7 +758,7 @@ describe('SessionList', () => {
 			expect(screen.getByText('New Group')).toBeInTheDocument();
 		});
 
-		it('shows New Group button when groups exist with ungrouped sessions', () => {
+		it('shows New Group button inline with Ungrouped Agents header when ungrouped sessions exist', () => {
 			const createNewGroup = vi.fn();
 			const group = createMockGroup({ id: 'g1', name: 'My Group' });
 			const sessions = [createMockSession({ id: 's1', name: 'Ungrouped Session' })];
@@ -771,10 +771,20 @@ describe('SessionList', () => {
 			});
 			render(<SessionList {...props} />);
 
+			// Both Ungrouped Agents header and New Group button should be visible
+			expect(screen.getByText('Ungrouped Agents')).toBeInTheDocument();
 			expect(screen.getByText('New Group')).toBeInTheDocument();
+
+			// The button should be inline - verify they share the same parent row
+			const ungroupedHeader = screen.getByText('Ungrouped Agents');
+			const newGroupButton = screen.getByText('New Group');
+			// Both should be within the same clickable header row (grandparent for text, parent for button)
+			const headerRow = ungroupedHeader.closest('.flex.items-center.justify-between');
+			expect(headerRow).not.toBeNull();
+			expect(headerRow?.contains(newGroupButton)).toBe(true);
 		});
 
-		it('shows New Group button when groups exist with no ungrouped sessions', () => {
+		it('shows standalone New Group button when groups exist with no ungrouped sessions', () => {
 			const createNewGroup = vi.fn();
 			const group = createMockGroup({ id: 'g1', name: 'My Group', sessionIds: ['s1'] });
 			const sessions = [createMockSession({ id: 's1', name: 'Grouped Session', groupId: 'g1' })];
@@ -787,8 +797,14 @@ describe('SessionList', () => {
 			});
 			render(<SessionList {...props} />);
 
-			// New Group button should still be visible
+			// New Group button should be visible
 			expect(screen.getByText('New Group')).toBeInTheDocument();
+			// Ungrouped Agents header should NOT be visible (no ungrouped sessions)
+			expect(screen.queryByText('Ungrouped Agents')).not.toBeInTheDocument();
+
+			// Button should be standalone (full-width style)
+			const newGroupButton = screen.getByText('New Group').closest('button');
+			expect(newGroupButton).toHaveClass('w-full');
 		});
 	});
 
