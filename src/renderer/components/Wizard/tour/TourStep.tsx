@@ -328,9 +328,14 @@ export function TourStep({
 					{step.title}
 				</h3>
 
-				{/* Description */}
+				{/* Description - render newlines as line breaks */}
 				<p className="text-sm leading-relaxed mb-5" style={{ color: theme.colors.textDim }}>
-					{description}
+					{description.split('\n').map((line, i, arr) => (
+						<span key={i}>
+							{line}
+							{i < arr.length - 1 && <br />}
+						</span>
+					))}
 				</p>
 
 				{/* Navigation buttons */}
