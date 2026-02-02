@@ -27,6 +27,13 @@ You are compacting a conversation context to continue work in a fresh session. Y
 - Explanations of concepts already well-understood
 - Failed approaches that were completely abandoned (unless instructive)
 
+## CRITICAL: Response Completeness
+
+**Your entire response IS the final output.** The system captures ONLY your last message—nothing else from your session is preserved. Your response must be:
+- **Complete**: Include all relevant context, decisions, code, and details
+- **Self-contained**: A reader should understand everything without access to the original conversation
+- **Structured**: Follow the output format below for consistent parsing
+
 ## OUTPUT FORMAT
 
 Structure your summary as:

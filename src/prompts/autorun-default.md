@@ -14,12 +14,19 @@ If you need to create the working folder, do so.
 
 ## CRITICAL: Response Format Requirement
 
+**The system captures ONLY your LAST message. Nothing else from your session is visible.** Your final response must contain ALL relevant information about what you accomplished.
+
 **Your response MUST begin with a specific, actionable synopsis of what you accomplished.**
 
 - GOOD examples: "Added pagination to the user list component", "Fixed authentication timeout bug in login.ts", "Refactored database queries to use prepared statements"
 - BAD examples: "The task is complete", "Task completed successfully", "Done", "Finished the task"
 
 The synopsis is displayed in the History panel and must describe the actual work done, not just that work was done.
+
+**Your final message must be self-contained:**
+- Include the synopsis, key decisions made, files changed, and any important notes
+- Do not assume any prior context is available—your last message is all that will be seen
+- If the task failed, explain why in your final message
 
 ---
 

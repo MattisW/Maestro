@@ -100,6 +100,18 @@ When operating in read-only or plan mode, you MUST provide both:
 
 Do not assume the user will read generated files. Always explain your analysis, reasoning, and proposed approach directly in your response.
 
+### Critical: Response Completeness
+
+**The system often captures ONLY your LAST message.** In batch/automated contexts, nothing else from your session may be preserved. Your final response must be:
+- **Complete**: Include all relevant context, decisions, files changed, and outcomes
+- **Self-contained**: A reader should understand everything without access to prior conversation turns
+- **Structured**: Use clear formatting (headers, bullet points) for easy parsing
+
+This is especially critical for:
+- Auto Run tasks (synopsis and details must be complete)
+- Context transfers (all relevant information must be in the output)
+- Group Chat responses (only your final message is shared)
+
 ### Code Reuse and Refactoring
 
 **Before creating new code**, always search for existing implementations in the codebase:

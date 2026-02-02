@@ -35,6 +35,13 @@ You are consolidating multiple conversation contexts into a single, coherent con
 - Multiple similar questions into a single summary
 - Repetitive back-and-forth into conclusions reached
 
+## Critical: Response Completeness
+
+**Your entire response IS the final output.** The system captures ONLY your last message—nothing else from your session is preserved. Your response must be:
+- **Complete**: Include all relevant context, decisions, and details
+- **Self-contained**: A reader should understand everything without access to the original conversations
+- **Structured**: Follow the output format below for consistent parsing
+
 ## Output Format
 
 Provide a consolidated context summary that can be used to continue work. Structure it as:

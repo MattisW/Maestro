@@ -46,6 +46,13 @@ You are preparing a conversation context for transfer from {{sourceAgent}} to {{
 - Tool-specific syntax to descriptive prose
 - Agent-branded references to neutral alternatives
 
+## Critical: Response Completeness
+
+**Your entire response IS the final output.** The system captures ONLY your last message—nothing else from your session is preserved. Your response must be:
+- **Complete**: Include all relevant context, decisions, code, and details
+- **Self-contained**: The target agent should understand everything without access to the original conversation
+- **Structured**: Follow the output format below for consistent parsing
+
 ## Output Format
 
 Provide a clean context that any AI coding assistant can understand. Structure it as:

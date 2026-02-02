@@ -1,4 +1,6 @@
-Provide a brief synopsis of what you just accomplished in this task using this exact format:
+**CRITICAL: The system captures ONLY your last message. Your response IS the final record of this task.**
+
+Provide a complete synopsis of what you just accomplished in this task using this exact format:
 
 **Summary:** [1-2 sentences describing the key outcome]
 
@@ -14,3 +16,4 @@ Rules:
 - Start directly with the action taken using a verb (e.g., "Fixed button visibility..." not "You asked me to fix..." and not "Excellent! Fixed...").
 - If nothing meaningful was accomplished (no code changes, no files modified, no research completed, just greetings or introductions), respond with ONLY the text: NOTHING_TO_REPORT
 - Use NOTHING_TO_REPORT when the conversation was just a greeting, introduction, or there genuinely was no work to summarize.
+- Remember: Your response is the ONLY record of this task. Include all relevant details—files changed, decisions made, any caveats or follow-ups needed.
