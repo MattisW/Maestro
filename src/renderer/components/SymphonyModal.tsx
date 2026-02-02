@@ -276,11 +276,22 @@ function IssueCard({
 	const isClaimed = issue.status === 'in_progress';
 
 	return (
-		<button
-			onClick={onSelect}
-			disabled={!isAvailable}
+		<div
+			role="button"
+			tabIndex={isAvailable ? 0 : -1}
+			onClick={isAvailable ? onSelect : undefined}
+			onKeyDown={
+				isAvailable
+					? (e) => {
+							if (e.key === 'Enter' || e.key === ' ') {
+								e.preventDefault();
+								onSelect();
+							}
+						}
+					: undefined
+			}
 			className={`w-full p-3 rounded-lg border text-left transition-all ${
-				!isAvailable ? 'opacity-60 cursor-not-allowed' : 'hover:bg-white/5'
+				!isAvailable ? 'opacity-60' : 'hover:bg-white/5 cursor-pointer'
 			} ${isSelected ? 'ring-2' : ''}`}
 			style={{
 				backgroundColor: isSelected ? theme.colors.bgActivity : theme.colors.bgMain,
@@ -348,7 +359,7 @@ function IssueCard({
 					)}
 				</div>
 			)}
-		</button>
+		</div>
 	);
 }
 
