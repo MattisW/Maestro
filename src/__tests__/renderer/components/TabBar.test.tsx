@@ -4113,11 +4113,11 @@ describe('Unified active tab styling consistency', () => {
 			/>
 		);
 
-		// File tab should show extension badge with the actual extension
-		const extensionBadge = screen.getByText('.tsx');
+		// File tab should show extension badge (uppercase, without leading dot)
+		const extensionBadge = screen.getByText('TSX');
 		expect(extensionBadge).toBeInTheDocument();
-		// Verify it has the small badge styling (py-0.5 is unique to extension badges, not shortcut hints)
-		expect(extensionBadge.className).toContain('py-0.5');
+		// Verify it has the uppercase and small badge styling
+		expect(extensionBadge.className).toContain('uppercase');
 	});
 });
 
@@ -4407,7 +4407,7 @@ describe('Extension badge styling across themes', () => {
 		);
 
 		// Extension badge should be rendered
-		const badge = screen.getByText('.ts');
+		const badge = screen.getByText('TS');
 		expect(badge).toBeInTheDocument();
 		// Badge should have blue-ish background for TypeScript
 		expect(badge).toHaveStyle({ backgroundColor: 'rgba(59, 130, 246, 0.3)' });
@@ -4438,7 +4438,7 @@ describe('Extension badge styling across themes', () => {
 		);
 
 		// Extension badge should be rendered with light theme colors
-		const badge = screen.getByText('.tsx');
+		const badge = screen.getByText('TSX');
 		expect(badge).toBeInTheDocument();
 		// Badge should have darker blue for better contrast on light backgrounds
 		expect(badge).toHaveStyle({ backgroundColor: 'rgba(37, 99, 235, 0.15)' });
@@ -4468,7 +4468,7 @@ describe('Extension badge styling across themes', () => {
 			/>
 		);
 
-		const badge = screen.getByText('.md');
+		const badge = screen.getByText('MD');
 		expect(badge).toBeInTheDocument();
 		// Green tones for Markdown/Docs
 		expect(badge).toHaveStyle({ backgroundColor: 'rgba(34, 197, 94, 0.3)' });
@@ -4498,7 +4498,7 @@ describe('Extension badge styling across themes', () => {
 			/>
 		);
 
-		const badge = screen.getByText('.json');
+		const badge = screen.getByText('JSON');
 		expect(badge).toBeInTheDocument();
 		// Yellow tones for JSON/Config
 		expect(badge).toHaveStyle({ backgroundColor: 'rgba(234, 179, 8, 0.3)' });
@@ -4528,7 +4528,7 @@ describe('Extension badge styling across themes', () => {
 			/>
 		);
 
-		const badge = screen.getByText('.css');
+		const badge = screen.getByText('CSS');
 		expect(badge).toBeInTheDocument();
 		// Purple tones for CSS/Styles
 		expect(badge).toHaveStyle({ backgroundColor: 'rgba(168, 85, 247, 0.3)' });
@@ -4558,7 +4558,7 @@ describe('Extension badge styling across themes', () => {
 			/>
 		);
 
-		const badge = screen.getByText('.html');
+		const badge = screen.getByText('HTML');
 		expect(badge).toBeInTheDocument();
 		// Orange tones for HTML/Templates
 		expect(badge).toHaveStyle({ backgroundColor: 'rgba(249, 115, 22, 0.3)' });
@@ -4588,7 +4588,7 @@ describe('Extension badge styling across themes', () => {
 			/>
 		);
 
-		const badge = screen.getByText('.py');
+		const badge = screen.getByText('PY');
 		expect(badge).toBeInTheDocument();
 		// Teal/cyan tones for Python
 		expect(badge).toHaveStyle({ backgroundColor: 'rgba(20, 184, 166, 0.3)' });
@@ -4618,7 +4618,7 @@ describe('Extension badge styling across themes', () => {
 			/>
 		);
 
-		const badge = screen.getByText('.rs');
+		const badge = screen.getByText('RS');
 		expect(badge).toBeInTheDocument();
 		// Rust/red-orange tones for Rust
 		expect(badge).toHaveStyle({ backgroundColor: 'rgba(239, 68, 68, 0.3)' });
@@ -4648,7 +4648,7 @@ describe('Extension badge styling across themes', () => {
 			/>
 		);
 
-		const badge = screen.getByText('.xyz');
+		const badge = screen.getByText('XYZ');
 		expect(badge).toBeInTheDocument();
 		// Uses theme border color for unknown extensions
 		expect(badge).toHaveStyle({ backgroundColor: darkTheme.colors.border });
@@ -4793,7 +4793,7 @@ describe('File tab extension badge colorblind mode', () => {
 			/>
 		);
 
-		const badge = screen.getByText('.ts');
+		const badge = screen.getByText('TS');
 		expect(badge).toBeInTheDocument();
 		// Strong Blue (#0077BB) from Wong's colorblind-safe palette
 		expect(badge).toHaveStyle({ backgroundColor: 'rgba(0, 119, 187, 0.35)' });
@@ -4824,7 +4824,7 @@ describe('File tab extension badge colorblind mode', () => {
 			/>
 		);
 
-		const badge = screen.getByText('.tsx');
+		const badge = screen.getByText('TSX');
 		expect(badge).toBeInTheDocument();
 		// Strong Blue (#0077BB) lighter for light theme
 		expect(badge).toHaveStyle({ backgroundColor: 'rgba(0, 119, 187, 0.18)' });
@@ -4855,7 +4855,7 @@ describe('File tab extension badge colorblind mode', () => {
 			/>
 		);
 
-		const badge = screen.getByText('.md');
+		const badge = screen.getByText('MD');
 		expect(badge).toBeInTheDocument();
 		// Teal (#009988) from Wong's colorblind-safe palette
 		expect(badge).toHaveStyle({ backgroundColor: 'rgba(0, 153, 136, 0.35)' });
@@ -4886,7 +4886,7 @@ describe('File tab extension badge colorblind mode', () => {
 			/>
 		);
 
-		const badge = screen.getByText('.json');
+		const badge = screen.getByText('JSON');
 		expect(badge).toBeInTheDocument();
 		// Orange (#EE7733) from Wong's colorblind-safe palette
 		expect(badge).toHaveStyle({ backgroundColor: 'rgba(238, 119, 51, 0.35)' });
@@ -4917,7 +4917,7 @@ describe('File tab extension badge colorblind mode', () => {
 			/>
 		);
 
-		const badge = screen.getByText('.css');
+		const badge = screen.getByText('CSS');
 		expect(badge).toBeInTheDocument();
 		// Purple (#AA4499) from Wong's colorblind-safe palette
 		expect(badge).toHaveStyle({ backgroundColor: 'rgba(170, 68, 153, 0.35)' });
@@ -4948,7 +4948,7 @@ describe('File tab extension badge colorblind mode', () => {
 			/>
 		);
 
-		const badge = screen.getByText('.html');
+		const badge = screen.getByText('HTML');
 		expect(badge).toBeInTheDocument();
 		// Vermillion (#CC3311) from Wong's colorblind-safe palette
 		expect(badge).toHaveStyle({ backgroundColor: 'rgba(204, 51, 17, 0.35)' });
@@ -4979,7 +4979,7 @@ describe('File tab extension badge colorblind mode', () => {
 			/>
 		);
 
-		const badge = screen.getByText('.py');
+		const badge = screen.getByText('PY');
 		expect(badge).toBeInTheDocument();
 		// Cyan (#33BBEE) from Wong's colorblind-safe palette
 		expect(badge).toHaveStyle({ backgroundColor: 'rgba(51, 187, 238, 0.35)' });
@@ -5010,7 +5010,7 @@ describe('File tab extension badge colorblind mode', () => {
 			/>
 		);
 
-		const badge = screen.getByText('.rs');
+		const badge = screen.getByText('RS');
 		expect(badge).toBeInTheDocument();
 		// Magenta (#EE3377) from Wong's colorblind-safe palette
 		expect(badge).toHaveStyle({ backgroundColor: 'rgba(238, 51, 119, 0.35)' });
@@ -5041,7 +5041,7 @@ describe('File tab extension badge colorblind mode', () => {
 			/>
 		);
 
-		const badge = screen.getByText('.go');
+		const badge = screen.getByText('GO');
 		expect(badge).toBeInTheDocument();
 		// Blue-Green (#44AA99) from Wong's colorblind-safe palette
 		expect(badge).toHaveStyle({ backgroundColor: 'rgba(68, 170, 153, 0.35)' });
@@ -5072,7 +5072,7 @@ describe('File tab extension badge colorblind mode', () => {
 			/>
 		);
 
-		const badge = screen.getByText('.sh');
+		const badge = screen.getByText('SH');
 		expect(badge).toBeInTheDocument();
 		// Gray for shell scripts (distinguishable by luminance)
 		expect(badge).toHaveStyle({ backgroundColor: 'rgba(150, 150, 150, 0.35)' });
@@ -5103,7 +5103,7 @@ describe('File tab extension badge colorblind mode', () => {
 			/>
 		);
 
-		const badge = screen.getByText('.xyz');
+		const badge = screen.getByText('XYZ');
 		expect(badge).toBeInTheDocument();
 		// Falls back to theme border color for unknown extensions
 		expect(badge).toHaveStyle({ backgroundColor: darkTheme.colors.border });
@@ -5179,8 +5179,8 @@ describe('Performance: Many file tabs (10+)', () => {
 		expect(screen.getByText('file-7')).toBeInTheDocument();
 		expect(screen.getByText('file-14')).toBeInTheDocument();
 
-		// All extension badges should be present
-		const tsBadges = screen.getAllByText('.ts');
+		// All extension badges should be present (uppercase, no leading dot)
+		const tsBadges = screen.getAllByText('TS');
 		expect(tsBadges.length).toBe(15);
 	});
 
@@ -5361,9 +5361,11 @@ describe('Performance: Many file tabs (10+)', () => {
 			/>
 		);
 
-		// All extension badges should be rendered
+		// All extension badges should be rendered (uppercase, no leading dot)
 		extensions.forEach((ext) => {
-			expect(screen.getByText(ext)).toBeInTheDocument();
+			// Strip leading dot and convert to uppercase (e.g., '.ts' -> 'TS')
+			const badgeText = ext.replace(/^\./, '').toUpperCase();
+			expect(screen.getByText(badgeText)).toBeInTheDocument();
 		});
 	});
 

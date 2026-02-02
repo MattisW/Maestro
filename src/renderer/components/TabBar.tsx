@@ -1339,15 +1339,17 @@ const FileTab = memo(function FileTab({
 				{tab.name}
 			</span>
 
-			{/* Extension badge - small rounded pill */}
+			{/* Extension badge - small rounded pill, uppercase without leading dot */}
 			<span
-				className="px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0"
+				className="px-1 rounded text-[9px] font-semibold uppercase leading-none shrink-0"
 				style={{
 					backgroundColor: extensionColors.bg,
 					color: extensionColors.text,
+					paddingTop: '2px',
+					paddingBottom: '2px',
 				}}
 			>
-				{tab.extension}
+				{tab.extension.replace(/^\./, '')}
 			</span>
 
 			{/* Close button - visible on hover or when active */}
@@ -1943,16 +1945,18 @@ function TabBarInner({
 			{displayedUnifiedTabs
 				? displayedUnifiedTabs.map((unifiedTab, index) => {
 						// Determine if this tab is active (based on type)
+						// AI tabs are active when: they match activeTabId AND no file tab is selected
+						// File tabs are active when: they match activeFileTabId
 						const isActive =
 							unifiedTab.type === 'ai'
-								? unifiedTab.id === activeTabId
+								? unifiedTab.id === activeTabId && activeFileTabId === null
 								: unifiedTab.id === activeFileTabId;
 
 						// Check previous tab's active state for separator logic
 						const prevUnifiedTab = index > 0 ? displayedUnifiedTabs[index - 1] : null;
 						const isPrevActive = prevUnifiedTab
 							? prevUnifiedTab.type === 'ai'
-								? prevUnifiedTab.id === activeTabId
+								? prevUnifiedTab.id === activeTabId && activeFileTabId === null
 								: prevUnifiedTab.id === activeFileTabId
 							: false;
 
@@ -2070,9 +2074,10 @@ function TabBarInner({
 					})
 				: // Fallback: render AI tabs only (legacy mode when unifiedTabs not provided)
 					displayedTabs.map((tab, index) => {
-						const isActive = tab.id === activeTabId;
+						// AI tabs are active when: they match activeTabId AND no file tab is selected
+						const isActive = tab.id === activeTabId && activeFileTabId === null;
 						const prevTab = index > 0 ? displayedTabs[index - 1] : null;
-						const isPrevActive = prevTab?.id === activeTabId;
+						const isPrevActive = prevTab?.id === activeTabId && activeFileTabId === null;
 						// Get original index for shortcut hints (Cmd+1-9)
 						const originalIndex = tabs.findIndex((t) => t.id === tab.id);
 

@@ -2164,7 +2164,7 @@ describe('TabSwitcherModal', () => {
 			);
 
 			expect(screen.getByText('example')).toBeInTheDocument();
-			expect(screen.getByText('.ts')).toBeInTheDocument();
+			expect(screen.getByText('TS')).toBeInTheDocument(); // Extension badge: uppercase, no leading dot
 			expect(screen.getByText('File')).toBeInTheDocument();
 		});
 
@@ -2322,12 +2322,11 @@ describe('TabSwitcherModal', () => {
 				/>
 			);
 
-			// The .md extension should be present
-			const mdBadge = screen.getByText('.md');
+			// Extension badges should be uppercase without leading dot
+			const mdBadge = screen.getByText('MD');
 			expect(mdBadge).toBeInTheDocument();
 
-			// The .ts extension should also be present
-			const tsBadge = screen.getByText('.ts');
+			const tsBadge = screen.getByText('TS');
 			expect(tsBadge).toBeInTheDocument();
 
 			// Check second file tab's (readme.md) extension has green-ish color

@@ -843,9 +843,9 @@ export function TabSwitcherModal({
 									<div className="flex flex-col flex-1 min-w-0">
 										<div className="flex items-center gap-2">
 											<span className="font-medium truncate">{tab.name}</span>
-											{/* Extension badge */}
+											{/* Extension badge - uppercase without leading dot */}
 											<span
-												className="text-[10px] px-1.5 py-0.5 rounded font-mono flex-shrink-0"
+												className="text-[9px] px-1 py-0.5 rounded font-semibold uppercase flex-shrink-0"
 												style={{
 													backgroundColor: isSelected
 														? 'rgba(255,255,255,0.2)'
@@ -855,7 +855,7 @@ export function TabSwitcherModal({
 														: extColors.text,
 												}}
 											>
-												{tab.extension}
+												{tab.extension.replace(/^\./, '')}
 											</span>
 											{/* Unsaved indicator */}
 											{hasUnsavedEdits && (
