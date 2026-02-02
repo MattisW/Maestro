@@ -145,6 +145,7 @@ import type {
 	Session,
 	AITab,
 	FilePreviewTab,
+	UnifiedTabRef,
 	UsageStats,
 	QueuedItem,
 	BatchRunConfig,
@@ -5141,6 +5142,66 @@ You are taking over this conversation. Based on the context above, provide a bri
 			})
 		);
 	}, []);
+
+	/**
+	 * Open a file preview tab. If a tab with the same path already exists, select it.
+	 * Otherwise, create a new FilePreviewTab, add it to filePreviewTabs and unifiedTabOrder,
+	 * and set it as the active file tab (deselecting any active AI tab).
+	 */
+	const handleOpenFileTab = useCallback(
+		(file: { path: string; name: string; content: string }) => {
+			setSessions((prev) =>
+				prev.map((s) => {
+					if (s.id !== activeSessionIdRef.current) return s;
+
+					// Check if a tab with this path already exists
+					const existingTab = s.filePreviewTabs.find((tab) => tab.path === file.path);
+					if (existingTab) {
+						// Tab exists - select it (deselect AI tab)
+						return {
+							...s,
+							activeFileTabId: existingTab.id,
+							activeTabId: s.activeTabId, // Keep AI tab reference but it's not visually active
+						};
+					}
+
+					// Create a new file preview tab
+					const newTabId = generateId();
+					const extension = file.name.includes('.')
+						? '.' + file.name.split('.').pop()
+						: '';
+					const nameWithoutExtension = extension
+						? file.name.slice(0, -extension.length)
+						: file.name;
+
+					const newFileTab: FilePreviewTab = {
+						id: newTabId,
+						path: file.path,
+						name: nameWithoutExtension,
+						extension,
+						scrollTop: 0,
+						searchQuery: '',
+						editMode: false,
+						editContent: undefined,
+						createdAt: Date.now(),
+					};
+
+					// Create the unified tab reference
+					const newTabRef: UnifiedTabRef = { type: 'file', id: newTabId };
+
+					return {
+						...s,
+						filePreviewTabs: [...s.filePreviewTabs, newFileTab],
+						unifiedTabOrder: [...s.unifiedTabOrder, newTabRef],
+						activeFileTabId: newTabId,
+						// Deselect AI tab when file tab becomes active
+						// Note: activeTabId stays as is - it tracks the last active AI tab for when user switches back
+					};
+				})
+			);
+		},
+		[]
+	);
 
 	/**
 	 * Internal tab close handler that performs the actual close.
