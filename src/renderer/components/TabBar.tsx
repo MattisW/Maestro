@@ -905,6 +905,248 @@ const Tab = memo(function Tab({
 });
 
 /**
+ * Props for the FileTab component.
+ * Similar to TabProps but tailored for file preview tabs.
+ */
+interface FileTabProps {
+	tab: FilePreviewTab;
+	isActive: boolean;
+	theme: Theme;
+	/** Stable callback - receives tabId as first argument */
+	onSelect: (tabId: string) => void;
+	/** Stable callback - receives tabId as first argument */
+	onClose: (tabId: string) => void;
+	/** Stable callback - receives tabId and event */
+	onDragStart: (tabId: string, e: React.DragEvent) => void;
+	/** Stable callback - receives tabId and event */
+	onDragOver: (tabId: string, e: React.DragEvent) => void;
+	onDragEnd: () => void;
+	/** Stable callback - receives tabId and event */
+	onDrop: (tabId: string, e: React.DragEvent) => void;
+	isDragging: boolean;
+	isDragOver: boolean;
+	registerRef?: (el: HTMLDivElement | null) => void;
+}
+
+/**
+ * Get color for file extension badge.
+ * Returns a muted color based on file type for visual differentiation.
+ */
+function getExtensionColor(extension: string, theme: Theme): { bg: string; text: string } {
+	const ext = extension.toLowerCase();
+	// TypeScript/JavaScript - blue tones
+	if (['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'].includes(ext)) {
+		return { bg: 'rgba(59, 130, 246, 0.3)', text: 'rgba(147, 197, 253, 0.9)' };
+	}
+	// Markdown/Docs - green tones
+	if (['.md', '.mdx', '.txt', '.rst'].includes(ext)) {
+		return { bg: 'rgba(34, 197, 94, 0.3)', text: 'rgba(134, 239, 172, 0.9)' };
+	}
+	// JSON/Config - yellow tones
+	if (['.json', '.yaml', '.yml', '.toml', '.ini', '.env'].includes(ext)) {
+		return { bg: 'rgba(234, 179, 8, 0.3)', text: 'rgba(253, 224, 71, 0.9)' };
+	}
+	// CSS/Styles - purple tones
+	if (['.css', '.scss', '.sass', '.less', '.styl'].includes(ext)) {
+		return { bg: 'rgba(168, 85, 247, 0.3)', text: 'rgba(216, 180, 254, 0.9)' };
+	}
+	// HTML/Templates - orange tones
+	if (['.html', '.htm', '.xml', '.svg'].includes(ext)) {
+		return { bg: 'rgba(249, 115, 22, 0.3)', text: 'rgba(253, 186, 116, 0.9)' };
+	}
+	// Default - use theme's dim colors
+	return { bg: theme.colors.border, text: theme.colors.textDim };
+}
+
+/**
+ * Individual file tab component for file preview tabs.
+ * Similar to AI Tab but with file-specific rendering:
+ * - Shows filename without extension as label
+ * - Displays extension as a colored badge
+ * - Shows pencil icon when tab has unsaved edits
+ *
+ * Wrapped with React.memo to prevent unnecessary re-renders when sibling tabs change.
+ */
+const FileTab = memo(function FileTab({
+	tab,
+	isActive,
+	theme,
+	onSelect,
+	onClose,
+	onDragStart,
+	onDragOver,
+	onDragEnd,
+	onDrop,
+	isDragging,
+	isDragOver,
+	registerRef,
+}: FileTabProps) {
+	const [isHovered, setIsHovered] = useState(false);
+	const tabRef = useRef<HTMLDivElement>(null);
+
+	// Register ref with parent for scroll-into-view functionality
+	const setTabRef = useCallback(
+		(el: HTMLDivElement | null) => {
+			(tabRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+			registerRef?.(el);
+		},
+		[registerRef]
+	);
+
+	const handleMouseEnter = () => {
+		setIsHovered(true);
+	};
+
+	const handleMouseLeave = () => {
+		setIsHovered(false);
+	};
+
+	// Event handlers using stable tabId to avoid inline closure captures
+	const handleMouseDown = useCallback(
+		(e: React.MouseEvent) => {
+			// Middle-click to close
+			if (e.button === 1) {
+				e.preventDefault();
+				onClose(tab.id);
+			}
+		},
+		[onClose, tab.id]
+	);
+
+	const handleCloseClick = useCallback(
+		(e: React.MouseEvent) => {
+			e.stopPropagation();
+			onClose(tab.id);
+		},
+		[onClose, tab.id]
+	);
+
+	// Handlers for drag events using stable tabId
+	const handleTabSelect = useCallback(() => {
+		onSelect(tab.id);
+	}, [onSelect, tab.id]);
+
+	const handleTabDragStart = useCallback(
+		(e: React.DragEvent) => {
+			onDragStart(tab.id, e);
+		},
+		[onDragStart, tab.id]
+	);
+
+	const handleTabDragOver = useCallback(
+		(e: React.DragEvent) => {
+			onDragOver(tab.id, e);
+		},
+		[onDragOver, tab.id]
+	);
+
+	const handleTabDrop = useCallback(
+		(e: React.DragEvent) => {
+			onDrop(tab.id, e);
+		},
+		[onDrop, tab.id]
+	);
+
+	// Get extension badge colors
+	const extensionColors = useMemo(
+		() => getExtensionColor(tab.extension, theme),
+		[tab.extension, theme]
+	);
+
+	// Memoize tab styles to avoid creating new object references on every render
+	const tabStyle = useMemo(
+		() =>
+			({
+				// All tabs have rounded top corners
+				borderTopLeftRadius: '6px',
+				borderTopRightRadius: '6px',
+				// Active tab: bright background matching content area
+				// Inactive tabs: transparent with subtle hover
+				backgroundColor: isActive
+					? theme.colors.bgMain
+					: isHovered
+						? 'rgba(255, 255, 255, 0.08)'
+						: 'transparent',
+				// Active tab has visible borders, inactive tabs have no borders (cleaner look)
+				borderTop: isActive ? `1px solid ${theme.colors.border}` : '1px solid transparent',
+				borderLeft: isActive ? `1px solid ${theme.colors.border}` : '1px solid transparent',
+				borderRight: isActive ? `1px solid ${theme.colors.border}` : '1px solid transparent',
+				// Active tab has no bottom border (connects to content)
+				borderBottom: isActive ? `1px solid ${theme.colors.bgMain}` : '1px solid transparent',
+				// Active tab sits on top of the tab bar's bottom border
+				marginBottom: isActive ? '-1px' : '0',
+				// Slight z-index for active tab to cover border properly
+				zIndex: isActive ? 1 : 0,
+				'--tw-ring-color': isDragOver ? theme.colors.accent : 'transparent',
+			}) as React.CSSProperties,
+		[isActive, isHovered, isDragOver, theme.colors.bgMain, theme.colors.border, theme.colors.accent]
+	);
+
+	// Check if tab has unsaved edits
+	const hasUnsavedEdits = tab.editContent !== undefined;
+
+	return (
+		<div
+			ref={setTabRef}
+			data-tab-id={tab.id}
+			className={`
+        relative flex items-center gap-1.5 px-3 py-1.5 cursor-pointer
+        transition-all duration-150 select-none
+        ${isDragging ? 'opacity-50' : ''}
+        ${isDragOver ? 'ring-2 ring-inset' : ''}
+      `}
+			style={tabStyle}
+			onClick={handleTabSelect}
+			onMouseDown={handleMouseDown}
+			onMouseEnter={handleMouseEnter}
+			onMouseLeave={handleMouseLeave}
+			draggable
+			onDragStart={handleTabDragStart}
+			onDragOver={handleTabDragOver}
+			onDragEnd={onDragEnd}
+			onDrop={handleTabDrop}
+		>
+			{/* Unsaved edits indicator - pencil icon */}
+			{hasUnsavedEdits && (
+				<span title="Has unsaved changes">
+					<Pencil className="w-3 h-3 shrink-0" style={{ color: theme.colors.warning }} />
+				</span>
+			)}
+
+			{/* Tab name - filename without extension */}
+			<span
+				className={`text-xs font-medium ${isActive ? 'whitespace-nowrap' : 'truncate max-w-[100px]'}`}
+				style={{ color: isActive ? theme.colors.textMain : theme.colors.textDim }}
+			>
+				{tab.name}
+			</span>
+
+			{/* Extension badge - small rounded pill */}
+			<span
+				className="px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0"
+				style={{
+					backgroundColor: extensionColors.bg,
+					color: extensionColors.text,
+				}}
+			>
+				{tab.extension}
+			</span>
+
+			{/* Close button - visible on hover or when active */}
+			{(isHovered || isActive) && (
+				<button
+					onClick={handleCloseClick}
+					className="p-0.5 rounded hover:bg-white/10 transition-colors shrink-0"
+					title="Close tab"
+				>
+					<X className="w-3 h-3" style={{ color: theme.colors.textDim }} />
+				</button>
+			)}
+		</div>
+	);
+});
+
+/**
  * TabBar component for displaying AI session tabs.
  * Shows tabs for each Claude Code conversation within a Maestro session.
  * Appears only in AI mode (hidden in terminal mode).
