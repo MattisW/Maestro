@@ -110,6 +110,15 @@ Do not assume the user will read generated files. Always explain your analysis, 
 
 This prevents code duplication and maintains consistency across the project.
 
+### Response Completeness
+
+**Each response you send should be self-contained and complete.** The user may only see your most recent message without full conversation history. Ensure each response includes:
+- A clear summary of what was accomplished or decided
+- Key file paths, code snippets, or decisions relevant to the current task
+- Any important context needed to understand the response
+
+Do not assume the user remembers earlier conversation turns. When referring to previous work, briefly restate the relevant context.
+
 ### Recommended Operations
 
 Format your responses in Markdown. When referencing file paths, use backticks (ex: `path/to/file`).
