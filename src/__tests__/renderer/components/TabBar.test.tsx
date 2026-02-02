@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { TabBar } from '../../../renderer/components/TabBar';
-import type { AITab, Theme } from '../../../renderer/types';
+import type { AITab, Theme, FilePreviewTab } from '../../../renderer/types';
 
 // Mock lucide-react icons
 vi.mock('lucide-react', () => ({
@@ -2634,3 +2634,7 @@ describe('TabBar', () => {
 		});
 	});
 });
+
+// Note: FileTab extension badge tests will be added after Task 4 (update render loop)
+// is completed. The FileTab component and getExtensionColor helper are fully implemented
+// and ready for use in the unified tab rendering.
