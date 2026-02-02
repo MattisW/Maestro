@@ -661,12 +661,14 @@ export function useMainKeyboardHandler(): UseMainKeyboardHandlerReturn {
 						trackShortcut('prevTab');
 					}
 				}
-				// Cmd+1 through Cmd+9: Jump to specific tab by index (disabled in unread-only mode)
+				// Cmd+1 through Cmd+9: Jump to specific tab by index in unified tab order
+				// Works with both AI tabs and file preview tabs
+				// Disabled in unread-only mode (unread filter only applies to AI tabs)
 				if (!ctx.showUnreadOnly) {
 					for (let i = 1; i <= 9; i++) {
 						if (ctx.isTabShortcut(e, `goToTab${i}`)) {
 							e.preventDefault();
-							const result = ctx.navigateToTabByIndex(ctx.activeSession, i - 1);
+							const result = ctx.navigateToUnifiedTabByIndex(ctx.activeSession, i - 1);
 							if (result) {
 								ctx.setSessions((prev: Session[]) =>
 									prev.map((s: Session) => (s.id === ctx.activeSession!.id ? result.session : s))
@@ -676,10 +678,10 @@ export function useMainKeyboardHandler(): UseMainKeyboardHandlerReturn {
 							break;
 						}
 					}
-					// Cmd+0: Jump to last tab
+					// Cmd+0: Jump to last tab in unified tab order
 					if (ctx.isTabShortcut(e, 'goToLastTab')) {
 						e.preventDefault();
-						const result = ctx.navigateToLastTab(ctx.activeSession);
+						const result = ctx.navigateToLastUnifiedTab(ctx.activeSession);
 						if (result) {
 							ctx.setSessions((prev: Session[]) =>
 								prev.map((s: Session) => (s.id === ctx.activeSession!.id ? result.session : s))

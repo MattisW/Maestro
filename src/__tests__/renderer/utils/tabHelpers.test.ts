@@ -14,6 +14,8 @@
  * - navigateToPrevTab
  * - navigateToTabByIndex
  * - navigateToLastTab
+ * - navigateToUnifiedTabByIndex
+ * - navigateToLastUnifiedTab
  * - createMergedSession
  * - hasActiveWizard
  */
@@ -32,11 +34,13 @@ import {
 	navigateToPrevTab,
 	navigateToTabByIndex,
 	navigateToLastTab,
+	navigateToUnifiedTabByIndex,
+	navigateToLastUnifiedTab,
 	createMergedSession,
 	hasActiveWizard,
 } from '../../../renderer/utils/tabHelpers';
 import type { LogEntry } from '../../../renderer/types';
-import type { Session, AITab, ClosedTab } from '../../../renderer/types';
+import type { Session, AITab, ClosedTab, FilePreviewTab } from '../../../renderer/types';
 
 // Mock the generateId function to return predictable IDs
 vi.mock('../../../renderer/utils/ids', () => ({
@@ -91,6 +95,24 @@ function createMockTab(overrides: Partial<AITab> = {}): AITab {
 		stagedImages: [],
 		createdAt: Date.now(),
 		state: 'idle',
+		...overrides,
+	};
+}
+
+// Helper to create a minimal FilePreviewTab for testing
+function createMockFileTab(overrides: Partial<FilePreviewTab> = {}): FilePreviewTab {
+	return {
+		id: 'file-tab-1',
+		path: '/test/file.ts',
+		name: 'file',
+		extension: '.ts',
+		content: '// test content',
+		scrollTop: 0,
+		searchQuery: '',
+		editMode: false,
+		editContent: undefined,
+		createdAt: Date.now(),
+		lastModified: Date.now(),
 		...overrides,
 	};
 }
@@ -1133,6 +1155,262 @@ describe('tabHelpers', () => {
 			});
 
 			expect(navigateToLastTab(session, true)).toBeNull();
+		});
+	});
+
+	describe('navigateToUnifiedTabByIndex', () => {
+		it('returns null for session with no unifiedTabOrder', () => {
+			const session = createMockSession({ unifiedTabOrder: [] });
+			expect(navigateToUnifiedTabByIndex(session, 0)).toBeNull();
+		});
+
+		it('returns null for session with undefined unifiedTabOrder', () => {
+			const session = createMockSession();
+			(session as any).unifiedTabOrder = undefined;
+			expect(navigateToUnifiedTabByIndex(session, 0)).toBeNull();
+		});
+
+		it('returns null for negative index', () => {
+			const tab = createMockTab({ id: 'tab-1' });
+			const session = createMockSession({
+				aiTabs: [tab],
+				unifiedTabOrder: [{ type: 'ai', id: 'tab-1' }],
+			});
+			expect(navigateToUnifiedTabByIndex(session, -1)).toBeNull();
+		});
+
+		it('returns null for out of bounds index', () => {
+			const tab = createMockTab({ id: 'tab-1' });
+			const session = createMockSession({
+				aiTabs: [tab],
+				unifiedTabOrder: [{ type: 'ai', id: 'tab-1' }],
+			});
+			expect(navigateToUnifiedTabByIndex(session, 5)).toBeNull();
+		});
+
+		it('navigates to AI tab by unified index', () => {
+			const tab1 = createMockTab({ id: 'tab-1' });
+			const tab2 = createMockTab({ id: 'tab-2' });
+			const session = createMockSession({
+				aiTabs: [tab1, tab2],
+				activeTabId: 'tab-1',
+				activeFileTabId: null,
+				unifiedTabOrder: [
+					{ type: 'ai', id: 'tab-1' },
+					{ type: 'ai', id: 'tab-2' },
+				],
+			});
+
+			const result = navigateToUnifiedTabByIndex(session, 1);
+
+			expect(result!.type).toBe('ai');
+			expect(result!.id).toBe('tab-2');
+			expect(result!.session.activeTabId).toBe('tab-2');
+			expect(result!.session.activeFileTabId).toBeNull();
+		});
+
+		it('navigates to file tab by unified index', () => {
+			const aiTab = createMockTab({ id: 'ai-tab-1' });
+			const fileTab = createMockFileTab({ id: 'file-tab-1' });
+			const session = createMockSession({
+				aiTabs: [aiTab],
+				filePreviewTabs: [fileTab],
+				activeTabId: 'ai-tab-1',
+				activeFileTabId: null,
+				unifiedTabOrder: [
+					{ type: 'ai', id: 'ai-tab-1' },
+					{ type: 'file', id: 'file-tab-1' },
+				],
+			});
+
+			const result = navigateToUnifiedTabByIndex(session, 1);
+
+			expect(result!.type).toBe('file');
+			expect(result!.id).toBe('file-tab-1');
+			expect(result!.session.activeFileTabId).toBe('file-tab-1');
+			// activeTabId is preserved for switching back
+			expect(result!.session.activeTabId).toBe('ai-tab-1');
+		});
+
+		it('clears activeFileTabId when selecting AI tab', () => {
+			const aiTab = createMockTab({ id: 'ai-tab-1' });
+			const fileTab = createMockFileTab({ id: 'file-tab-1' });
+			const session = createMockSession({
+				aiTabs: [aiTab],
+				filePreviewTabs: [fileTab],
+				activeTabId: 'ai-tab-1',
+				activeFileTabId: 'file-tab-1', // Currently on a file tab
+				unifiedTabOrder: [
+					{ type: 'ai', id: 'ai-tab-1' },
+					{ type: 'file', id: 'file-tab-1' },
+				],
+			});
+
+			const result = navigateToUnifiedTabByIndex(session, 0); // Navigate to AI tab
+
+			expect(result!.type).toBe('ai');
+			expect(result!.session.activeTabId).toBe('ai-tab-1');
+			expect(result!.session.activeFileTabId).toBeNull();
+		});
+
+		it('returns same session when already on target AI tab', () => {
+			const tab = createMockTab({ id: 'tab-1' });
+			const session = createMockSession({
+				aiTabs: [tab],
+				activeTabId: 'tab-1',
+				activeFileTabId: null,
+				unifiedTabOrder: [{ type: 'ai', id: 'tab-1' }],
+			});
+
+			const result = navigateToUnifiedTabByIndex(session, 0);
+
+			expect(result!.session).toBe(session);
+		});
+
+		it('returns same session when already on target file tab', () => {
+			const fileTab = createMockFileTab({ id: 'file-tab-1' });
+			const session = createMockSession({
+				aiTabs: [],
+				filePreviewTabs: [fileTab],
+				activeTabId: '',
+				activeFileTabId: 'file-tab-1',
+				unifiedTabOrder: [{ type: 'file', id: 'file-tab-1' }],
+			});
+
+			const result = navigateToUnifiedTabByIndex(session, 0);
+
+			expect(result!.session).toBe(session);
+		});
+
+		it('returns null if AI tab reference does not exist in aiTabs', () => {
+			const tab = createMockTab({ id: 'tab-1' });
+			const session = createMockSession({
+				aiTabs: [tab],
+				unifiedTabOrder: [{ type: 'ai', id: 'non-existent' }],
+			});
+
+			expect(navigateToUnifiedTabByIndex(session, 0)).toBeNull();
+		});
+
+		it('returns null if file tab reference does not exist in filePreviewTabs', () => {
+			const session = createMockSession({
+				aiTabs: [],
+				filePreviewTabs: [],
+				unifiedTabOrder: [{ type: 'file', id: 'non-existent' }],
+			});
+
+			expect(navigateToUnifiedTabByIndex(session, 0)).toBeNull();
+		});
+
+		it('handles mixed AI and file tabs correctly', () => {
+			const aiTab1 = createMockTab({ id: 'ai-1' });
+			const aiTab2 = createMockTab({ id: 'ai-2' });
+			const fileTab1 = createMockFileTab({ id: 'file-1' });
+			const fileTab2 = createMockFileTab({ id: 'file-2' });
+			const session = createMockSession({
+				aiTabs: [aiTab1, aiTab2],
+				filePreviewTabs: [fileTab1, fileTab2],
+				activeTabId: 'ai-1',
+				activeFileTabId: null,
+				unifiedTabOrder: [
+					{ type: 'ai', id: 'ai-1' },
+					{ type: 'file', id: 'file-1' },
+					{ type: 'ai', id: 'ai-2' },
+					{ type: 'file', id: 'file-2' },
+				],
+			});
+
+			// Index 0: AI tab
+			const result0 = navigateToUnifiedTabByIndex(session, 0);
+			expect(result0!.type).toBe('ai');
+			expect(result0!.id).toBe('ai-1');
+
+			// Index 1: File tab
+			const result1 = navigateToUnifiedTabByIndex(session, 1);
+			expect(result1!.type).toBe('file');
+			expect(result1!.id).toBe('file-1');
+
+			// Index 2: AI tab
+			const result2 = navigateToUnifiedTabByIndex(session, 2);
+			expect(result2!.type).toBe('ai');
+			expect(result2!.id).toBe('ai-2');
+
+			// Index 3: File tab
+			const result3 = navigateToUnifiedTabByIndex(session, 3);
+			expect(result3!.type).toBe('file');
+			expect(result3!.id).toBe('file-2');
+		});
+	});
+
+	describe('navigateToLastUnifiedTab', () => {
+		it('returns null for session with no unifiedTabOrder', () => {
+			const session = createMockSession({ unifiedTabOrder: [] });
+			expect(navigateToLastUnifiedTab(session)).toBeNull();
+		});
+
+		it('returns null for session with undefined unifiedTabOrder', () => {
+			const session = createMockSession();
+			(session as any).unifiedTabOrder = undefined;
+			expect(navigateToLastUnifiedTab(session)).toBeNull();
+		});
+
+		it('navigates to last AI tab', () => {
+			const tab1 = createMockTab({ id: 'tab-1' });
+			const tab2 = createMockTab({ id: 'tab-2' });
+			const tab3 = createMockTab({ id: 'tab-3' });
+			const session = createMockSession({
+				aiTabs: [tab1, tab2, tab3],
+				activeTabId: 'tab-1',
+				activeFileTabId: null,
+				unifiedTabOrder: [
+					{ type: 'ai', id: 'tab-1' },
+					{ type: 'ai', id: 'tab-2' },
+					{ type: 'ai', id: 'tab-3' },
+				],
+			});
+
+			const result = navigateToLastUnifiedTab(session);
+
+			expect(result!.type).toBe('ai');
+			expect(result!.id).toBe('tab-3');
+			expect(result!.session.activeTabId).toBe('tab-3');
+		});
+
+		it('navigates to last file tab when file is last in unified order', () => {
+			const aiTab = createMockTab({ id: 'ai-1' });
+			const fileTab = createMockFileTab({ id: 'file-1' });
+			const session = createMockSession({
+				aiTabs: [aiTab],
+				filePreviewTabs: [fileTab],
+				activeTabId: 'ai-1',
+				activeFileTabId: null,
+				unifiedTabOrder: [
+					{ type: 'ai', id: 'ai-1' },
+					{ type: 'file', id: 'file-1' },
+				],
+			});
+
+			const result = navigateToLastUnifiedTab(session);
+
+			expect(result!.type).toBe('file');
+			expect(result!.id).toBe('file-1');
+			expect(result!.session.activeFileTabId).toBe('file-1');
+		});
+
+		it('returns single tab when only one exists', () => {
+			const tab = createMockTab({ id: 'only-tab' });
+			const session = createMockSession({
+				aiTabs: [tab],
+				activeTabId: 'only-tab',
+				activeFileTabId: null,
+				unifiedTabOrder: [{ type: 'ai', id: 'only-tab' }],
+			});
+
+			const result = navigateToLastUnifiedTab(session);
+
+			expect(result!.type).toBe('ai');
+			expect(result!.id).toBe('only-tab');
+			expect(result!.session).toBe(session); // Same session since already active
 		});
 	});
 

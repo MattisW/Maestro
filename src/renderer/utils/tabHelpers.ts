@@ -717,6 +717,117 @@ export function navigateToLastTab(
 }
 
 /**
+ * Result of navigating to a unified tab (can be AI or file tab).
+ */
+export interface NavigateToUnifiedTabResult {
+	type: 'ai' | 'file';
+	id: string;
+	session: Session;
+}
+
+/**
+ * Navigate to a tab by its index in the unified tab order.
+ * Used for Cmd+1 through Cmd+9 shortcuts to jump to tabs by position.
+ * Works with both AI tabs and file preview tabs in the unified tab system.
+ *
+ * @param session - The Maestro session
+ * @param index - The 0-based index in unifiedTabOrder
+ * @returns Object with the tab type, id, and updated session, or null if index out of bounds
+ *
+ * @example
+ * // Navigate to the first tab (Cmd+1)
+ * const result = navigateToUnifiedTabByIndex(session, 0);
+ * if (result) {
+ *   if (result.type === 'ai') {
+ *     // AI tab - activeTabId is updated, activeFileTabId is cleared
+ *   } else {
+ *     // File tab - activeFileTabId is updated, activeTabId preserved
+ *   }
+ *   setSessions(prev => prev.map(s => s.id === session.id ? result.session : s));
+ * }
+ */
+export function navigateToUnifiedTabByIndex(
+	session: Session,
+	index: number
+): NavigateToUnifiedTabResult | null {
+	if (!session || !session.unifiedTabOrder || session.unifiedTabOrder.length === 0) {
+		return null;
+	}
+
+	// Check if index is within bounds
+	if (index < 0 || index >= session.unifiedTabOrder.length) {
+		return null;
+	}
+
+	const targetTabRef = session.unifiedTabOrder[index];
+
+	if (targetTabRef.type === 'ai') {
+		// Navigate to AI tab - verify it exists
+		const aiTab = session.aiTabs.find((tab) => tab.id === targetTabRef.id);
+		if (!aiTab) return null;
+
+		// If already active, return current state
+		if (session.activeTabId === targetTabRef.id && session.activeFileTabId === null) {
+			return {
+				type: 'ai',
+				id: targetTabRef.id,
+				session,
+			};
+		}
+
+		// Set the AI tab as active and clear file tab selection
+		return {
+			type: 'ai',
+			id: targetTabRef.id,
+			session: {
+				...session,
+				activeTabId: targetTabRef.id,
+				activeFileTabId: null,
+			},
+		};
+	} else {
+		// Navigate to file tab - verify it exists
+		const fileTab = session.filePreviewTabs.find((tab) => tab.id === targetTabRef.id);
+		if (!fileTab) return null;
+
+		// If already active, return current state
+		if (session.activeFileTabId === targetTabRef.id) {
+			return {
+				type: 'file',
+				id: targetTabRef.id,
+				session,
+			};
+		}
+
+		// Set the file tab as active (preserve activeTabId for switching back)
+		return {
+			type: 'file',
+			id: targetTabRef.id,
+			session: {
+				...session,
+				activeFileTabId: targetTabRef.id,
+			},
+		};
+	}
+}
+
+/**
+ * Navigate to the last tab in the unified tab order.
+ * Used for Cmd+0 shortcut.
+ *
+ * @param session - The Maestro session
+ * @returns Object with the tab type, id, and updated session, or null if no tabs
+ */
+export function navigateToLastUnifiedTab(session: Session): NavigateToUnifiedTabResult | null {
+	if (!session || !session.unifiedTabOrder || session.unifiedTabOrder.length === 0) {
+		return null;
+	}
+
+	const lastIndex = session.unifiedTabOrder.length - 1;
+	return navigateToUnifiedTabByIndex(session, lastIndex);
+}
+
+/**
  * Options for creating a new AI tab at a specific position.
  */
 export interface CreateTabAtPositionOptions extends CreateTabOptions {
