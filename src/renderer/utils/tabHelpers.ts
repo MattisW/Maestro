@@ -893,6 +893,9 @@ export function createMergedSession(
 		aiTabs: [mergedTab],
 		activeTabId: tabId,
 		closedTabHistory: [],
+		filePreviewTabs: [],
+		activeFileTabId: null,
+		unifiedTabOrder: [{ type: 'ai' as const, id: tabId }],
 	};
 
 	return { session, tabId };

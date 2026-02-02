@@ -442,6 +442,29 @@ export interface ClosedTab {
 	closedAt: number; // Timestamp when closed
 }
 
+/**
+ * File Preview Tab for in-tab file viewing.
+ * Designed to coexist with AITab and future terminal tabs in the unified tab system.
+ * File tabs persist across session switches and app restarts.
+ */
+export interface FilePreviewTab {
+	id: string; // Unique tab ID (UUID)
+	path: string; // Full file path
+	name: string; // Filename without extension (displayed as tab name)
+	extension: string; // File extension with dot (e.g., '.md', '.ts') - shown as badge
+	scrollTop: number; // Saved scroll position
+	searchQuery: string; // Preserved search query
+	editMode: boolean; // Whether tab was in edit mode
+	editContent: string | undefined; // Unsaved edit content (undefined if no pending changes)
+	createdAt: number; // Timestamp for ordering
+}
+
+/**
+ * Reference to any tab in the unified tab system.
+ * Used for unified tab ordering across different tab types.
+ */
+export type UnifiedTabRef = { type: 'ai' | 'file'; id: string };
+
 export interface Session {
 	id: string;
 	groupId?: string;
@@ -559,6 +582,15 @@ export interface Session {
 	activeTabId: string;
 	// Stack of recently closed tabs for undo (max 25, runtime-only, not persisted)
 	closedTabHistory: ClosedTab[];
+
+	// File Preview Tabs - in-tab file viewing (coexists with AI tabs and future terminal tabs)
+	// Tabs are interspersed visually but stored separately for type safety
+	filePreviewTabs: FilePreviewTab[];
+	// Currently active file tab ID (null if an AI tab is active)
+	activeFileTabId: string | null;
+	// Unified tab ordering - determines visual order of all tabs (AI and file)
+	unifiedTabOrder: UnifiedTabRef[];
+
 	// Saved scroll position for terminal/shell output view
 	terminalScrollTop?: number;
 	// Draft input for terminal mode (persisted across session switches)
