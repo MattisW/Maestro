@@ -1231,8 +1231,10 @@ export const MainPanel = React.memo(
 
 								<div className="flex items-center gap-3 justify-end shrink-0">
 									{/* Session UUID Pill - click to copy full UUID, left-most of session stats, hidden at narrow widths */}
+									{/* Hide when file preview tab is focused - session stats are only relevant for AI tabs */}
 									{showUuidPill &&
 										activeSession.inputMode === 'ai' &&
+										!activeFileTabId &&
 										activeTab?.agentSessionId &&
 										hasCapability('supportsSessionId') && (
 											<button
@@ -1260,8 +1262,10 @@ export const MainPanel = React.memo(
 										)}
 
 									{/* Cost Tracker - styled as pill (hidden when panel is narrow or agent doesn't support cost tracking) - shows active tab's cost */}
+									{/* Hide when file preview tab is focused - cost tracking is only relevant for AI tabs */}
 									{showCostWidget &&
 										activeSession.inputMode === 'ai' &&
+										!activeFileTabId &&
 										(activeTab?.agentSessionId || activeTab?.usageStats) &&
 										hasCapability('supportsCostTracking') && (
 											<span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full border border-green-500/30 text-green-500 bg-green-500/10">
@@ -1270,7 +1274,9 @@ export const MainPanel = React.memo(
 										)}
 
 									{/* Context Window Widget with Tooltip - only show when context window is configured and agent supports usage stats */}
+									{/* Hide when file preview tab is focused - context usage is only relevant for AI tabs */}
 									{activeSession.inputMode === 'ai' &&
+										!activeFileTabId &&
 										(activeTab?.agentSessionId || activeTab?.usageStats) &&
 										hasCapability('supportsUsageStats') &&
 										activeTabContextWindow > 0 && (

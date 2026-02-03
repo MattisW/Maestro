@@ -5374,6 +5374,8 @@ You are taking over this conversation. Based on the context above, provide a bri
 	/**
 	 * Update a file tab's scroll position.
 	 * Called when user scrolls within FilePreview (throttled at 200ms).
+	 * Also syncs the scroll position to the current entry in navigationHistory
+	 * so that tab close/restore preserves correct breadcrumb positions.
 	 */
 	const handleFileTabScrollPositionChange = useCallback((tabId: string, scrollTop: number) => {
 		setSessions((prev) =>
@@ -5382,7 +5384,20 @@ You are taking over this conversation. Based on the context above, provide a bri
 
 				const updatedFileTabs = s.filePreviewTabs.map((tab) => {
 					if (tab.id !== tabId) return tab;
-					return { ...tab, scrollTop };
+
+					// Also update the scroll position in navigationHistory for the current entry
+					// This ensures close/restore preserves the correct scroll position in breadcrumbs
+					let updatedHistory = tab.navigationHistory;
+					if (updatedHistory && updatedHistory.length > 0) {
+						const currentIndex = tab.navigationIndex ?? updatedHistory.length - 1;
+						if (currentIndex >= 0 && currentIndex < updatedHistory.length) {
+							updatedHistory = updatedHistory.map((entry, idx) =>
+								idx === currentIndex ? { ...entry, scrollTop } : entry
+							);
+						}
+					}
+
+					return { ...tab, scrollTop, navigationHistory: updatedHistory };
 				});
 
 				return { ...s, filePreviewTabs: updatedFileTabs };
