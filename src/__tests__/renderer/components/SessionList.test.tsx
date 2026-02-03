@@ -1093,12 +1093,14 @@ describe('SessionList', () => {
 			fireEvent.click(screen.getByTitle('Menu'));
 
 			// Find the menu container by its data-tour attribute
-			const menuContainer = document.querySelector('[data-tour="hamburger-menu-contents"]');
+			const menuContainer = document.querySelector(
+				'[data-tour="hamburger-menu-contents"]'
+			) as HTMLElement;
 			expect(menuContainer).toBeInTheDocument();
 			expect(menuContainer).toHaveClass('overflow-y-auto');
 			expect(menuContainer).toHaveClass('scrollbar-thin');
-			// Verify max-height is set (the actual calc value depends on Tailwind)
-			expect(menuContainer?.className).toMatch(/max-h-\[calc\(100vh-120px\)\]/);
+			// Verify max-height is set via inline style for scroll support
+			expect(menuContainer?.style.maxHeight).toBe('calc(100vh - 90px)');
 		});
 	});
 
