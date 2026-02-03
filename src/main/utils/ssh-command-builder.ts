@@ -22,6 +22,8 @@ export interface SshCommandResult {
 	command: string;
 	/** Arguments for the SSH command */
 	args: string[];
+	/** Script to send via stdin (for stdin-based execution) */
+	stdinScript?: string;
 }
 
 /**
@@ -130,6 +132,154 @@ export function buildRemoteCommand(options: RemoteCommandOptions): string {
 
 	// Join with && to ensure cd succeeds before running command
 	return parts.join(' && ');
+}
+
+/**
+ * Build an SSH command that executes a script via stdin.
+ *
+ * This approach completely bypasses shell escaping issues by:
+ * 1. SSH connects and runs `/bin/bash` on the remote
+ * 2. The script (with PATH setup, cd, env vars, command) is sent via stdin
+ * 3. The prompt (if any) is appended after the script, passed through to the exec'd command
+ *
+ * This is the preferred method for SSH remote execution as it:
+ * - Handles any prompt content (special chars, newlines, quotes, etc.)
+ * - Avoids command-line length limits
+ * - Works regardless of the remote user's login shell (bash, zsh, fish, etc.)
+ * - Eliminates the escaping nightmare of nested shell contexts
+ * - No heredoc or delimiter collision detection needed
+ *
+ * How stdin passthrough works:
+ * - Bash reads and executes the script lines
+ * - The `exec` command replaces bash with the target process
+ * - Any remaining stdin (the prompt) is inherited by the exec'd command
+ * - The prompt is NEVER parsed by any shell - it flows through as raw bytes
+ *
+ * @param config SSH remote configuration
+ * @param remoteOptions Options for the remote command
+ * @returns SSH command/args plus the script+prompt to send via stdin
+ *
+ * @example
+ * const result = await buildSshCommandWithStdin(config, {
+ *   command: 'opencode',
+ *   args: ['run', '--format', 'json'],
+ *   cwd: '/home/user/project',
+ *   env: { OPENCODE_CONFIG_CONTENT: '{"permission":{"*":"allow"}}' },
+ *   stdinInput: 'Write hello world to a file'
+ * });
+ * // result.command = 'ssh'
+ * // result.args = ['-o', 'BatchMode=yes', ..., 'user@host', '/bin/bash']
+ * // result.stdinScript = 'export PATH=...\ncd /home/user/project\nexport OPENCODE_CONFIG_CONTENT=...\nexec opencode run --format json\nWrite hello world to a file'
+ */
+export async function buildSshCommandWithStdin(
+	config: SshRemoteConfig,
+	remoteOptions: RemoteCommandOptions & { prompt?: string; stdinInput?: string }
+): Promise<SshCommandResult> {
+	const args: string[] = [];
+
+	// Resolve the SSH binary path
+	const sshPath = await resolveSshPath();
+
+	// For stdin-based execution, we never need TTY (stdin is the script, not user input)
+	// TTY would interfere with piping the script
+
+	// Private key - only add if explicitly provided
+	if (config.privateKeyPath && config.privateKeyPath.trim()) {
+		args.push('-i', expandTilde(config.privateKeyPath));
+	}
+
+	// Default SSH options - but RequestTTY is always 'no' for stdin mode
+	for (const [key, value] of Object.entries(DEFAULT_SSH_OPTIONS)) {
+		args.push('-o', `${key}=${value}`);
+	}
+
+	// Port specification
+	if (!config.useSshConfig || config.port !== 22) {
+		args.push('-p', config.port.toString());
+	}
+
+	// Build destination
+	if (config.username && config.username.trim()) {
+		args.push(`${config.username}@${config.host}`);
+	} else {
+		args.push(config.host);
+	}
+
+	// The remote command is just /bin/bash - it will read the script from stdin
+	args.push('/bin/bash');
+
+	// Build the script to send via stdin
+	const scriptLines: string[] = [];
+
+	// PATH setup - same directories as before
+	scriptLines.push(
+		'export PATH="$HOME/.local/bin:$HOME/bin:/usr/local/bin:/opt/homebrew/bin:$HOME/.cargo/bin:$PATH"'
+	);
+
+	// Change directory if specified
+	if (remoteOptions.cwd) {
+		// In the script context, we can use simple quoting
+		scriptLines.push(`cd ${shellEscape(remoteOptions.cwd)} || exit 1`);
+	}
+
+	// Merge environment variables
+	const mergedEnv: Record<string, string> = {
+		...(config.remoteEnv || {}),
+		...(remoteOptions.env || {}),
+	};
+
+	// Export environment variables
+	for (const [key, value] of Object.entries(mergedEnv)) {
+		if (/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(key)) {
+			scriptLines.push(`export ${key}=${shellEscape(value)}`);
+		}
+	}
+
+	// Build the command line
+	// For the script, we use simple quoting since we're not going through shell parsing layers
+	const cmdParts = [remoteOptions.command, ...remoteOptions.args.map((arg) => shellEscape(arg))];
+
+	// Add prompt as final argument if provided and not sending via stdin passthrough
+	const hasStdinInput = remoteOptions.stdinInput !== undefined;
+	if (remoteOptions.prompt && !hasStdinInput) {
+		cmdParts.push(shellEscape(remoteOptions.prompt));
+	}
+
+	// Use exec to replace the shell with the command (cleaner process tree)
+	// When stdinInput is provided, the prompt will be appended after the script
+	// and passed through to the exec'd command via stdin inheritance
+	scriptLines.push(`exec ${cmdParts.join(' ')}`);
+
+	// Build the final stdin content: script + optional prompt passthrough
+	// The script ends with exec, which replaces bash with the target command
+	// Any content after the script (the prompt) is read by the exec'd command from stdin
+	let stdinScript = scriptLines.join('\n') + '\n';
+
+	if (hasStdinInput && remoteOptions.stdinInput) {
+		// Append the prompt after the script - it will be passed through to the exec'd command
+		// No escaping needed - the prompt is never parsed by any shell
+		stdinScript += remoteOptions.stdinInput;
+	}
+
+	logger.info('SSH command built with stdin script', '[ssh-command-builder]', {
+		host: config.host,
+		username: config.username || '(using SSH config/system default)',
+		port: config.port,
+		sshPath,
+		sshArgsCount: args.length,
+		scriptLineCount: scriptLines.length,
+		stdinLength: stdinScript.length,
+		hasStdinInput,
+		stdinInputLength: remoteOptions.stdinInput?.length,
+		// Show first part of script for debugging (truncate if long)
+		scriptPreview: stdinScript.length > 500 ? stdinScript.substring(0, 500) + '...' : stdinScript,
+	});
+
+	return {
+		command: sshPath,
+		args,
+		stdinScript,
+	};
 }
 
 /**

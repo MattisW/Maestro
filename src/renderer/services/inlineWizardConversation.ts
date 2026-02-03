@@ -582,7 +582,9 @@ export async function sendWizardMessage(
 		const argsForSpawn = agent ? buildArgsForAgent(agent) : [];
 
 		// On Windows, use sendPromptViaStdin to bypass cmd.exe ~8KB command line length limit
-		const sendViaStdin = process.platform === 'win32';
+		// Note: Use navigator.platform in renderer (process.platform is not available in browser context)
+		const isWindows = navigator.platform.toLowerCase().includes('win');
+		const sendViaStdin = isWindows;
 		if (sendViaStdin && !argsForSpawn.includes('--input-format')) {
 			// Add --input-format stream-json when using stdin with stream-json compatible agents
 			if (session.agentType === 'claude-code' || session.agentType === 'codex') {
@@ -592,7 +594,7 @@ export async function sendWizardMessage(
 
 		logger.info(`Using stdin for Windows: ${sendViaStdin}`, '[InlineWizardConversation]', {
 			sessionId: session.sessionId,
-			platform: process.platform,
+			platform: navigator.platform,
 			promptLength: fullPrompt.length,
 			sendViaStdin,
 		});

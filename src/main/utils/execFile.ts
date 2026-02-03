@@ -25,10 +25,12 @@ export interface ExecResult {
 /**
  * Determine if a command needs shell execution on Windows
  * - Batch files (.cmd, .bat) always need shell
- * - Commands without extensions need PATHEXT resolution via shell
+ * - Commands without extensions normally need PATHEXT resolution via shell,
+ *   BUT we avoid shell for known commands that have .exe variants (git, node, etc.)
+ *   to prevent percent-sign escaping issues in arguments
  * - Executables (.exe, .com) can run directly
  */
-function needsWindowsShell(command: string): boolean {
+export function needsWindowsShell(command: string): boolean {
 	const lowerCommand = command.toLowerCase();
 
 	// Batch files always need shell
@@ -41,7 +43,17 @@ function needsWindowsShell(command: string): boolean {
 		return false;
 	}
 
-	// Commands without extension need shell for PATHEXT resolution
+	// Commands without extension: skip shell for known commands that have .exe variants
+	// This prevents issues like % being interpreted as environment variables on Windows
+	// Extract basename to handle full paths like 'C:\Program Files\Git\bin\git'
+	// Use regex to handle both Unix (/) and Windows (\) path separators
+	const knownExeCommands = new Set(['git', 'node', 'npm', 'npx', 'yarn', 'pnpm', 'python', 'python3', 'pip', 'pip3']);
+	const commandBaseName = lowerCommand.split(/[\\/]/).pop() || lowerCommand;
+	if (knownExeCommands.has(commandBaseName)) {
+		return false;
+	}
+
+	// Other commands without extension still need shell for PATHEXT resolution
 	const hasExtension = path.extname(command).length > 0;
 	return !hasExtension;
 }
