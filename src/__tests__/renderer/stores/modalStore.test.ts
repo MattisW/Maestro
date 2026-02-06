@@ -6,6 +6,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import {
 	useModalStore,
+	useModalActions,
 	selectModalOpen,
 	selectModalData,
 	selectModal,
@@ -824,6 +825,225 @@ describe('modalStore', () => {
 
 			expect(lightboxDataRenderCount).toBe(initialRenderCount + 2);
 			expect(result.current?.image).toBe('new.png');
+		});
+	});
+
+	describe('no-op guards', () => {
+		it('closeModal skips state update when modal is already closed', () => {
+			const { closeModal } = useModalStore.getState();
+
+			// Get initial state reference
+			const stateBefore = useModalStore.getState().modals;
+
+			// Close a modal that was never opened
+			closeModal('settings');
+
+			// Map reference should be identical (no new Map created)
+			const stateAfter = useModalStore.getState().modals;
+			expect(stateAfter).toBe(stateBefore);
+		});
+
+		it('closeModal skips state update when modal entry exists but is already closed', () => {
+			const { openModal, closeModal } = useModalStore.getState();
+
+			// Open and close to create an entry with open: false
+			openModal('settings', { tab: 'general' });
+			closeModal('settings');
+
+			const stateBefore = useModalStore.getState().modals;
+
+			// Close again — should be a no-op
+			closeModal('settings');
+
+			const stateAfter = useModalStore.getState().modals;
+			expect(stateAfter).toBe(stateBefore);
+		});
+
+		it('openModal skips state update when already open with same data reference', () => {
+			const { openModal } = useModalStore.getState();
+
+			// Open without data
+			openModal('about');
+			const stateBefore = useModalStore.getState().modals;
+
+			// Open again with same args (undefined data)
+			openModal('about');
+			const stateAfter = useModalStore.getState().modals;
+
+			expect(stateAfter).toBe(stateBefore);
+		});
+
+		it('openModal does update when data reference changes', () => {
+			const { openModal } = useModalStore.getState();
+
+			openModal('settings', { tab: 'general' });
+			const stateBefore = useModalStore.getState().modals;
+
+			// Different data object — should update even if contents look the same
+			openModal('settings', { tab: 'general' });
+			const stateAfter = useModalStore.getState().modals;
+
+			// New object literal means different reference, so update happens
+			expect(stateAfter).not.toBe(stateBefore);
+		});
+
+		it('closeAll skips state update when no modals are open', () => {
+			const { closeAll } = useModalStore.getState();
+
+			const stateBefore = useModalStore.getState().modals;
+			closeAll();
+			const stateAfter = useModalStore.getState().modals;
+
+			expect(stateAfter).toBe(stateBefore);
+		});
+
+		it('closeAll skips when all entries are already closed', () => {
+			const { openModal, closeModal, closeAll } = useModalStore.getState();
+
+			// Create entries but close them
+			openModal('settings', { tab: 'general' });
+			openModal('about');
+			closeModal('settings');
+			closeModal('about');
+
+			const stateBefore = useModalStore.getState().modals;
+			closeAll();
+			const stateAfter = useModalStore.getState().modals;
+
+			expect(stateAfter).toBe(stateBefore);
+		});
+
+		it('no-op closeModal does not trigger selector re-renders', () => {
+			let renderCount = 0;
+
+			renderHook(() => {
+				renderCount++;
+				return useModalStore(selectModalOpen('settings'));
+			});
+
+			const initialRenderCount = renderCount;
+
+			// Close a modal that's not open — no-op, should not re-render
+			act(() => {
+				useModalStore.getState().closeModal('settings');
+			});
+
+			expect(renderCount).toBe(initialRenderCount);
+		});
+	});
+
+	describe('compatibility layer: getModalActions()', () => {
+		it('returns all expected action methods', () => {
+			const actions = getModalActions();
+
+			// Verify key action methods exist and are functions
+			expect(typeof actions.setSettingsModalOpen).toBe('function');
+			expect(typeof actions.openSettings).toBe('function');
+			expect(typeof actions.closeSettings).toBe('function');
+			expect(typeof actions.setLightboxImage).toBe('function');
+			expect(typeof actions.showConfirmation).toBe('function');
+			expect(typeof actions.closeConfirmation).toBe('function');
+			expect(typeof actions.setQuitConfirmModalOpen).toBe('function');
+		});
+
+		it('actions obtained before state changes still work after', () => {
+			// Get actions once, use them across multiple state changes
+			const actions = getModalActions();
+
+			actions.setSettingsModalOpen(true);
+			expect(useModalStore.getState().isOpen('settings')).toBe(true);
+
+			actions.setSettingsModalOpen(false);
+			expect(useModalStore.getState().isOpen('settings')).toBe(false);
+
+			actions.openSettings('theme');
+			expect(useModalStore.getState().getData('settings')?.tab).toBe('theme');
+
+			actions.closeSettings();
+			expect(useModalStore.getState().isOpen('settings')).toBe(false);
+		});
+
+		it('actions from separate getModalActions calls operate on same store', () => {
+			const actions1 = getModalActions();
+			const actions2 = getModalActions();
+
+			// Open via first reference
+			actions1.setSettingsModalOpen(true);
+			expect(useModalStore.getState().isOpen('settings')).toBe(true);
+
+			// Close via second reference — should affect same store
+			actions2.setSettingsModalOpen(false);
+			expect(useModalStore.getState().isOpen('settings')).toBe(false);
+		});
+	});
+
+	describe('compatibility layer: useModalActions()', () => {
+		it('provides reactive state that updates on modal open/close', () => {
+			const { result } = renderHook(() => useModalActions());
+
+			expect(result.current.settingsModalOpen).toBe(false);
+
+			act(() => {
+				useModalStore.getState().openModal('settings', { tab: 'general' });
+			});
+
+			expect(result.current.settingsModalOpen).toBe(true);
+			expect(result.current.settingsTab).toBe('general');
+
+			act(() => {
+				useModalStore.getState().closeModal('settings');
+			});
+
+			expect(result.current.settingsModalOpen).toBe(false);
+			expect(result.current.settingsTab).toBe('general'); // Falls back to default
+		});
+
+		it('provides all action methods from getModalActions()', () => {
+			const { result } = renderHook(() => useModalActions());
+
+			// Verify action methods exist and are functions
+			expect(typeof result.current.setSettingsModalOpen).toBe('function');
+			expect(typeof result.current.openSettings).toBe('function');
+			expect(typeof result.current.closeSettings).toBe('function');
+			expect(typeof result.current.setLightboxImage).toBe('function');
+			expect(typeof result.current.showConfirmation).toBe('function');
+			expect(typeof result.current.closeConfirmation).toBe('function');
+			expect(typeof result.current.setQuitConfirmModalOpen).toBe('function');
+		});
+
+		it('actions invoked through useModalActions update reactive state', () => {
+			const { result } = renderHook(() => useModalActions());
+
+			act(() => {
+				result.current.openSettings('shortcuts');
+			});
+
+			expect(result.current.settingsModalOpen).toBe(true);
+			expect(result.current.settingsTab).toBe('shortcuts');
+
+			act(() => {
+				result.current.closeSettings();
+			});
+
+			expect(result.current.settingsModalOpen).toBe(false);
+		});
+
+		it('quit confirm modal actions work through compatibility layer', () => {
+			const { result } = renderHook(() => useModalActions());
+
+			expect(result.current.quitConfirmModalOpen).toBe(false);
+
+			act(() => {
+				result.current.setQuitConfirmModalOpen(true);
+			});
+
+			expect(result.current.quitConfirmModalOpen).toBe(true);
+
+			act(() => {
+				result.current.setQuitConfirmModalOpen(false);
+			});
+
+			expect(result.current.quitConfirmModalOpen).toBe(false);
 		});
 	});
 });

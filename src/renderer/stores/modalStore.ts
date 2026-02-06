@@ -306,6 +306,9 @@ export const useModalStore = create<ModalStore>()((set, get) => ({
 
 	openModal: (id, data) => {
 		set((state) => {
+			const current = state.modals.get(id);
+			// Skip if already open with same data reference
+			if (current?.open && current.data === data) return state;
 			const newModals = new Map(state.modals);
 			newModals.set(id, { open: true, data });
 			return { modals: newModals };
@@ -314,6 +317,9 @@ export const useModalStore = create<ModalStore>()((set, get) => ({
 
 	closeModal: (id) => {
 		set((state) => {
+			const current = state.modals.get(id);
+			// Skip if already closed (or never opened)
+			if (!current?.open) return state;
 			const newModals = new Map(state.modals);
 			newModals.set(id, { open: false, data: undefined });
 			return { modals: newModals };
@@ -357,6 +363,15 @@ export const useModalStore = create<ModalStore>()((set, get) => ({
 
 	closeAll: () => {
 		set((state) => {
+			// Skip if no modals are open
+			let anyOpen = false;
+			for (const entry of state.modals.values()) {
+				if (entry.open) {
+					anyOpen = true;
+					break;
+				}
+			}
+			if (!anyOpen) return state;
 			const newModals = new Map<ModalId, ModalEntry>();
 			state.modals.forEach((_, id) => {
 				newModals.set(id, { open: false, data: undefined });
@@ -671,6 +686,15 @@ export function getModalActions() {
 /**
  * Hook that provides ModalContext-compatible API.
  * This is the main migration path from useModalContext().
+ *
+ * DESIGN NOTE: This hook subscribes to ~40 selectors to provide the same
+ * reactive API shape as the old ModalContext. Each selector returns a primitive
+ * (boolean) so Zustand's Object.is equality prevents re-renders unless the
+ * specific value changes. However, the component calling this hook (App.tsx)
+ * will re-evaluate all selectors on any modal state change — the same behavior
+ * as the old Context. This is intentionally transitional: as components migrate
+ * to direct useModalStore(selectModalOpen('xyz')) calls, they decouple from
+ * App.tsx's prop-drilling and get truly granular subscriptions.
  *
  * Usage: Replace `useModalContext()` with `useModalActions()` in App.tsx
  */
