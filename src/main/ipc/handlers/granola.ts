@@ -20,7 +20,7 @@ export function registerGranolaHandlers(): void {
 	ipcMain.handle(
 		'granola:get-documents',
 		withIpcErrorLogging(handlerOpts('get-documents'), async (limit?: number) => {
-			const safeLimit = typeof limit === 'number' && limit > 0 ? limit : undefined;
+			const safeLimit = typeof limit === 'number' && limit > 0 ? Math.min(limit, 500) : undefined;
 			return getRecentMeetings(safeLimit);
 		})
 	);

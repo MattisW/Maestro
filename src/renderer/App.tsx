@@ -13370,9 +13370,12 @@ You are taking over this conversation. Based on the context above, provide a bri
 			const session = activeSessionRef.current;
 			if (!session) return;
 
-			// Sanitize: strip ESC characters to prevent PTY escape sequence injection
-			const safeTitle = title.replace(/\x1b/g, '');
-			const safeText = plainText.replace(/\x1b/g, '');
+			// Sanitize: strip C0/C1 control characters to prevent PTY escape sequence injection.
+			// Keeps safe whitespace (\n \r \t). Strips ESC, BEL, BS, DEL, and C1 codes (U+0080-009F).
+			const stripControl = (s: string) =>
+				s.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]|\xc2[\x80-\x9f]/g, '');
+			const safeTitle = stripControl(title);
+			const safeText = stripControl(plainText);
 			const contextText = `[Meeting transcript from "${safeTitle}"]\n\n${safeText}`;
 
 			if (session.isInteractiveAI) {

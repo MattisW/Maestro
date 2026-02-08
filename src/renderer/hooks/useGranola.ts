@@ -4,6 +4,7 @@
  */
 
 import { useState, useCallback } from 'react';
+import * as Sentry from '@sentry/electron/renderer';
 import type {
 	GranolaDocument,
 	GranolaTranscript,
@@ -37,7 +38,8 @@ export function useGranola(): UseGranolaReturn {
 				setError(result.error);
 				setDocuments([]);
 			}
-		} catch {
+		} catch (err) {
+			Sentry.captureException(err, { extra: { operation: 'fetchDocuments' } });
 			setError('cache_parse_error');
 			setDocuments([]);
 		} finally {
@@ -52,7 +54,8 @@ export function useGranola(): UseGranolaReturn {
 				return result.data;
 			}
 			return null;
-		} catch {
+		} catch (err) {
+			Sentry.captureException(err, { extra: { operation: 'fetchTranscript', documentId } });
 			return null;
 		}
 	}, []);

@@ -16,6 +16,7 @@ import type {
 	GranolaDocument,
 	GranolaTranscript,
 	GranolaResult,
+	GranolaErrorType,
 } from '../shared/granola-types';
 
 const LOG_CONTEXT = '[Granola]';
@@ -33,9 +34,6 @@ interface CacheDoc {
 
 interface CacheSegment {
 	text?: string;
-	source?: string;
-	start_timestamp?: number;
-	end_timestamp?: number;
 }
 
 interface CacheState {
@@ -43,9 +41,14 @@ interface CacheState {
 	transcripts?: Record<string, CacheSegment[]>;
 }
 
+type LoadCacheResult = { state: CacheState; ageMs: number } | { error: GranolaErrorType };
+
 // In-memory cache to avoid re-parsing the 11MB file on every request
 let cachedState: CacheState | null = null;
 let cachedMtimeMs = 0;
+
+// Promise deduplication: prevents concurrent loadCache() calls from double-parsing
+let loadPromise: Promise<LoadCacheResult> | null = null;
 
 function parseEpoch(value: string | undefined): number {
 	if (!value) return Date.now();
@@ -53,18 +56,11 @@ function parseEpoch(value: string | undefined): number {
 	return Number.isNaN(ms) ? Date.now() : ms;
 }
 
-async function granolaAppDir(): Promise<boolean> {
+async function loadCacheImpl(): Promise<LoadCacheResult> {
+	// Check if Granola app directory exists
 	try {
 		await fsPromises.access(path.join(app.getPath('appData'), 'Granola'));
-		return true;
 	} catch {
-		return false;
-	}
-}
-
-async function loadCache(): Promise<{ state: CacheState; ageMs: number } | { error: 'not_installed' | 'cache_not_found' | 'cache_parse_error' }> {
-	// Check if Granola app directory exists
-	if (!(await granolaAppDir())) {
 		return { error: 'not_installed' };
 	}
 
@@ -72,6 +68,8 @@ async function loadCache(): Promise<{ state: CacheState; ageMs: number } | { err
 	try {
 		stat = await fsPromises.stat(CACHE_PATH);
 	} catch {
+		cachedState = null;
+		cachedMtimeMs = 0;
 		return { error: 'cache_not_found' };
 	}
 
@@ -101,7 +99,19 @@ async function loadCache(): Promise<{ state: CacheState; ageMs: number } | { err
 		return { state: cachedState, ageMs };
 	} catch (err) {
 		logger.error(`Failed to parse Granola cache: ${err}`, LOG_CONTEXT);
+		cachedState = null;
+		cachedMtimeMs = 0;
 		return { error: 'cache_parse_error' };
+	}
+}
+
+async function loadCache(): Promise<LoadCacheResult> {
+	if (loadPromise) return loadPromise;
+	loadPromise = loadCacheImpl();
+	try {
+		return await loadPromise;
+	} finally {
+		loadPromise = null;
 	}
 }
 
@@ -116,7 +126,7 @@ export async function getRecentMeetings(
 	const transcripts = state.transcripts || {};
 
 	const meetings: GranolaDocument[] = Object.values(docs)
-		.filter((doc): doc is CacheDoc & { id: string } => !!doc.id && !doc.deleted_at)
+		.filter((doc) => doc.id && !doc.deleted_at)
 		.map((doc) => ({
 			id: doc.id,
 			title: doc.title || 'Untitled Meeting',
