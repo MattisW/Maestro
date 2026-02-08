@@ -2622,7 +2622,6 @@ interface MaestroAPI {
 			success: true;
 			data: {
 				documentId: string;
-				title: string;
 				plainText: string;
 			};
 		} | {

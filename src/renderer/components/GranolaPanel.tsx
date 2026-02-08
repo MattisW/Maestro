@@ -9,30 +9,12 @@ import React, { useEffect, useState, useCallback, memo } from 'react';
 import { RefreshCw, Loader2, FileText, AlertCircle, Users, ChevronDown, ChevronRight } from 'lucide-react';
 import type { Theme } from '../types';
 import type { GranolaDocument, GranolaErrorType } from '../../shared/granola-types';
+import { formatRelativeTime } from '../../shared/formatters';
 import { useGranola } from '../hooks/useGranola';
 
 interface GranolaPanelProps {
 	theme: Theme;
 	onInjectTranscript: (title: string, plainText: string) => void;
-}
-
-function formatDate(epochMs: number): string {
-	const d = new Date(epochMs);
-	const now = new Date();
-	const diffMs = now.getTime() - d.getTime();
-	const diffHours = diffMs / (1000 * 60 * 60);
-
-	if (diffHours < 1) {
-		const mins = Math.floor(diffMs / (1000 * 60));
-		return `${mins}m ago`;
-	}
-	if (diffHours < 24) {
-		return `${Math.floor(diffHours)}h ago`;
-	}
-	if (diffHours < 48) {
-		return 'Yesterday';
-	}
-	return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
 function errorMessage(error: GranolaErrorType): string {
@@ -86,7 +68,7 @@ const MeetingRow = memo(function MeetingRow({
 							className="text-xs"
 							style={{ color: theme.colors.textDim }}
 						>
-							{formatDate(doc.createdAt)}
+							{formatRelativeTime(doc.createdAt)}
 						</span>
 						{doc.participants.length > 0 && (
 							<button
@@ -149,6 +131,7 @@ export const GranolaPanel = memo(function GranolaPanel({
 }: GranolaPanelProps) {
 	const { documents, loading, error, fetchDocuments, fetchTranscript } = useGranola();
 	const [loadingDocId, setLoadingDocId] = useState<string | null>(null);
+	const [transcriptError, setTranscriptError] = useState<string | null>(null);
 
 	// Fetch documents on mount
 	useEffect(() => {
@@ -158,10 +141,13 @@ export const GranolaPanel = memo(function GranolaPanel({
 	const handleSelect = useCallback(
 		async (doc: GranolaDocument) => {
 			setLoadingDocId(doc.id);
+			setTranscriptError(null);
 			const transcript = await fetchTranscript(doc.id);
 			setLoadingDocId(null);
 			if (transcript) {
-				onInjectTranscript(transcript.title, transcript.plainText);
+				onInjectTranscript(doc.title, transcript.plainText);
+			} else {
+				setTranscriptError('Failed to load transcript. Try again.');
 			}
 		},
 		[fetchTranscript, onInjectTranscript]
@@ -201,6 +187,20 @@ export const GranolaPanel = memo(function GranolaPanel({
 				>
 					<AlertCircle className="w-4 h-4 shrink-0 mt-0.5" style={{ color: theme.colors.accent }} />
 					<span>{errorMessage(error)}</span>
+				</div>
+			)}
+
+			{/* Transcript fetch error */}
+			{transcriptError && (
+				<div
+					className="flex items-start gap-2 p-3 rounded text-xs mb-3"
+					style={{
+						backgroundColor: `${theme.colors.accent}15`,
+						color: theme.colors.textMain,
+					}}
+				>
+					<AlertCircle className="w-4 h-4 shrink-0 mt-0.5" style={{ color: theme.colors.accent }} />
+					<span>{transcriptError}</span>
 				</div>
 			)}
 

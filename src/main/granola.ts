@@ -5,7 +5,7 @@
  * Auth token read from ~/Library/Application Support/Granola/supabase.json.
  */
 
-import * as fs from 'fs';
+import * as fsPromises from 'fs/promises';
 import * as path from 'path';
 import { app } from 'electron';
 import { logger } from './utils/logger';
@@ -21,9 +21,24 @@ const API_BASE = 'https://api.granola.ai';
 
 const DEFAULT_TOKEN_PATH = path.join(app.getPath('appData'), 'Granola', 'supabase.json');
 
-function readToken(tokenPath: string): string | null {
+// Raw API response types (not exported - internal contract documentation)
+interface GranolaRawDocument {
+	id: string;
+	title?: string;
+	created_at?: string;
+	people?: Array<{ name?: string; email?: string }>;
+}
+
+interface GranolaRawSegment {
+	text?: string;
+	source?: string;
+	start_timestamp?: number;
+	end_timestamp?: number;
+}
+
+async function readToken(tokenPath: string): Promise<string | null> {
 	try {
-		const raw = fs.readFileSync(tokenPath, 'utf-8');
+		const raw = await fsPromises.readFile(tokenPath, 'utf-8');
 		const data = JSON.parse(raw);
 		// Token is in workos_tokens which may be a JSON string
 		let workosTokens = data.workos_tokens;
@@ -31,8 +46,18 @@ function readToken(tokenPath: string): string | null {
 			workosTokens = JSON.parse(workosTokens);
 		}
 		return workosTokens?.access_token || null;
-	} catch {
+	} catch (err) {
+		logger.warn(`Failed to read Granola token: ${err}`, LOG_CONTEXT);
 		return null;
+	}
+}
+
+async function tokenFileExists(tokenPath: string): Promise<boolean> {
+	try {
+		await fsPromises.access(tokenPath);
+		return true;
+	} catch {
+		return false;
 	}
 }
 
@@ -43,18 +68,25 @@ function errorType(error: unknown): GranolaErrorType {
 	return 'api_error';
 }
 
+function parseEpoch(value: string | undefined): number {
+	if (!value) return Date.now();
+	const ms = new Date(value).getTime();
+	return Number.isNaN(ms) ? Date.now() : ms;
+}
+
+async function resolveToken(tokenPath: string): Promise<{ token: string } | { error: GranolaErrorType }> {
+	const token = await readToken(tokenPath);
+	if (token) return { token };
+	return { error: (await tokenFileExists(tokenPath)) ? 'auth_expired' : 'not_installed' };
+}
+
 export async function getRecentMeetings(
 	tokenPath = DEFAULT_TOKEN_PATH,
 	limit = 50
 ): Promise<GranolaResult<GranolaDocument[]>> {
-	const token = readToken(tokenPath);
-	if (!token) {
-		// Check if the file exists at all to distinguish not_installed vs auth_expired
-		if (!fs.existsSync(tokenPath)) {
-			return { success: false, error: 'not_installed' };
-		}
-		return { success: false, error: 'auth_expired' };
-	}
+	const resolved = await resolveToken(tokenPath);
+	if ('error' in resolved) return { success: false, error: resolved.error };
+	const { token } = resolved;
 
 	try {
 		const response = await fetch(`${API_BASE}/v2/get-documents`, {
@@ -74,12 +106,17 @@ export async function getRecentMeetings(
 			return { success: false, error: 'api_error' };
 		}
 
-		const body = await response.json();
-		const docs: GranolaDocument[] = (body.docs || []).map((doc: any) => ({
+		const body = (await response.json()) as { docs?: GranolaRawDocument[] };
+		if (!body.docs) {
+			logger.error('Unexpected Granola API response: missing docs field', LOG_CONTEXT);
+			return { success: false, error: 'api_error' };
+		}
+
+		const docs: GranolaDocument[] = body.docs.map((doc: GranolaRawDocument) => ({
 			id: doc.id,
 			title: doc.title || 'Untitled Meeting',
-			createdAt: new Date(doc.created_at).getTime(),
-			participants: (doc.people || []).map((p: any) => p.name || p.email || 'Unknown'),
+			createdAt: parseEpoch(doc.created_at),
+			participants: (doc.people || []).map((p) => p.name || p.email || 'Unknown'),
 		}));
 
 		return { success: true, data: docs };
@@ -93,32 +130,11 @@ export async function getTranscript(
 	documentId: string,
 	tokenPath = DEFAULT_TOKEN_PATH
 ): Promise<GranolaResult<GranolaTranscript>> {
-	const token = readToken(tokenPath);
-	if (!token) {
-		if (!fs.existsSync(tokenPath)) {
-			return { success: false, error: 'not_installed' };
-		}
-		return { success: false, error: 'auth_expired' };
-	}
+	const resolved = await resolveToken(tokenPath);
+	if ('error' in resolved) return { success: false, error: resolved.error };
+	const { token } = resolved;
 
 	try {
-		// First get the document title
-		const docResponse = await fetch(`${API_BASE}/v2/get-documents`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${token}`,
-			},
-			body: JSON.stringify({ limit: 1, filter: { ids: [documentId] } }),
-		});
-
-		let title = 'Meeting';
-		if (docResponse.ok) {
-			const docBody = await docResponse.json();
-			title = docBody.docs?.[0]?.title || title;
-		}
-
-		// Fetch transcript segments
 		const response = await fetch(`${API_BASE}/v1/get-document-transcript`, {
 			method: 'POST',
 			headers: {
@@ -136,14 +152,13 @@ export async function getTranscript(
 			return { success: false, error: 'api_error' };
 		}
 
-		const segments = await response.json();
-		// API returns array of segments: { text, source, start_timestamp, end_timestamp }
-		const segmentArray = Array.isArray(segments) ? segments : [];
-		const plainText = segmentArray.map((s: any) => s.text || '').join('\n');
+		const segments = (await response.json()) as GranolaRawSegment[] | unknown;
+		const segmentArray = Array.isArray(segments) ? (segments as GranolaRawSegment[]) : [];
+		const plainText = segmentArray.map((s: GranolaRawSegment) => s.text || '').join('\n');
 
 		return {
 			success: true,
-			data: { documentId, title, plainText },
+			data: { documentId, plainText },
 		};
 	} catch (error) {
 		logger.error(`Failed to fetch Granola transcript: ${error}`, LOG_CONTEXT);

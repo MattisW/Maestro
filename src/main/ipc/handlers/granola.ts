@@ -20,13 +20,17 @@ export function registerGranolaHandlers(): void {
 	ipcMain.handle(
 		'granola:get-documents',
 		withIpcErrorLogging(handlerOpts('get-documents'), async (limit?: number) => {
-			return getRecentMeetings(undefined, limit);
+			const safeLimit = typeof limit === 'number' && limit > 0 ? Math.min(limit, 200) : undefined;
+			return getRecentMeetings(undefined, safeLimit);
 		})
 	);
 
 	ipcMain.handle(
 		'granola:get-transcript',
 		withIpcErrorLogging(handlerOpts('get-transcript'), async (documentId: string) => {
+			if (typeof documentId !== 'string' || !documentId.trim()) {
+				return { success: false, error: 'api_error' as const };
+			}
 			return getTranscript(documentId);
 		})
 	);

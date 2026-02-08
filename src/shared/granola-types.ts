@@ -14,7 +14,6 @@ export interface GranolaDocument {
 
 export interface GranolaTranscript {
 	documentId: string;
-	title: string;
 	plainText: string; // joined transcript segments
 }
 

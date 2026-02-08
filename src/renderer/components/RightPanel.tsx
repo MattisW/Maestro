@@ -545,7 +545,7 @@ export const RightPanel = memo(
 					)}
 
 					{activeRightTab === 'granola' && onInjectTranscript && (
-						<div className="h-full">
+						<div data-tour="granola-panel" className="h-full">
 							<GranolaPanel
 								theme={theme}
 								onInjectTranscript={onInjectTranscript}

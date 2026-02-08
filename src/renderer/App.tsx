@@ -13355,16 +13355,25 @@ You are taking over this conversation. Based on the context above, provide a bri
 	});
 
 	// Granola transcript injection handler
+	// Use ref to avoid unstable activeSession object in useCallback deps
+	const activeSessionRef = useRef(activeSession);
+	activeSessionRef.current = activeSession;
+
 	const handleInjectTranscript = useCallback(
 		(title: string, plainText: string) => {
-			if (!activeSession) return;
-			const contextText = `[Meeting transcript from "${title}"]\n\n${plainText}`;
+			const session = activeSessionRef.current;
+			if (!session) return;
 
-			if (activeSession.isInteractiveAI) {
+			// Sanitize: strip ESC characters to prevent PTY escape sequence injection
+			const safeTitle = title.replace(/\x1b/g, '');
+			const safeText = plainText.replace(/\x1b/g, '');
+			const contextText = `[Meeting transcript from "${safeTitle}"]\n\n${safeText}`;
+
+			if (session.isInteractiveAI) {
 				// Write directly to the interactive PTY with bracketed paste
-				const activeTabId = activeSession.activeTabId || activeSession.aiTabs?.[0]?.id;
+				const activeTabId = session.activeTabId || session.aiTabs?.[0]?.id;
 				if (activeTabId) {
-					const targetSessionId = `${activeSession.id}-ai-${activeTabId}`;
+					const targetSessionId = `${session.id}-ai-${activeTabId}`;
 					const wrapped = `\x1b[200~${contextText}\x1b[201~\n`;
 					window.maestro.process.write(targetSessionId, wrapped);
 				}
@@ -13372,7 +13381,7 @@ You are taking over this conversation. Based on the context above, provide a bri
 				// For batch mode sessions, update the input field with the context
 				setSessions((prev) =>
 					prev.map((s) => {
-						if (s.id !== activeSession.id) return s;
+						if (s.id !== session.id) return s;
 						const tabs = (s.aiTabs || []).map((tab) =>
 							tab.id === (s.activeTabId || s.aiTabs?.[0]?.id)
 								? { ...tab, inputValue: contextText + '\n\n' + (tab.inputValue || '') }
@@ -13383,7 +13392,7 @@ You are taking over this conversation. Based on the context above, provide a bri
 				);
 			}
 		},
-		[activeSession, setSessions]
+		[setSessions]
 	);
 
 	const rightPanelProps = useRightPanelProps({
