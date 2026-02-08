@@ -1912,6 +1912,12 @@ function MaestroConsoleInner() {
 			// Filter out empty stdout for terminal commands (AI output should pass through)
 			if (!isFromAi && !data.trim()) return;
 
+			// Skip log processing for interactive AI sessions (xterm.js handles rendering directly)
+			if (isFromAi) {
+				const session = sessionsRef.current.find((s) => s.id === actualSessionId);
+				if (session?.isInteractiveAI) return;
+			}
+
 			// For terminal output, use batched append to shell logs
 			if (!isFromAi) {
 				batchedUpdater.appendLog(actualSessionId, null, false, data);
