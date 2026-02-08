@@ -2,7 +2,7 @@
  * Granola IPC Handlers
  *
  * Two IPC channels for fetching Granola meeting documents and transcripts.
- * Data functions live in src/main/granola.ts.
+ * Data functions live in src/main/granola.ts (reads local cache).
  */
 
 import { ipcMain } from 'electron';
@@ -20,8 +20,8 @@ export function registerGranolaHandlers(): void {
 	ipcMain.handle(
 		'granola:get-documents',
 		withIpcErrorLogging(handlerOpts('get-documents'), async (limit?: number) => {
-			const safeLimit = typeof limit === 'number' && limit > 0 ? Math.min(limit, 200) : undefined;
-			return getRecentMeetings(undefined, safeLimit);
+			const safeLimit = typeof limit === 'number' && limit > 0 ? limit : undefined;
+			return getRecentMeetings(safeLimit);
 		})
 	);
 
@@ -29,7 +29,7 @@ export function registerGranolaHandlers(): void {
 		'granola:get-transcript',
 		withIpcErrorLogging(handlerOpts('get-transcript'), async (documentId: string) => {
 			if (typeof documentId !== 'string' || !documentId.trim()) {
-				return { success: false, error: 'api_error' as const };
+				return { success: false, error: 'cache_not_found' as const };
 			}
 			return getTranscript(documentId);
 		})

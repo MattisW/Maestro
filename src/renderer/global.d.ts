@@ -2604,7 +2604,7 @@ interface MaestroAPI {
 		}) => Promise<string | null>;
 	};
 
-	// Granola meeting transcript API
+	// Granola meeting transcript integration (reads local cache)
 	granola: {
 		getDocuments: (limit?: number) => Promise<{
 			success: true;
@@ -2613,10 +2613,12 @@ interface MaestroAPI {
 				title: string;
 				createdAt: number;
 				participants: string[];
+				hasTranscript: boolean;
 			}>;
+			cacheAge?: number;
 		} | {
 			success: false;
-			error: 'not_installed' | 'auth_expired' | 'api_error' | 'network_error';
+			error: 'not_installed' | 'cache_not_found' | 'cache_parse_error';
 		}>;
 		getTranscript: (documentId: string) => Promise<{
 			success: true;
@@ -2624,9 +2626,10 @@ interface MaestroAPI {
 				documentId: string;
 				plainText: string;
 			};
+			cacheAge?: number;
 		} | {
 			success: false;
-			error: 'not_installed' | 'auth_expired' | 'api_error' | 'network_error';
+			error: 'not_installed' | 'cache_not_found' | 'cache_parse_error';
 		}>;
 	};
 }

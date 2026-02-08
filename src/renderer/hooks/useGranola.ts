@@ -14,6 +14,7 @@ interface UseGranolaReturn {
 	documents: GranolaDocument[];
 	loading: boolean;
 	error: GranolaErrorType | null;
+	cacheAge: number | null; // ms since cache was last written
 	fetchDocuments: () => Promise<void>;
 	fetchTranscript: (documentId: string) => Promise<GranolaTranscript | null>;
 }
@@ -22,6 +23,7 @@ export function useGranola(): UseGranolaReturn {
 	const [documents, setDocuments] = useState<GranolaDocument[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<GranolaErrorType | null>(null);
+	const [cacheAge, setCacheAge] = useState<number | null>(null);
 
 	const fetchDocuments = useCallback(async () => {
 		setLoading(true);
@@ -30,12 +32,13 @@ export function useGranola(): UseGranolaReturn {
 			const result = await window.maestro.granola.getDocuments(50);
 			if (result.success) {
 				setDocuments(result.data);
+				setCacheAge(result.cacheAge ?? null);
 			} else {
 				setError(result.error);
 				setDocuments([]);
 			}
 		} catch {
-			setError('api_error');
+			setError('cache_parse_error');
 			setDocuments([]);
 		} finally {
 			setLoading(false);
@@ -54,5 +57,5 @@ export function useGranola(): UseGranolaReturn {
 		}
 	}, []);
 
-	return { documents, loading, error, fetchDocuments, fetchTranscript };
+	return { documents, loading, error, cacheAge, fetchDocuments, fetchTranscript };
 }

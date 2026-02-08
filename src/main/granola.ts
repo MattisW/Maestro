@@ -1,8 +1,11 @@
 /**
- * Granola meeting transcript integration.
+ * Granola meeting transcript integration via local cache.
  *
- * Two functions to fetch meeting documents and transcripts from Granola's API.
- * Auth token read from ~/Library/Application Support/Granola/supabase.json.
+ * Reads from Granola's cache file at ~/Library/Application Support/Granola/cache-v3.json
+ * instead of hitting the API. The cache is maintained by the Granola desktop app.
+ *
+ * The cache is double-encoded: { cache: "<JSON string>" } where the inner JSON
+ * contains { state: { documents: {...}, transcripts: {...} } }.
  */
 
 import * as fsPromises from 'fs/promises';
@@ -13,60 +16,36 @@ import type {
 	GranolaDocument,
 	GranolaTranscript,
 	GranolaResult,
-	GranolaErrorType,
 } from '../shared/granola-types';
 
 const LOG_CONTEXT = '[Granola]';
-const API_BASE = 'https://api.granola.ai';
 
-const DEFAULT_TOKEN_PATH = path.join(app.getPath('appData'), 'Granola', 'supabase.json');
+const CACHE_PATH = path.join(app.getPath('appData'), 'Granola', 'cache-v3.json');
 
-// Raw API response types (not exported - internal contract documentation)
-interface GranolaRawDocument {
+// Raw cache types (internal only)
+interface CacheDoc {
 	id: string;
 	title?: string;
 	created_at?: string;
+	deleted_at?: string | null;
 	people?: Array<{ name?: string; email?: string }>;
 }
 
-interface GranolaRawSegment {
+interface CacheSegment {
 	text?: string;
 	source?: string;
 	start_timestamp?: number;
 	end_timestamp?: number;
 }
 
-async function readToken(tokenPath: string): Promise<string | null> {
-	try {
-		const raw = await fsPromises.readFile(tokenPath, 'utf-8');
-		const data = JSON.parse(raw);
-		// Token is in workos_tokens which may be a JSON string
-		let workosTokens = data.workos_tokens;
-		if (typeof workosTokens === 'string') {
-			workosTokens = JSON.parse(workosTokens);
-		}
-		return workosTokens?.access_token || null;
-	} catch (err) {
-		logger.warn(`Failed to read Granola token: ${err}`, LOG_CONTEXT);
-		return null;
-	}
+interface CacheState {
+	documents?: Record<string, CacheDoc>;
+	transcripts?: Record<string, CacheSegment[]>;
 }
 
-async function tokenFileExists(tokenPath: string): Promise<boolean> {
-	try {
-		await fsPromises.access(tokenPath);
-		return true;
-	} catch {
-		return false;
-	}
-}
-
-function errorType(error: unknown): GranolaErrorType {
-	if (error instanceof TypeError && String(error).includes('fetch')) {
-		return 'network_error';
-	}
-	return 'api_error';
-}
+// In-memory cache to avoid re-parsing the 11MB file on every request
+let cachedState: CacheState | null = null;
+let cachedMtimeMs = 0;
 
 function parseEpoch(value: string | undefined): number {
 	if (!value) return Date.now();
@@ -74,94 +53,104 @@ function parseEpoch(value: string | undefined): number {
 	return Number.isNaN(ms) ? Date.now() : ms;
 }
 
-async function resolveToken(tokenPath: string): Promise<{ token: string } | { error: GranolaErrorType }> {
-	const token = await readToken(tokenPath);
-	if (token) return { token };
-	return { error: (await tokenFileExists(tokenPath)) ? 'auth_expired' : 'not_installed' };
+async function granolaAppDir(): Promise<boolean> {
+	try {
+		await fsPromises.access(path.join(app.getPath('appData'), 'Granola'));
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+async function loadCache(): Promise<{ state: CacheState; ageMs: number } | { error: 'not_installed' | 'cache_not_found' | 'cache_parse_error' }> {
+	// Check if Granola app directory exists
+	if (!(await granolaAppDir())) {
+		return { error: 'not_installed' };
+	}
+
+	let stat;
+	try {
+		stat = await fsPromises.stat(CACHE_PATH);
+	} catch {
+		return { error: 'cache_not_found' };
+	}
+
+	const ageMs = Date.now() - stat.mtimeMs;
+
+	// Return in-memory cache if file hasn't changed
+	if (cachedState && stat.mtimeMs === cachedMtimeMs) {
+		return { state: cachedState, ageMs };
+	}
+
+	try {
+		const raw = await fsPromises.readFile(CACHE_PATH, 'utf-8');
+		const outer = JSON.parse(raw) as { cache?: string };
+		if (typeof outer.cache !== 'string') {
+			logger.error('Cache file missing "cache" string field', LOG_CONTEXT);
+			return { error: 'cache_parse_error' };
+		}
+
+		const inner = JSON.parse(outer.cache) as { state?: CacheState };
+		if (!inner.state) {
+			logger.error('Cache inner JSON missing "state" field', LOG_CONTEXT);
+			return { error: 'cache_parse_error' };
+		}
+
+		cachedState = inner.state;
+		cachedMtimeMs = stat.mtimeMs;
+		return { state: cachedState, ageMs };
+	} catch (err) {
+		logger.error(`Failed to parse Granola cache: ${err}`, LOG_CONTEXT);
+		return { error: 'cache_parse_error' };
+	}
 }
 
 export async function getRecentMeetings(
-	tokenPath = DEFAULT_TOKEN_PATH,
 	limit = 50
 ): Promise<GranolaResult<GranolaDocument[]>> {
-	const resolved = await resolveToken(tokenPath);
-	if ('error' in resolved) return { success: false, error: resolved.error };
-	const { token } = resolved;
+	const result = await loadCache();
+	if ('error' in result) return { success: false, error: result.error };
 
-	try {
-		const response = await fetch(`${API_BASE}/v2/get-documents`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${token}`,
-			},
-			body: JSON.stringify({ limit }),
-		});
+	const { state, ageMs } = result;
+	const docs = state.documents || {};
+	const transcripts = state.transcripts || {};
 
-		if (response.status === 401 || response.status === 403) {
-			return { success: false, error: 'auth_expired' };
-		}
-		if (!response.ok) {
-			logger.error(`Granola API error: ${response.status}`, LOG_CONTEXT);
-			return { success: false, error: 'api_error' };
-		}
-
-		const body = (await response.json()) as { docs?: GranolaRawDocument[] };
-		if (!body.docs) {
-			logger.error('Unexpected Granola API response: missing docs field', LOG_CONTEXT);
-			return { success: false, error: 'api_error' };
-		}
-
-		const docs: GranolaDocument[] = body.docs.map((doc: GranolaRawDocument) => ({
+	const meetings: GranolaDocument[] = Object.values(docs)
+		.filter((doc): doc is CacheDoc & { id: string } => !!doc.id && !doc.deleted_at)
+		.map((doc) => ({
 			id: doc.id,
 			title: doc.title || 'Untitled Meeting',
 			createdAt: parseEpoch(doc.created_at),
 			participants: (doc.people || []).map((p) => p.name || p.email || 'Unknown'),
-		}));
+			hasTranscript: Array.isArray(transcripts[doc.id]) && transcripts[doc.id].length > 0,
+		}))
+		.sort((a, b) => b.createdAt - a.createdAt)
+		.slice(0, limit);
 
-		return { success: true, data: docs };
-	} catch (error) {
-		logger.error(`Failed to fetch Granola documents: ${error}`, LOG_CONTEXT);
-		return { success: false, error: errorType(error) };
-	}
+	return { success: true, data: meetings, cacheAge: ageMs };
 }
 
 export async function getTranscript(
-	documentId: string,
-	tokenPath = DEFAULT_TOKEN_PATH
+	documentId: string
 ): Promise<GranolaResult<GranolaTranscript>> {
-	const resolved = await resolveToken(tokenPath);
-	if ('error' in resolved) return { success: false, error: resolved.error };
-	const { token } = resolved;
+	const result = await loadCache();
+	if ('error' in result) return { success: false, error: result.error };
 
-	try {
-		const response = await fetch(`${API_BASE}/v1/get-document-transcript`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${token}`,
-			},
-			body: JSON.stringify({ document_id: documentId }),
-		});
+	const { state, ageMs } = result;
+	const segments = state.transcripts?.[documentId];
 
-		if (response.status === 401 || response.status === 403) {
-			return { success: false, error: 'auth_expired' };
-		}
-		if (!response.ok) {
-			logger.error(`Granola transcript API error: ${response.status}`, LOG_CONTEXT);
-			return { success: false, error: 'api_error' };
-		}
-
-		const segments = (await response.json()) as GranolaRawSegment[] | unknown;
-		const segmentArray = Array.isArray(segments) ? (segments as GranolaRawSegment[]) : [];
-		const plainText = segmentArray.map((s: GranolaRawSegment) => s.text || '').join('\n');
-
-		return {
-			success: true,
-			data: { documentId, plainText },
-		};
-	} catch (error) {
-		logger.error(`Failed to fetch Granola transcript: ${error}`, LOG_CONTEXT);
-		return { success: false, error: errorType(error) };
+	if (!Array.isArray(segments) || segments.length === 0) {
+		return { success: false, error: 'cache_not_found' };
 	}
+
+	const plainText = segments
+		.map((s: CacheSegment) => s.text || '')
+		.filter(Boolean)
+		.join('\n');
+
+	return {
+		success: true,
+		data: { documentId, plainText },
+		cacheAge: ageMs,
+	};
 }

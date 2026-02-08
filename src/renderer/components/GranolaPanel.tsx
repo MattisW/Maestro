@@ -1,12 +1,13 @@
 /**
  * GranolaPanel - Right Bar panel for browsing Granola meetings and injecting transcripts.
  *
- * Shows a list of recent meetings. Clicking one fetches the transcript and calls
- * onInjectTranscript so the parent can feed it into the active AI session.
+ * Shows a list of recent meetings from Granola's local cache. Clicking one with a
+ * cached transcript calls onInjectTranscript so the parent can feed it into the
+ * active AI session.
  */
 
 import React, { useEffect, useState, useCallback, memo } from 'react';
-import { RefreshCw, Loader2, FileText, AlertCircle, Users, ChevronDown, ChevronRight } from 'lucide-react';
+import { RefreshCw, Loader2, FileText, AlertCircle, Users, ChevronDown, ChevronRight, FileX } from 'lucide-react';
 import type { Theme } from '../types';
 import type { GranolaDocument, GranolaErrorType } from '../../shared/granola-types';
 import { formatRelativeTime } from '../../shared/formatters';
@@ -21,13 +22,21 @@ function errorMessage(error: GranolaErrorType): string {
 	switch (error) {
 		case 'not_installed':
 			return 'Granola is not installed. Install it from granola.ai to use this feature.';
-		case 'auth_expired':
-			return 'Granola auth token expired. Open Granola and sign in again.';
-		case 'network_error':
-			return 'Could not reach Granola API. Check your network connection.';
-		case 'api_error':
-			return 'Granola API returned an error. Try again later.';
+		case 'cache_not_found':
+			return 'Granola cache not found. Open Granola and record a meeting first.';
+		case 'cache_parse_error':
+			return 'Could not read Granola data. Try restarting Granola.';
 	}
+}
+
+function formatCacheAge(ageMs: number): string {
+	const mins = Math.floor(ageMs / 60_000);
+	if (mins < 1) return 'just now';
+	if (mins < 60) return `${mins}m ago`;
+	const hours = Math.floor(mins / 60);
+	if (hours < 24) return `${hours}h ago`;
+	const days = Math.floor(hours / 24);
+	return `${days}d ago`;
 }
 
 const MeetingRow = memo(function MeetingRow({
@@ -42,16 +51,17 @@ const MeetingRow = memo(function MeetingRow({
 	isLoading: boolean;
 }) {
 	const [expanded, setExpanded] = useState(false);
+	const canSelect = doc.hasTranscript && !isLoading;
 
 	return (
 		<div
-			className="border rounded px-3 py-2 cursor-pointer transition-colors hover:brightness-110"
+			className={`border rounded px-3 py-2 transition-colors ${canSelect ? 'cursor-pointer hover:brightness-110' : 'opacity-60'}`}
 			style={{
 				borderColor: theme.colors.border,
 				backgroundColor: theme.colors.bgMain,
 			}}
 			onClick={() => {
-				if (!isLoading) onSelect(doc);
+				if (canSelect) onSelect(doc);
 			}}
 		>
 			<div className="flex items-start justify-between gap-2">
@@ -97,11 +107,18 @@ const MeetingRow = memo(function MeetingRow({
 							className="w-4 h-4 animate-spin"
 							style={{ color: theme.colors.accent }}
 						/>
-					) : (
+					) : doc.hasTranscript ? (
 						<FileText
 							className="w-4 h-4"
 							style={{ color: theme.colors.textDim }}
 						/>
+					) : (
+						<span title="No transcript cached">
+							<FileX
+								className="w-4 h-4"
+								style={{ color: theme.colors.textDim }}
+							/>
+						</span>
 					)}
 				</div>
 			</div>
@@ -129,7 +146,7 @@ export const GranolaPanel = memo(function GranolaPanel({
 	theme,
 	onInjectTranscript,
 }: GranolaPanelProps) {
-	const { documents, loading, error, fetchDocuments, fetchTranscript } = useGranola();
+	const { documents, loading, error, cacheAge, fetchDocuments, fetchTranscript } = useGranola();
 	const [loadingDocId, setLoadingDocId] = useState<string | null>(null);
 	const [transcriptError, setTranscriptError] = useState<string | null>(null);
 
@@ -147,7 +164,7 @@ export const GranolaPanel = memo(function GranolaPanel({
 			if (transcript) {
 				onInjectTranscript(doc.title, transcript.plainText);
 			} else {
-				setTranscriptError('Failed to load transcript. Try again.');
+				setTranscriptError('No transcript available for this meeting.');
 			}
 		},
 		[fetchTranscript, onInjectTranscript]
@@ -157,12 +174,23 @@ export const GranolaPanel = memo(function GranolaPanel({
 		<div className="flex flex-col h-full">
 			{/* Header */}
 			<div className="flex items-center justify-between py-3">
-				<span
-					className="text-xs font-bold uppercase tracking-wider"
-					style={{ color: theme.colors.textDim }}
-				>
-					Meetings
-				</span>
+				<div className="flex items-center gap-2">
+					<span
+						className="text-xs font-bold uppercase tracking-wider"
+						style={{ color: theme.colors.textDim }}
+					>
+						Meetings
+					</span>
+					{cacheAge !== null && (
+						<span
+							className="text-xs"
+							style={{ color: theme.colors.textDim, opacity: 0.6 }}
+							title="Last synced by Granola"
+						>
+							{formatCacheAge(cacheAge)}
+						</span>
+					)}
+				</div>
 				<button
 					onClick={fetchDocuments}
 					disabled={loading}
